@@ -1,0 +1,1303 @@
+@menu
+* ncptl-logextract manual page::   The result of running ``ncptl-logextract --man''
+@end menu
+
+@c Copyright (C) 2009, Los Alamos National Security, LLC
+@c All rights reserved.
+@c 
+@c Copyright (2009).  Los Alamos National Security, LLC.  This software
+@c was produced under U.S. Government contract DE-AC52-06NA25396
+@c for Los Alamos National Laboratory (LANL), which is operated by
+@c Los Alamos National Security, LLC (LANS) for the U.S. Department
+@c of Energy. The U.S. Government has rights to use, reproduce,
+@c and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+@c MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+@c FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+@c derivative works, such modified software should be clearly marked,
+@c so as not to confuse it with the version available from LANL.
+@c 
+@c Additionally, redistribution and use in source and binary forms,
+@c with or without modification, are permitted provided that the
+@c following conditions are met:
+@c 
+@c   * Redistributions of source code must retain the above copyright
+@c     notice, this list of conditions and the following disclaimer.
+@c 
+@c   * Redistributions in binary form must reproduce the above copyright
+@c     notice, this list of conditions and the following disclaimer
+@c     in the documentation and/or other materials provided with the
+@c     distribution.
+@c 
+@c   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+@c     National Laboratory, the U.S. Government, nor the names of its
+@c     contributors may be used to endorse or promote products derived
+@c     from this software without specific prior written permission.
+@c 
+@c THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+@c EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+@c IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+@c PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+@c LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+@c OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+@c OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+@c BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+@c WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+@c OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+@c EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+@node ncptl-logextract manual page,  , ncptl-logextract, ncptl-logextract
+@subsubheading NAME
+
+
+ncptl-logextract - Extract various bits of information from a @ncptl{} log file
+
+@subsubheading SYNOPSIS
+
+
+ncptl-logextract
+@copt{usage} | @copt{help} | @copt{man}
+
+@sp 1
+@noindent
+ncptl-logextract
+[@copt{extract}=[data|params|env|source|warnings]]
+[@copt{format}=@var{format}]
+[@var{format-specific options}...]
+[@copt{before}=@var{string}]
+[@copt{after}=@var{string}]
+[@copt{force-merge}[=@var{number}]]
+[@copt{procs}=@var{string}]
+[@copt{quiet}]
+[@copt{verbose}]
+[@copt{output}=@var{filename}]
+[@var{filename}...]
+
+@subsubheading DESCRIPTION
+
+
+@noindent
+@strong{Background}@ @ @ @ @ncptl{} is a domain-specific programming language designed to
+facilitate writing networking benchmarks and validation suites.
+@ncptl{} programs can log data to a file but in only a single file
+format.  @file{ncptl-logextract} extracts this log data and outputs it in
+a variety of formats for use with other applications.
+
+The @ncptl{}-generated log files that serve as input to
+@file{ncptl-logextract} are plain ASCII files.  Syntactically, they
+contain a number of newline-separated tables.  Each table contains a
+number of newline-separated rows of comma-separated columns.  This is
+known generically as @var{comma-separated value} or @var{CSV} format.  Each
+table begins with two rows of header text followed by one or more rows
+of numbers.  Text is written within double quotes.  Double-quote
+characters and backslashes within text are escaped with a backslash.
+No other escaped characters are recognized.  Lines that begin with
+@code{#} are considered comments.
+
+Semantically, there are four types of data present in every
+@ncptl{}-generated log file:
+
+@enumerate
+@item
+The complete source code of the @ncptl{} program that produced the
+log file
+
+@item
+Characteristics of the run-time environment and the values of all
+command-line parameters
+
+@item
+A list of warning messages that @ncptl{} issued while analyzing the
+run-time environment
+
+@item
+One or more tables of measurement data produced by the @ncptl{} program
+
+@end enumerate
+The first three items appear within comment lines.  The measurement
+data is written in CSV format.
+
+@noindent
+@strong{Extracting information from coNCePTuaL log files}@ @ @ @ It is common to want to extract information (especially measurement
+data) from log files.  For simple formatting operations, a one-line
+awk or Perl script suffices.  However, as the complexity of the
+formatting increases, the complexity of these scripts increases even
+more.  That's where @file{ncptl-logextract} fits in.  @file{ncptl-logextract}
+makes it easy to extract any of the four types of log data described
+above and format it in variety of ways.  Although the number of
+options that @file{ncptl-logextract} supports may be somewhat daunting, it
+is well worth learning how to use @file{ncptl-logextract} to avoid
+reinventing the wheel every time a @ncptl{} log file needs to be
+processed.  @file{ncptl-logextract} takes care of all sorts of special
+cases that crop up when manipulating @ncptl{} log files.
+
+@subsubheading OPTIONS
+
+
+@file{ncptl-logextract} accepts the following command-line options
+regardless of what data is extracted from the log file and what
+formatting occurs:
+
+@table @asis
+@item @copts{h}, @copt{help}
+Output the Synopsis section and the Options section then exit the program.
+
+@item @copts{m}, @copt{man}
+Output a complete Unix man (``manual'') page for @file{ncptl-logextract}
+then exit the program.
+
+@item @copts{e} @var{info}, @copt{extract}=@var{info}
+Specify what sort of data should be extracted from the log file.
+Acceptable values for @var{info} are listed and described in
+the Additional Options section and include @code{data}, @code{params}, @code{env}, and
+@code{source}.
+
+@item @copts{f} @var{format}, @copt{format}=@var{format}
+Specify how the extracted data should be formatted.  Valid arguments
+depend upon the value passed to @copt{extract} and include such formats
+as @code{csv}, @code{html}, @code{latex}, @code{text}, and @code{bash}.  See the Additional Options section for details, explanations, and descriptions of
+applicability.
+
+@item @copts{b} @var{string}, @copt{before}=@var{string}
+Output an arbitrary string of text before any other output.  @var{string}
+can contain escape characters such as @code{\n} for newline, @code{\t} for
+tab, and @code{\\} for backslash.
+
+@item @copts{a} @var{string}, @copt{after}=@var{string}
+Output an arbitrary string of text after all other output.  @var{string}
+can contain escape characters such as @code{\n} for newline, @code{\t} for
+tab, and @code{\\} for backslash.
+
+@item @copts{F} [@var{number}], @copt{force-merge}[=@var{number}]
+Try extra hard to merge multiple log files, even if they seem to have
+been produced by different programs or in different execution
+environments.  This generally implies padding empty rows and columns
+with blanks.  However, if @copt{force-merge} is given a numeric
+argument, the value of that argument is used instead of blanks to pad
+empty locations.  Note that @copt{force-merge} is different from
+@coptargs{force-merge, 0} because data-merging functions (@code{mean}, @code{max},
+etc.) ignore blanks but consider zeroes.
+
+@item @copts{p} @var{string}, @copt{procs}=@var{string}
+When given a ``merged'' log file, unmerge only the data corresponding to
+the comma-separated processor ranges in @var{string}.  For example,
+@coptargs{procs, 0@comma{}16-20@comma{}25} unmerges the data for @w{processors 0}, 16, 17,
+18, 19, 20, @w{and 25}.  By default, @file{ncptl-logextract} uses all of
+the data from a merged log file.
+
+@item @copts{q}, @copt{quiet}
+Suppress progress output.  Normally, @file{ncptl-logextract} outputs
+status information regarding its operation.  The @copt{quiet} option
+instruct @file{ncptl-logextract} to output only warning and error
+messages.
+
+@item @copts{v}, @copt{verbose}
+Increase progress output.  Normally, @file{ncptl-logextract} outputs basic
+status information regarding its operation.  The @copt{verbose} option
+instruct @file{ncptl-logextract} to output more detailed information.
+Each time @copt{verbose} is specified, the program's verbosity increases
+(up to a maximum).
+
+@item @copts{o} @var{filename}, @copt{output}=@var{filename}
+Redirect the output from @file{ncptl-logextract} to a file.  By default,
+@file{ncptl-logextract} writes to the standard output device.
+
+@end table
+The above is merely a terse summary of the @file{ncptl-logextract}
+command-line options.  The reader is directed to the Additional Options section for descriptions of the numerous ways that
+@file{ncptl-logextract} can format information.  Note that @copt{extract}
+and @copt{format} are the two most common options as they specify what
+to extract and how to format it; most of the remaining options in
+the Additional Options section exist to provide precise control over
+formatting details.
+
+@subsubheading ADDITIONAL OPTIONS
+
+
+The @file{ncptl-logextract} command-line options follow a hierarchy.  At
+the top level is @copt{extract}, which specifies which of the four types
+of data @file{ncptl-logextract} should extract.  Next, @copt{format}
+specifies how the extracted data should be formatted.  Valid values
+for @copt{format} differ based on the argument to @copt{extract}.
+Finally, there are various format-specific options that fine-tune the
+formatted output.  Each output format accepts a different set of
+options.  Many of the options appear at multiple places within the
+hierarchy, although usually with different default values.
+
+The following hierarchical list describes all of the valid
+combinations of @copt{extract}, @copt{format}, and the various
+format-specific options:
+
+
+
+@table @asis
+@item @coptargs{extract, data} [default]
+Extract measurement data
+
+@table @asis
+@item @coptargs{format, csv} [default]
+Output each table in comma-separated-value format
+
+@table @asis
+@item @copt{noheaders}
+Do not output column headers
+
+@item @coptargs{colbegin, }@var{string}
+Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{,}''}]
+
+@item @coptargs{colend, }@var{string}
+Specify the text placed at the end of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{rowsep, }@var{string}
+Specify the text used to separate data rows [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text placed at the end of each data row [default: @w{``@code{\\n}''}]
+
+@item @coptargs{hcolbegin, }@var{string}
+Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
+
+@item @coptargs{hcolsep, }@var{string}
+Specify the text used to separate header columns [default: same as @code{colsep}]
+
+@item @coptargs{hcolend, }@var{string}
+Specify the text placed at the end of each header column [default: same as @code{colend}]
+
+@item @coptargs{hrowbegin, }@var{string}
+Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
+
+@item @coptargs{hrowsep, }@var{string}
+Specify the text used to separate header rows [default: same as @code{rowsep}]
+
+@item @coptargs{hrowend, }@var{string}
+Specify the text placed at the end of each header row [default: same as @code{rowend}]
+
+@item @coptargs{tablebegin, }@var{string}
+Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
+
+@item @coptargs{tablesep, }@var{string}
+Specify the text used to separate tables [default: @w{``@code{\\n}''}]
+
+@item @coptargs{tableend, }@var{string}
+Specify the text placed at the end of each table [default: @w{``@code{}''}]
+
+@item @coptargs{quote, }@var{string}
+Specify the text used to begin quoted text [default: @w{``@code{"}''}]
+
+@item @coptargs{unquote, }@var{string}
+Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @copt{excel}
+Output strings in a format readable by Microsoft Excel
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@item @coptargs{format, tsv}
+Output each table in tab-separated-value format
+
+@table @asis
+@item @copt{noheaders}
+Do not output column headers
+
+@item @coptargs{colbegin, }@var{string}
+Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{\\t}''}]
+
+@item @coptargs{colend, }@var{string}
+Specify the text placed at the end of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{rowsep, }@var{string}
+Specify the text used to separate data rows [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text placed at the end of each data row [default: @w{``@code{\\n}''}]
+
+@item @coptargs{hcolbegin, }@var{string}
+Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
+
+@item @coptargs{hcolsep, }@var{string}
+Specify the text used to separate header columns [default: same as @code{colsep}]
+
+@item @coptargs{hcolend, }@var{string}
+Specify the text placed at the end of each header column [default: same as @code{colend}]
+
+@item @coptargs{hrowbegin, }@var{string}
+Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
+
+@item @coptargs{hrowsep, }@var{string}
+Specify the text used to separate header rows [default: same as @code{rowsep}]
+
+@item @coptargs{hrowend, }@var{string}
+Specify the text placed at the end of each header row [default: same as @code{rowend}]
+
+@item @coptargs{tablebegin, }@var{string}
+Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
+
+@item @coptargs{tablesep, }@var{string}
+Specify the text used to separate tables [default: @w{``@code{\\n}''}]
+
+@item @coptargs{tableend, }@var{string}
+Specify the text placed at the end of each table [default: @w{``@code{}''}]
+
+@item @coptargs{quote, }@var{string}
+Specify the text used to begin quoted text [default: @w{``@code{"}''}]
+
+@item @coptargs{unquote, }@var{string}
+Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @copt{excel}
+Output strings in a format readable by Microsoft Excel
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@item @coptargs{format, html}
+Output each table in HTML table format
+
+@table @asis
+@item @copt{noheaders}
+Do not output column headers
+
+@item @coptargs{colbegin, }@var{string}
+Specify the text placed at the beginning of each data column [default: @w{``@code{<td>}''}]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{ }''}]
+
+@item @coptargs{colend, }@var{string}
+Specify the text placed at the end of each data column [default: @w{``@code{</td>}''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text placed at the beginning of each data row [default: @w{``@code{<tr>}''}]
+
+@item @coptargs{rowsep, }@var{string}
+Specify the text used to separate data rows [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text placed at the end of each data row [default: @w{``@code{</tr>\\n}''}]
+
+@item @coptargs{hcolbegin, }@var{string}
+Specify the text placed at the beginning of each header column [default: @w{``@code{<th>}''}]
+
+@item @coptargs{hcolsep, }@var{string}
+Specify the text used to separate header columns [default: same as @code{colsep}]
+
+@item @coptargs{hcolend, }@var{string}
+Specify the text placed at the end of each header column [default: @w{``@code{</th>}''}]
+
+@item @coptargs{hrowbegin, }@var{string}
+Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
+
+@item @coptargs{hrowsep, }@var{string}
+Specify the text used to separate header rows [default: same as @code{rowsep}]
+
+@item @coptargs{hrowend, }@var{string}
+Specify the text placed at the end of each header row [default: same as @code{rowend}]
+
+@item @coptargs{tablebegin, }@var{string}
+Specify the text placed at the beginning of each table [default: @w{``@code{<table>\\n}''}]
+
+@item @coptargs{tablesep, }@var{string}
+Specify the text used to separate tables [default: @w{``@code{}''}]
+
+@item @coptargs{tableend, }@var{string}
+Specify the text placed at the end of each table [default: @w{``@code{</table>\\n}''}]
+
+@item @coptargs{quote, }@var{string}
+Specify the text used to begin quoted text [default: @w{``@code{}''}]
+
+@item @coptargs{unquote, }@var{string}
+Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@item @coptargs{format, gnuplot}
+Output each table as a gnuplot data file
+
+@table @asis
+@item @copt{noheaders}
+Do not output column headers
+
+@item @coptargs{colbegin, }@var{string}
+Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{ }''}]
+
+@item @coptargs{colend, }@var{string}
+Specify the text placed at the end of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{rowsep, }@var{string}
+Specify the text used to separate data rows [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text placed at the end of each data row [default: @w{``@code{\\n}''}]
+
+@item @coptargs{hcolbegin, }@var{string}
+Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
+
+@item @coptargs{hcolsep, }@var{string}
+Specify the text used to separate header columns [default: same as @code{colsep}]
+
+@item @coptargs{hcolend, }@var{string}
+Specify the text placed at the end of each header column [default: same as @code{colend}]
+
+@item @coptargs{hrowbegin, }@var{string}
+Specify the text placed at the beginning of each header row [default: @w{``@code{# }''}
+
+@item @coptargs{hrowsep, }@var{string}
+Specify the text used to separate header rows [default: same as @code{rowsep}]
+
+@item @coptargs{hrowend, }@var{string}
+Specify the text placed at the end of each header row [default: same as @code{rowend}]
+
+@item @coptargs{tablebegin, }@var{string}
+Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
+
+@item @coptargs{tablesep, }@var{string}
+Specify the text used to separate tables [default: @w{``@code{\\n\\n}''}]
+
+@item @coptargs{tableend, }@var{string}
+Specify the text placed at the end of each table [default: @w{``@code{}''}]
+
+@item @coptargs{quote, }@var{string}
+Specify the text used to begin quoted text [default: @w{``@code{"}''}]
+
+@item @coptargs{unquote, }@var{string}
+Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@item @coptargs{format, octave}
+Output each table as an Octave text-format data file
+
+@table @asis
+@item @copt{noheaders}
+Do not output column headers
+
+@item @coptargs{colbegin, }@var{string}
+Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{}''}]
+
+@item @coptargs{colend, }@var{string}
+Specify the text placed at the end of each data column [default: @w{``@code{\\n}''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text placed at the end of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{hcolbegin, }@var{string}
+Specify the text placed at the beginning of each header column [default: @w{``@code{}''}]
+
+@item @coptargs{hcolsep, }@var{string}
+Specify the text used to separate header columns [default: @w{``@code{_}''}]
+
+@item @coptargs{hcolend, }@var{string}
+Specify the text placed at the end of each header column [default: @w{``@code{}''}]
+
+@item @coptargs{hrowbegin, }@var{string}
+Specify the text placed at the beginning of each header row [default: @w{``@code{# }''}]
+
+@item @coptargs{hrowsep, }@var{string}
+Specify the text used to separate header rows [default: @w{``@code{}''}]
+
+@item @coptargs{hrowend, }@var{string}
+Specify the text placed at the end of each header row [default: @w{``@code{\\n}''}]
+
+@item @coptargs{tablebegin, }@var{string}
+Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
+
+@item @coptargs{tablesep, }@var{string}
+Specify the text used to separate tables [default: @w{``@code{\\n}''}]
+
+@item @coptargs{tableend, }@var{string}
+Specify the text placed at the end of each table [default: @w{``@code{}''}]
+
+@item @coptargs{quote, }@var{string}
+Specify the text used to begin quoted text [default: @w{``@code{}''}]
+
+@item @coptargs{unquote, }@var{string}
+Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@item @coptargs{format, custom}
+Output each table in a completely user-specified format
+
+@table @asis
+@item @copt{noheaders}
+Do not output column headers
+
+@item @coptargs{colbegin, }@var{string}
+Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{}''}]
+
+@item @coptargs{colend, }@var{string}
+Specify the text placed at the end of each data column [default: @w{``@code{}''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{rowsep, }@var{string}
+Specify the text used to separate data rows [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text placed at the end of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{hcolbegin, }@var{string}
+Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
+
+@item @coptargs{hcolsep, }@var{string}
+Specify the text used to separate header columns [default: same as @code{colsep}]
+
+@item @coptargs{hcolend, }@var{string}
+Specify the text placed at the end of each header column [default: same as @code{colend}]
+
+@item @coptargs{hrowbegin, }@var{string}
+Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
+
+@item @coptargs{hrowsep, }@var{string}
+Specify the text used to separate header rows [default: same as @code{rowsep}]
+
+@item @coptargs{hrowend, }@var{string}
+Specify the text placed at the end of each header row [default: same as @code{rowend}]
+
+@item @coptargs{tablebegin, }@var{string}
+Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
+
+@item @coptargs{tablesep, }@var{string}
+Specify the text used to separate tables [default: @w{``@code{}''}]
+
+@item @coptargs{tableend, }@var{string}
+Specify the text placed at the end of each table [default: @w{``@code{}''}]
+
+@item @coptargs{quote, }@var{string}
+Specify the text used to begin quoted text [default: @w{``@code{}''}]
+
+@item @coptargs{unquote, }@var{string}
+Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @copt{excel}
+Output strings in a format readable by Microsoft Excel
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@item @coptargs{format, latex}
+Output each table as a @latex{} tabular environment
+
+@table @asis
+@item @copt{dcolumn}
+Use the dcolumn package to align numbers on the decimal point
+
+@item @copt{booktabs}
+Use the booktabs package for a more professionally typeset look
+
+@item @copt{longtable}
+Use the longtable package to enable multi-page tables
+
+@item @coptargs{merge, }@var{function}
+Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
+
+@item @coptargs{showfnames, }@var{option}
+Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
+
+@end table
+@end table
+@item @coptargs{extract, params}
+Extract the program's run-time parameters and environment variables
+
+@table @asis
+@item @coptargs{format, text} [default]
+Output the parameters in plain-text format
+
+@table @asis
+@item @coptargs{include, }@var{filename}
+Read from a file the list of keys to output
+
+@item @coptargs{exclude, }@var{regexp}
+Ignore any keys whose name matches a regular expression
+
+@item @copt{sort}
+Sort the list of parameters alphabetically by key
+
+@item @copt{noenv}
+Exclude environment variables
+
+@item @copt{noparams}
+Exclude run-time parameters
+
+@item @coptargs{envformat, }@var{template}
+Format environment variable names using the given template [default: @w{``@code{%s (environment variable)}''}]
+
+@item @coptargs{columns, }@var{number}
+Output the parameters as a 1-, 2-, or 3-column table [default: 1]
+
+@item @coptargs{colsep, }@var{string}
+Specify the text used to separate data columns [default: @w{``@code{: }''}]
+
+@item @coptargs{rowbegin, }@var{string}
+Specify the text that's output at the start of each data row [default: @w{``@code{}''}]
+
+@item @coptargs{rowend, }@var{string}
+Specify the text that's output at the end of each data row [default: @w{``@code{\\n}''}]
+
+@end table
+@item @coptargs{format, dumpkeys}
+Output a list of the keys only (i.e., no values)
+
+@table @asis
+@item @coptargs{include, }@var{filename}
+Read the list of parameters to output from a given file
+
+@item @coptargs{exclude, }@var{regexp}
+Ignore any keys whose name matches a regular expression
+
+@item @coptargs{envformat, }@var{template}
+Format environment variable names using the given template [default: @w{``@code{%s (environment variable)}''}]
+
+@item @copt{sort}
+Sort the list of parameters alphabetically by key
+
+@item @copt{noenv}
+Exclude environment variables
+
+@item @copt{noparams}
+Exclude run-time parameters
+
+@end table
+@item @coptargs{format, latex}
+Output the parameters as a @latex{} tabular environment
+
+@table @asis
+@item @coptargs{include, }@var{filename}
+Read from a file the list of keys to output
+
+@item @coptargs{exclude, }@var{regexp}
+Ignore any keys whose name matches a regular expression
+
+@item @coptargs{envformat, }@var{template}
+Format environment variable names using the given template [default: @w{``@code{%s (environment variable)}''}]
+
+@item @copt{sort}
+Sort the list of parameters alphabetically by key
+
+@item @copt{booktabs}
+Use the booktabs package for a more professionally typeset look
+
+@item @copt{tabularx}
+Use the tabularx package to enable line wraps within the value column
+
+@item @copt{longtable}
+Use the longtable package to enable multi-page tables
+
+@item @copt{noenv}
+Exclude environment variables
+
+@item @copt{noparams}
+Exclude run-time parameters
+
+@end table
+@end table
+@item @coptargs{extract, env}
+Extract the environment in which the program was run
+
+@table @asis
+@item @coptargs{format, sh} [default]
+Use Bourne shell syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@item @coptargs{format, bash}
+Use Bourne Again shell syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@item @coptargs{format, ksh}
+Use Korn shell syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@item @coptargs{format, csh}
+Use C shell syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@item @coptargs{format, zsh}
+Use Z shell syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@item @coptargs{format, tcsh}
+Use tcsh syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@item @coptargs{format, ash}
+Use ash syntax for setting environment variables
+
+@table @asis
+@item @copt{newlines}
+Separate commands with newlines instead of semicolons
+
+@item @copt{unset}
+Unset all other environment variables
+
+@item @copt{chdir}
+Switch to the program's original working directory
+
+@end table
+@end table
+@item @coptargs{extract, source}
+Extract @ncptl{} source code
+
+@table @asis
+@item @coptargs{format, text} [default]
+Output the source code in plain-text format
+
+@table @asis
+@item @coptargs{linebegin, }@var{string}
+Specify the text placed at the beginning of each line [default: @w{``@code{}''}]
+
+@item @coptargs{lineend, }@var{string}
+Specify the text placed at the end of each line [default: @w{``@code{\\n}''}]
+
+@item @coptargs{kwbegin, }@var{string}
+Specify the text placed before each keyword [default: @w{``@code{}''}]
+
+@item @coptargs{kwend, }@var{string}
+Specify the text placed after each keyword [default: @w{``@code{}''}]
+
+@item @coptargs{strbegin, }@var{string}
+Specify the text placed before each string [default: @w{``@code{}''}]
+
+@item @coptargs{strend, }@var{string}
+Specify the text placed after each string [default: @w{``@code{}''}]
+
+@item @coptargs{combegin, }@var{string}
+Specify the text placed before each comment [default: @w{``@code{}''}]
+
+@item @coptargs{comend, }@var{string}
+Specify the text placed after each comment [default: @w{``@code{}''}]
+
+@item @coptargs{indent, }@var{number}
+Indent each line by a given number of spaces
+
+@item @coptargs{wrap, }@var{number}
+Wrap the source code into a paragraph with a given character width
+
+@end table
+@end table
+@item @coptargs{extract, warnings}
+Extract a list of warnings the program issued during initialization
+
+@table @asis
+@item @coptargs{format, text} [default]
+Output warnings in plain-text format
+
+@table @asis
+@item @coptargs{listbegin, }@var{string}
+Specify text to appear at the beginning of the list [default: @w{``@code{}''}]
+
+@item @coptargs{listend, }@var{string}
+Specify text to appear at the end of the list [default: @w{``@code{}''}]
+
+@item @coptargs{itembegin, }@var{string}
+Specify text to appear before each warning [default: @w{``@code{* }''}]
+
+@item @coptargs{itemend, }@var{string}
+Specify text to appear after each warning [default: @w{``@code{\\n}''}]
+
+@end table
+@item @coptargs{format, html}
+Output warnings as an HTML list
+
+@table @asis
+@item @coptargs{listbegin, }@var{string}
+Specify text to appear at the beginning of the list [default: @w{``@code{<ul>\\n}''}]
+
+@item @coptargs{listend, }@var{string}
+Specify text to appear at the end of the list [default: @w{``@code{</ul>\\n}''}]
+
+@item @coptargs{itembegin, }@var{string}
+Specify text to appear before each warning [default: @w{``@code{  <li>}''}]
+
+@item @coptargs{itemend, }@var{string}
+Specify text to appear after each warning [default: @w{``@code{</li>\\n}''}]
+
+@end table
+@item @coptargs{format, latex}
+Output warnings as a @latex{} list
+
+@table @asis
+@item @coptargs{listbegin, }@var{string}
+Specify text to appear at the beginning of the list [default: @w{``@code{\begin@@@{itemize@@@}\\n}''}]
+
+@item @coptargs{listend, }@var{string}
+Specify text to appear at the end of the list [default: @w{``@code{\end@@@{itemize@@@}\\n}''}]
+
+@item @coptargs{itembegin, }@var{string}
+Specify text to appear before each warning [default: @w{``@code{  \item }''}]
+
+@item @coptargs{itemend, }@var{string}
+Specify text to appear after each warning [default: @w{``@code{\\n}''}]
+
+@end table
+@end table
+@end table
+
+
+The following represent additional clarification for some of the above:
+
+@itemize @bullet
+@item
+If @copt{indent} is specified without an argument, the argument defaults
+to @code{2}.
+
+@item
+If @copt{wrap} is specified without an argument, the argument
+defaults to @code{72}.
+
+@item
+The following are examples of the different arguments to the
+@copt{columns} option:
+
+@table @asis
+@item @coptargs{columns, 1} (default)
+@example
+  coNCePTuaL version: 1.0
+  coNCePTuaL backend: c_mpi
+  Average timer overhead [gettimeofday()]: <1 microsecond
+  Log creation time: Thu Mar 27 19:22:48 2003
+  Log completion time: Thu Mar 27 19:22:48 2003
+@end example
+
+@item @coptargs{columns, 2}
+@example
+  coNCePTuaL version:                      1.0
+  coNCePTuaL backend:                      c_mpi
+  Average timer overhead [gettimeofday()]: <1 microsecond
+  Log creation time:                       Thu Mar 27 19:22:48 2003
+  Log completion time:                     Thu Mar 27 19:22:48 2003
+@end example
+
+@item @coptargs{columns, 3}
+@example
+  coNCePTuaL version                     : 1.0
+  coNCePTuaL backend                     : c_mpi
+  Average timer overhead [gettimeofday()]: <1 microsecond
+  Log creation time                      : Thu Mar 27 19:22:48 2003
+  Log completion time                    : Thu Mar 27 19:22:48 2003
+@end example
+
+@end table
+@item
+@copt{dumpkeys} produces suitable input for the @copt{include} option.
+
+@item
+@copt{exclude} can be specified repeatedly on the command line.
+
+@item
+@copt{merge} takes one of @code{mean} (arithmetic mean), @code{hmean} (harmonic
+mean), @code{min} (minimum), @code{max} (maximum), @code{median} (median), @code{sum}
+(sum), @code{all} (all values from each column), or @code{concat} (horizontal
+concatenation of all data), and applies the function to corresponding
+data values across all of the input files.  @copt{merge} can also accept
+a comma-separated list of the above functions, one per data column.
+This enables a different merge operation to be used for each column.
+For example, @coptargs{merge, min@comma{}min@comma{}mean} will take the minimum value
+across all files of each element in the first and second columns and
+the arithmetic mean across all files of each element in the third
+column.  If the number of comma-separated values differs from the
+number of columns and @copt{force-merge} is specified,
+@file{ncptl-logextract} will cycle over the given values until all columns
+are accounted for.  The @code{concat} merge type applies to all columns
+and therefore cannot be combined with any other merge type.  The
+difference between @coptargs{merge, all} and @coptargs{merge, concat} is that the
+former merges three files each with columns @var{A} and @var{B} as @{@var{A},
+@var{A}, @var{A}, @var{B}, @var{B}, @var{B}@} while the latter merges the same files
+as @{@var{A}, @var{B}, @var{A}, @var{B}, @var{A}, @var{B}@}.
+
+@item
+@copt{showfnames} prepends to each data table in the input file an extra
+header line indicating the log file the data was extracted from.  This
+option makes sense only when data is being extracted and primarily
+when @coptargs{merge, all} is specified.  @copt{showfnames} takes one of
+@code{none}, @code{all}, or @code{first}.  The default is @code{none}, which doesn't
+add an extra header row.  @code{all} repeats the filename in each column
+of the extra header row.  @code{first} outputs the filename in only the
+first column, leaving the remaining columns with an empty string.  The
+following examples show how a sample data table is formatted with
+@copt{showfnames} set in turn to each of @code{none}, @code{all}, and @code{first}:
+
+@itemize @bullet
+@item
+Set to @code{none} (the default):
+
+@example
+    "Size","Value"
+    1,2
+    2,4
+    3,6
+@end example
+
+@item
+Set to @code{all} (filename repeated in each column of the first row):
+
+@example
+    "mydata.log","mydata.log"
+    "Size","Value"
+    1,2
+    2,4
+    3,6
+@end example
+
+@item
+Set to @code{first} (filename shown only in the first column of the first row):
+
+@example
+    "mydata.log",""
+    "Size","Value"
+    1,2
+    2,4
+    3,6
+@end example
+
+@end itemize
+@item
+If @coptargs{format, params} is used with both @copt{longtable} and
+@copt{tabularx}, the generated table will be formatted for use with the
+@code{ltxtable} @latex{} package.  See the @code{ltxtable} documentation for more
+information.
+
+@end itemize
+@subsubheading NOTES
+
+
+If no filenames are given, @file{ncptl-logextract} will read from the
+standard input device.  If multiple log files are specified,
+@ncptl{} will merge the data values and take all other information
+from the first file specified.  Note, however, that all of the log
+files must have been produced by the same @ncptl{} program and that
+that program must have been run in the same environment.  In other
+words, only the data values may change across log files; everything
+else must be invariant.  See the description of @copt{merge} in
+the Additional Options section for more information about merging data
+values from multiple log files.
+
+@file{ncptl-logextract} treats certain files specially:
+
+@itemize @bullet
+@item
+If @file{ncptl-logextract} is given a filename ending in @file{.gz}, @file{.bz2},
+or @file{.Z} it automatically decompresses the file to a temporary
+location using @file{gunzip}, @file{bunzip2}, or @file{uncompress}, as
+appropriate, then recursively processes the decompressed file.
+
+@item
+If @file{ncptl-logextract} is given a filename ending in @file{.tar} or
+@file{.zip} it automatically extracts the file's contents to a temporary
+directory using @file{tar} or @file{unzip}, as appropriate, then recursively
+processes the temporary directory.
+
+@item
+If @file{ncptl-logextract} is given the name of a directory it processes
+all of the plain files found (recursively) beneath that directory.
+
+@item
+If an input file is a merged @ncptl{} log file @w{(i.e., produced} by
+@file{ncptl-logmerge}), @file{ncptl-logextract} automatically invokes
+@file{ncptl-logunmerge} to split the file into its constituent, ordinary
+log files then recursively processes those.
+
+@end itemize
+@file{ncptl-logmerge} treats filenames ending in @file{.tgz} as if they ended
+in @file{.tar.gz} and filenames ending in @file{.taz} as if they ended in
+@file{.tar.Z}.
+
+If the argument provided to any @file{ncptl-logextract} option begins with
+an @w{at sign} (``@code{@@}''), the value is treated as a filename and is
+replaced by the file's contents.  To specify an non-filename argument
+that begins with an @w{at sign}, merely prepend an additional ``@code{@@}'':
+
+@table @asis
+@item @coptargs{this, that}
+The option @code{this} is given the value ``@code{that}''.
+
+@item @coptargs{this, @@that}
+The option @code{this} is set to the contents of the file called @file{that}.
+
+@item @coptargs{this, @@@@that}
+The option @code{this} is given the value ``@code{@@that}''.
+
+@end table
+@subsubheading EXAMPLES
+
+
+For the following examples, we assume that @file{results.log} is the name
+of a log file produced by a @ncptl{} program.
+
+Extract the data in CSV format and write it to @file{results.csv}:
+
+@example
+    ncptl-logextract --extract=data results.log --output=results.csv
+@end example
+
+Note that @coptargs{extract, data} is the default and therefore optional:
+
+@example
+    ncptl-logextract results.log --output=results.csv
+@end example
+
+@file{ncptl-logextract} can combine data from multiple log files (using an
+arithmetic mean by default):
+
+@example
+    ncptl-logextract results-*.log --output=results.csv
+@end example
+
+Put the data from all of the log files side-by-side and produce a CSV
+file that Microsoft Excel can read directly:
+
+@example
+    ncptl-logextract results-*.log --output=results.csv --merge=all \
+       --showfnames=first --excel
+@end example
+
+Output the data from @file{result.log} in tab-separated-value format:
+
+@example
+    ncptl-logextract --format=tsv results.log
+@end example
+
+Output the data in space-separated-value format:
+
+@example
+    ncptl-logextract --colsep=" " results.log
+@end example
+
+Use @file{gnuplot} to draw a PostScript graph of the data:
+
+@example
+    ncptl-logextract results.log --format=gnuplot \
+       --before=@@params.gp | gnuplot > results.eps
+@end example
+
+In the above, the @file{params.gp} file might contain @file{gnuplot} commands
+such as the following:
+
+@example
+    set terminal postscript eps enhanced color "Times-Roman" 30
+    set output
+    set logscale xy
+    set data style linespoints
+    set pointsize 3
+    plot "-" title "Latency"
+@end example
+
+(There should be an extra blank line at the end of the file because
+@file{ncptl-logextract} strips off a trailing newline character whenever
+it reads a file using ``@code{@@}''.)
+
+Produce a complete HTML file of the data (noting that @coptargs{format, html}
+produces only tables, not complete documents):
+
+@example
+    ncptl-logextract --format=html
+       --before='<html>\n<head>\n<title>Data</title>\n</head>\n<body>\n' \
+       --after='</body>\n</html>\n' results.log
+@end example
+
+Output the data as a @latex{} @code{tabular}, relying on both the (standard)
+@code{dcolumn} and (non-standard) @code{booktabs} packages for more attractive
+formatting:
+
+@example
+    ncptl-logextract --format=latex --dcolumn --booktabs \
+      --output=results.tex results.log
+@end example
+
+Output the run-time parameters in the form ``@var{key} @code{--->}
+@var{value}'' with all of the arrows aligned:
+
+@example
+    ncptl-logextract results.log --extract=params --columns=3 --colsep=" --> "
+@end example
+
+Output the run-time parameters as an HTML description list:
+
+@example
+    ncptl-logextract results.log --extract=params --before='<dl>' \
+      --rowbegin='<dt>' --colsep='</dt><dd>' --rowend='</dd>\n' \
+      --after='</dl>\n'
+@end example
+
+Restore the exact execution environment that was used to produce
+@file{results.log}, including the current working directory (assuming that
+@file{bash} is the current command shell):
+
+@example
+    eval `ncptl-logextract --extract=env --format=bash \
+      --unset --chdir results.log`
+@end example
+
+Set all of the environment variables that were used to produce
+@file{results.log}, overwriting---but not removing---whatever environment
+variables are currently set (assuming that @file{tcsh} is the current
+command shell):
+
+@example
+    eval `ncptl-logextract --extract=env --format=tcsh results.log`
+@end example
+
+Extract the source code that produced @file{results.log}:
+
+@example
+    ncptl-logextract --extract=source results.log
+@end example
+
+Do the same, but indent the code by four spaces then re-wrap it into a
+60-column paragraph:
+
+@example
+    ncptl-logextract --extract=source --indent=4 --wrap=60 results.log
+@end example
+
+Here are a variety of ways to express the same thing:
+
+@example
+    ncptl-logextract -e source --indent=4 --wrap=60 results.log
+@end example
+
+@example
+    ncptl-logextract -e source --indent=4 results.log --wrap=60
+@end example
+
+@example
+    cat results.log | ncptl-logextract --wrap=60 --indent=4 -e source
+@end example
+
+Output the source code wrapped to 72 columns, with no indentation, and
+formatted within an HTML preformatted-text block:
+
+@example
+    ncptl-logextract --extract=source --wrap --before="<PRE>\n" \
+      after="</PRE>\n" results.log
+@end example
+
+List all of the warning messages which occur in @file{results.log}:
+
+@example
+    ncptl-logextract --extract=warnings results.log
+@end example
+
+@subsubheading SEE ALSO
+
+
+ncptl-logmerge(1), ncptl-logunmerge(1), the @ncptl{} User's Guide
+
+@subsubheading AUTHOR
+
+
+Scott Pakin, @email{pakin@@lanl.gov}

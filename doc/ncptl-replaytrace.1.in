@@ -1,0 +1,234 @@
+.\" ----------------------------------------------------------------------
+.\"
+.\" ncptl-replaytrace manual page
+.\"
+.\" By Scott Pakin <pakin@lanl.gov>
+.\"
+.\" ----------------------------------------------------------------------
+.\"
+.\" Copyright (C) 2009, Los Alamos National Security, LLC
+.\" All rights reserved.
+.\" 
+.\" Copyright (2009).  Los Alamos National Security, LLC.  This software
+.\" was produced under U.S. Government contract DE-AC52-06NA25396
+.\" for Los Alamos National Laboratory (LANL), which is operated by
+.\" Los Alamos National Security, LLC (LANS) for the U.S. Department
+.\" of Energy. The U.S. Government has rights to use, reproduce,
+.\" and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+.\" MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+.\" FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+.\" derivative works, such modified software should be clearly marked,
+.\" so as not to confuse it with the version available from LANL.
+.\" 
+.\" Additionally, redistribution and use in source and binary forms,
+.\" with or without modification, are permitted provided that the
+.\" following conditions are met:
+.\" 
+.\"   * Redistributions of source code must retain the above copyright
+.\"     notice, this list of conditions and the following disclaimer.
+.\" 
+.\"   * Redistributions in binary form must reproduce the above copyright
+.\"     notice, this list of conditions and the following disclaimer
+.\"     in the documentation and/or other materials provided with the
+.\"     distribution.
+.\" 
+.\"   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+.\"     National Laboratory, the U.S. Government, nor the names of its
+.\"     contributors may be used to endorse or promote products derived
+.\"     from this software without specific prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+.\" OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+.\" OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+.\" BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+.\" OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+.\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" ----------------------------------------------------------------------
+.
+.\" Define a properly typeset version of the name "coNCePTuaL".
+.ie t .ds co \s-2CO\s+2NC\s-2E\s+2PT\s-2UA\s+2L
+.el   .ds co coNCePTuaL
+.
+.\" Define a macro that draws a box around its argument in troff mode
+.\" or puts its argument in bold in nroff mode.
+.ie t \{\
+.de bo
+\(br\\$*\(br\l'|0\(rn'\l'|0\(ul'
+..
+.\}
+.el \{\
+.de bo
+.B "\\$1"
+..
+.\}
+.
+.\" The documentation proper begins here.
+.TH NCPTL-REPLAYTRACE 1 2004-04-19 "v@VERSION@" "\*(co"
+.
+.SH NAME
+ncptl-replaytrace \- graphically replay trace data recorded by the \*(co
+compiler's c_trace backend
+.
+.SH SYNOPSIS
+\fBncptl-replaytrace\fP --help
+.LP
+\fBncptl-replaytrace\fP [--trace=\fIfile\fP] [--delay=\fImsec\fP]
+[--monitor=\fIprocessor\fP] [--breakpoint=\fIline\fP]
+\fIsource.ncptl\fP
+.
+.SH DESCRIPTION
+.
+\*(co is a domain-specific programming language for rapidly
+generating programs that measure the performance and/or test the
+correctness of networks and network protocol layers.  A few lines of
+\*(co code can produce programs that would take significantly more
+effort to write in a conventional programming language.
+.PP
+\*(co supports ``pluggable'' compiler backends that generate code,
+augment generated code, or perform any of a variety of other
+functions.  One \*(co backend, \fCc_trace\fP, adds tracing code to any
+C-based code generator.  The \fBncptl-replaytrace\fP utility reads the
+trace output written by a \fCc_trace\fP-generated program and uses
+that output to present an interactive, offline display of a \*(co
+program's execution.  \fBncptl-replaytrace\fP is a useful way to
+understand a program's control flow.  \fBncptl-replaytrace\fP can also
+be used like a debugger in that it can help verify that a \*(co
+program is not deadlocked or, if it is, where it got stuck.
+.
+.SH OPTIONS
+.
+\fBncptl-replaytrace\fP accepts the following command-line options:
+.PP
+.IP \fC--help\fP
+Output brief usage information.
+.IP \fC--trace=\fP\fIfile\fP
+Point to a file containing trace data written to the standard error
+device by a \*(co program compiled using the \fCc_trace\fP backend
+(without the \fC--curses\fP option).  If \fC--trace\fP is not
+specified, the trace data is read from the standard input device.
+.IP \fC--delay=\fP\fImsec\fP
+Instead of playing back the trace as fast as possible, insert
+\fImsec\fP milliseconds of delay after each screen update.  If
+\fImsec\fP is greater than 25500, it is treated as infinity.
+(Keypresses always cause \fBncptl-replaytrace\fP to advance.)
+\fImsec\fP defaults to 0.
+.IP \fC--monitor=\fP\fIprocessor\fP
+\fBncptl-replaytrace\fP can monitor only one processor (physical task
+ID) at a time.  The \fC--monitor\fP option specifies which processor
+should be monitored (default: 0).
+.IP \fC--breakpoint=\fP\fIline\fP
+Set a breakpoint at line \fIline\fP of the \*(co program's source
+code.  \fBncptl-replaytrace\fP currently supports only a single
+breakpoint per run.  If \fIline\fP is outside the range of valid
+source lines, no breakpoint will be set.  As a special case, if
+\fIline\fP is 0, a breakpoint will be set at the first event the
+processor being monitored executes, regardless of the line of source
+code to which that event corresponds.
+.PP
+In addition to the optional arguments listed above,
+\fBncptl-replaytrace\fP requires that the name of the \*(co source
+program be given on the command line.  (The source code is not
+otherwise known to \fBncptl-replaytrace\fP.)
+.
+.SH USAGE
+.
+When \fBncptl-replaytrace\fP starts, it displays a screen formatted as
+follows:
+.PP
+.ne 18
+.ft CW
+.nf
+\f(CB  1.\fP  # Determine computational "noise"
+\f(CB  2.\fP
+\f(CB  3.\fP  Require language version "0.5.2b".
+\f(CB  4.\fP
+\f(CB  5.\fP  accesses is "Number of data accesses to perform" and comes from
+\f(CB  6.\fP    "--accesses" or "-a" with default 500000.
+\f(CB  7.\fP
+\f(CB  8.\fP  trials is "Number of timings to take" and comes from "--timings" o
+\f(CB  9.\fP    "-t" with default 1000.
+\f(CB 10.\fP
+\f(CB 11.\fP  For trials repetitions {
+.bo "\f(CB 12.\fP    all tasks reset their counters then                             "
+\f(CB 13.\fP    all tasks touch a 1 word memory region accesses times with strid
+\f(CB 14.\fP    all tasks log a histogram of elapsed_usecs as "Actual time (usec
+\f(CB 15.\fP  }
+
+\f(CBPhys:\fP 0  \f(CBVirt:\fP 0  \f(CBAction:\fP RESET    \f(CBEvent:\fP    1/3001
+.fi
+.ft R
+.sp 1
+.\" "
+.PP
+Note that lines are truncated at the screen width.  The line about to
+be executed is displayed in reverse video
+.ie t (displayed above as being within a box).
+.el (displayed above in boldface).
+A status line indicates the physical processor being monitored, its
+current virtual task ID, the action represented by the current event,
+the current event number, and the total number of events assigned to
+the processor.  An ``event'' corresponds roughly to a statement in the
+\*(co grammar and represents the primary unit of work in a piece of
+compiled code.
+.PP
+While \fBncptl-replaytrace\fP is replaying a trace it accepts the
+following (case-insensitive) keyboard commands:
+.IP `\fCS\fP'
+Enable single-stepping mode.  While single-stepping mode is enabled
+the traced processor will execute only one event per keystroke from
+the user.
+.IP "`\fC \fP'"
+Disable single-stepping mode.  The program executes without further
+user intervention.
+.IP `\fCD\fP'
+Delete the current breakpoint, enabling \fBncptl-replaytrace\fP
+thereafter to pass through it unobstructed.
+.IP `\fCQ\fP'
+Quit the program.
+.PP
+All other keystrokes cause the program to advance immediately to the
+next event.
+.
+.SH EXAMPLES
+.
+The following are the typical sorts of steps one would take to compile
+a \*(co program, run it in a \fCcsh\fP-like shell, and examine the
+behavior with \fBncptl-replaytrace\fP:
+.PP
+.ft CW
+.nf
+.ie t \{\
+\&    ncptl --backend=c_trace --trace=\fIbackend\fP --output=\fIprogram\fP \fIprogram\fP.ncptl
+.\}
+.el \{\
+\&    ncptl --backend=c_trace --trace=\fIbackend\fP \\
+      --output=\fIprogram\fP \fIprogram\fP.ncptl
+.\}
+    ./\fIprogram\fP >& \fIprogram\fP.trace
+    ncptl-replaytrace --trace=\fIprogram\fP.trace \fIprogram\fP.ncptl
+.fi
+.ft R
+.PP
+In an \fCsh\fP-like shell, the program should be run as follows to
+redirect standard error to \fIprogram\fP\fC.trace\fP:
+.PP
+.ft CW
+.nf
+    ./\fIprogram\fP > \fIprogram\fP.trace 2>&1
+.fi
+.ft R
+.PP
+.SH SEE ALSO
+.
+.IR ncptl (1)
+and the \*(co User's Guide
+.
+.SH AUTHOR
+.
+Scott Pakin, \fIpakin@lanl.gov\fP

@@ -1,0 +1,19 @@
+# Communicate in a butterfly pattern
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+msgsize is "Number of bytes each task sends" and comes from "--msgsize" or "-m" with default 1K.
+numtrials is "Number of times to repeat the test" and comes from "--trials" or "-t" with default 100.
+
+Assert that "the number of tasks must be a power of two" with 2**(bits(num_tasks)-1) = num_tasks.
+Assert that "the program requires at least two tasks" with num_tasks >= 2.
+
+For numtrials repetitions {
+  all tasks reset their counters then
+  for each b in {0, ..., bits(num_tasks-1)-1} {
+    all tasks self asynchronously send a msgsize byte page aligned message to task self xor 1<<b then
+    all tasks await completion
+  } then
+  all tasks log a histogram of factor10(elapsed_usecs) as "Latency (usecs)"
+}

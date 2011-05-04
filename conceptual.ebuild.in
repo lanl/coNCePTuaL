@@ -1,0 +1,42 @@
+# Copyright (C) 2009, Los Alamos National Security, LLC
+#
+# Distributed under the terms of a modified BSD license that
+# includes a "modifications must be indicated" clause
+
+inherit eutils java-pkg-opt-2
+
+DESCRIPTION="coNCePTuaL: A Network Correctness and Performance Testing Language"
+HOMEPAGE="http://conceptual.sourceforge.net/"
+SRC_URI="http://downloads.sourceforge.net/conceptual/conceptual-@VERSION@.tar.gz"
+LICENSE="BSD-2"
+SLOT="0"
+KEYWORDS="~x86"
+IUSE="java"
+# Jython<2.2 lacks features needed by PLY.
+# Jython>2.2 (not yet stable) may break javac.
+DEPEND=">=dev-lang/python-2.2
+  java? ( =dev-java/jython-2.2* )
+  java? ( >=virtual/jdk-1.4 )"
+RDEPEND=">=dev-lang/python-2.2
+  java? ( >=virtual/jre-1.4 )"
+
+
+src_compile() {
+        if use java ; then
+                econf || die "econf failed"
+        else
+                econf JAVAC=ejavac || die "econf failed"
+        fi
+        emake || die "emake failed"
+        if use java ; then
+                emake gui || die "emake failed"
+        fi
+}
+
+src_install() {
+        emake DESTDIR="${D}" install || die "emake install failed"
+        if use java ; then
+                java-pkg_newjar gui/ncptlGUI-@VERSION@.jar ${PN}.jar
+                java-pkg_dolauncher
+        fi
+}

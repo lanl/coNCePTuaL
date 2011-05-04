@@ -1,0 +1,27 @@
+# Test the performance of multicasting
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+# Parse the command line.
+minsize is "Min. message size (bytes)" and comes from "--minbytes" or "-n" with default 1.
+maxsize is "Max. message size (bytes)" and comes from "--maxbytes" or "-x" with default 1M.
+reps is "Repetitions to perform" and comes from "--reps" or "-r" with default 100.
+
+Assert that "this program requires at least two processors" with num_tasks>=2.
+
+# Multicast messages from task 0 to 1, 2, 3, ... other tasks.
+For each num_targets in {1, ..., num_tasks-1} {
+  for each msgsize in {minsize, minsize*2, minsize*4, ..., maxsize} {
+    task 0 outputs "Multicasting a " and msgsize and "-byte message to " and num_targets and " target(s) ..." then
+    for reps repetitions {
+      task 0 resets its counters then
+      task 0 multicasts a msgsize byte message to tasks t such that t>0 /\ t<=num_targets then
+      task 0 logs the num_targets as "# of recipients" and
+                  the msgsize as "Message size (bytes)" and
+                  the median of (1E6/1M)*(msgsize/elapsed_usecs) as "Incoming bandwidth (MB/s)" and
+                  the median of (1E6/1M)*(num_targets*msgsize/elapsed_usecs) as "Outgoing bandwidth (MB/s)"
+    } then
+    task 0 computes aggregates
+  }
+}

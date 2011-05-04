@@ -1,0 +1,23 @@
+# coNCePTuaL throughput benchmark
+
+Require language version "1.2".
+
+reps is "Number of repetitions of each message size" and comes from
+  "--reps" or "-r" with default 1000.
+maxbytes is "Maximum number of bytes to transmit" and comes from "--maxbytes"
+  or "-m" with default 1M.
+
+For each msgsize in {1, 2, 4, ..., maxbytes} {
+  # Send some warm-up messages.
+  task 0 asynchronously sends reps msgsize byte page aligned messages to task 1 then
+  all tasks await completion then
+  task 1 sends a 4 byte message to task 0 then
+  all tasks synchronize then
+  # Perform the actual test.
+  task 0 resets its counters then
+  task 0 asynchronously sends reps msgsize byte page aligned messages to task 1 then
+  all tasks await completion then
+  task 1 sends a 4 byte message to task 0 then
+  task 0 logs msgsize as "Bytes" and
+              bytes_sent/elapsed_usecs as "Bandwidth"
+}

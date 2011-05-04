@@ -1,0 +1,21 @@
+# Measure receive overhead
+#
+# Benchmark proposed by Adolfy Hoisie
+# coNCePTuaL implementation by Scott Pakin
+
+Require language version "1.2".
+
+reps is "Number of repetitions" and comes from "--reps" or "-r" with default 100.
+maxcomptime is "Maximum computation time in microseconds" and comes from "--compute" or "-c" with default 16.
+msgsize is "Message size in bytes" and comes from "--msgsize" or "-m" with default 0.
+
+For each comptime in {0, ..., maxcomptime} {
+  all tasks synchronize then
+  task 0 resets its counters then
+  for reps repetitions {
+    task 0 computes for comptime microseconds then
+    task 1 sends a msgsize byte message to task 0
+  } then
+  task 0 logs comptime as "Compute time (us)"
+          and elapsed_usecs/reps - comptime as "Receive overhead (us)"
+}

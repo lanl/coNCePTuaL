@@ -1,0 +1,35 @@
+# Send data down a task pipeline.
+
+Require language version "1.2".
+
+chunksize is "Number of bytes to send at once" and comes from "--chunk" or
+  "-c" with default 1K.
+msgsize is "Total number of bytes to send" and comes from "--msgsize" or "-m"
+  with default 1M.
+reps is "Number of repetitions at each message size" and comes from "--reps" or
+  "-r" with default 100.
+
+Assert that "the chunk size must divide the message size" with chunksize divides msgsize.
+
+Task 0 resets its counters then
+for reps repetitions {
+  # All tasks but the first post an initial blocking receive.
+  task s+1 receives a chunksize byte message from task s such that s<num_tasks-1 then
+
+  # All tasks alternate nonblocking sends and blocking receives.
+  for msgsize/chunksize-2 repetitions {
+    task s such that s<num_tasks-1 asynchronously sends a chunksize byte message to unsuspecting task s+1 then
+    all tasks await completion then
+    task s+1 receives a chunksize byte message from task s such that s<num_tasks-1
+  } then
+
+  # All tasks but the last post a final blocking send.
+  task s such that s<num_tasks-1 asynchronously sends a chunksize byte message to unsuspecting task s+1 then
+
+  # Report the results.
+  all tasks await completion then
+  task num_tasks-1 sends a 0 byte message to task 0 then
+  task 0 logs the msgsize as "Message size" and
+	      the chunksize as "Chunk size" and
+	      the median total_bytes*1E6/(elapsed_usecs*1M) as "Bandwidth (MB/s)"
+}

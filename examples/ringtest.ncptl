@@ -1,0 +1,25 @@
+############################################
+# Communicate in successively larger rings #
+# By Scott Pakin <pakin@lanl.gov>          #
+############################################
+
+reps is "Number of repetitions of each ring" and comes from "--reps" or "-r" with default 1000.
+
+Assert that "This program needs at least two tasks" with num_tasks >= 2.
+
+For each ringsize in {2, ..., num_tasks/2} {
+  task 0 outputs "Measuring " and floor(num_tasks/ringsize)
+    and " rings of size " and ringsize and " ..." then
+  all tasks reset their counters then
+  for reps repetitions plus 3 warmup repetitions and a synchronization {
+    tasks t such that t mod ringsize < ringsize-1
+                   /\ (t/ringsize)*ringsize <= num_tasks-ringsize
+      send a message to task t+1 then
+    tasks t such that t mod ringsize = ringsize-1
+      send a message to task t-ringsize+1
+  } then
+  tasks t such that ringsize divides t
+                 /\ (t/ringsize)*ringsize <= num_tasks-ringsize
+    log ringsize as "Ring size"
+    and elapsed_usecs/(ringsize*reps) as "Avg. per-hop latency (us)"
+}

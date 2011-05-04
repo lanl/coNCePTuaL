@@ -1,0 +1,29 @@
+# Hot-spot bandwidth
+
+Require language version "1.2".
+
+maxbytes is "Maximum message size in bytes" and comes from "--maxbytes" or
+  "-x" with default 1024.
+numtrials is "Number of bursts of each size" and comes from "--trials"
+  or "-t" with default 100.
+burst is "Number of messages in each burst" and comes from
+  "--burstsize" or "-b" with default 1000.
+
+Assert that "the hot-spot test requires at least two tasks" with
+  num_tasks>=2.
+
+For each maxtask in {2, ..., num_tasks}
+  for each msgsize in {1, 2, 4, ..., maxbytes} {
+    task 0 outputs "Performing " and numtrials and " " and maxtask and
+                   "-task trials with " and msgsize and "-byte messages" then
+    for numtrials repetitions plus 3 warmup repetitions and a synchronization {
+      task 0 resets its counters then
+      task sender such that sender>0 /\ sender<maxtask asynchronously sends burst
+        msgsize byte message to task 0 then
+      all tasks await completion then
+      task 0 logs the maxtask as "Tasks" and
+                  the msgsize as "Message size (B)" and
+                  the mean of (1E6*bytes_received)/(1M*elapsed_usecs) as "Incoming BW (MB/s)"
+    } then
+    task 0 computes aggregates
+  }

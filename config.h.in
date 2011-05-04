@@ -1,0 +1,857 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* ----------------------------------------------------------------------
+ *
+ * coNCePTuaL configuration-specific header file
+ *
+ * ----------------------------------------------------------------------
+ *
+ * Copyright (C) 2009, Los Alamos National Security, LLC
+ * All rights reserved.
+ * 
+ * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * was produced under U.S. Government contract DE-AC52-06NA25396
+ * for Los Alamos National Laboratory (LANL), which is operated by
+ * Los Alamos National Security, LLC (LANS) for the U.S. Department
+ * of Energy. The U.S. Government has rights to use, reproduce,
+ * and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+ * MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+ * FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+ * derivative works, such modified software should be clearly marked,
+ * so as not to confuse it with the version available from LANL.
+ * 
+ * Additionally, redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided that the
+ * following conditions are met:
+ * 
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ * 
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer
+ *     in the documentation and/or other materials provided with the
+ *     distribution.
+ * 
+ *   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+ *     National Laboratory, the U.S. Government, nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * ----------------------------------------------------------------------
+ */
+
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+/* Define if the compiler and linker can write explicitly into the target
+   binary's .interp section. */
+#undef CAN_WRITE_INTERP
+
+/* Define as the type of clock that `clock_gettime' should use. */
+#undef CLOCKID
+
+/* Define to be the same as CLOCKID but within double quotes. */
+#undef CLOCKID_STRING
+
+/* Define as the minimum number of bytes that a memory address can be
+   misaligned without causing a bus error. */
+#undef CPU_MINIMUM_ALIGNMENT_BYTES
+
+/* Define as the name of the CPU on which coNCePTuaL applications will run. */
+#undef CPU_TYPE
+
+/* Define as the number of times the cycle counter increments per microsecond
+   (often equal to the clock speed in MHz). */
+#undef CYCLES_PER_USEC
+
+/* Define as the name of the dynamic linker. */
+#undef DYNAMIC_LINKER
+
+/* Define as a template for a Bourne-shell command that gets a list of shared
+   objects. */
+#undef DYNLIB_CMD_FMT
+
+/* Define as the file extension (including the leading ".") of a dynamic
+   library */
+#undef DYNLIB_EXT
+
+/* Define if the microsecond timer should be forced to use gettimeofday(). */
+#undef FORCE_GETTIMEOFDAY
+
+/* Define if the microsecond timer should be forced to use MPI_Wtime(). */
+#undef FORCE_MPI_WTIME
+
+/* Define if the cycle counter contains only 32 bits of accuracy. */
+#undef HAVE_32BIT_CYCLE_COUNTER
+
+/* Define if we're running on a CPU in the Alpha family. */
+#undef HAVE_ALPHA_CPU
+
+/* Define if `asm volatile' works and coNCePTuaL supports reading the cycle
+   counter on this CPU architecture. */
+#undef HAVE_ASM_VOLATILE_CYCLES
+
+/* Define if BlueGene/L personality information is available. */
+#undef HAVE_BGLPERSONALITY
+
+/* Define if BlueGene/P personality information is available. */
+#undef HAVE_BGPPERSONALITY
+
+/* Define to 1 if you have the `cbrt' function. */
+#undef HAVE_CBRT
+
+/* Define to 1 if you can read the Alpha PCC using the ccc compiler's `asm'
+   construct. */
+#undef HAVE_CCC_ALPHA_RPCC
+
+/* Define to 1 if you have the <cf.h> header file. */
+#undef HAVE_CF_H
+
+/* Define to 1 if you have the `clock_gettime' function. */
+#undef HAVE_CLOCK_GETTIME
+
+/* Define to 1 if you have the <common/bgp_personality.h> header file. */
+#undef HAVE_COMMON_BGP_PERSONALITY_H
+
+/* Define to 1 if you have the <c_asm.h> header file. */
+#undef HAVE_C_ASM_H
+
+/* Define to 1 if you have the `dclock' function. */
+#undef HAVE_DCLOCK
+
+/* Define to 1 if you have the declaration of `strsignal', and to 0 if you
+   don't. */
+#undef HAVE_DECL_STRSIGNAL
+
+/* Define to 1 if you have the declaration of `sys_errlist', and to 0 if you
+   don't. */
+#undef HAVE_DECL_SYS_ERRLIST
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Define to 1 if `cap_version' is member of `ELAN_CAPABILITY'. */
+#undef HAVE_ELAN_CAPABILITY_CAP_VERSION
+
+/* Define unless using the symbol `environ' results in a link error. */
+#undef HAVE_ENVIRON
+
+/* Define to 1 if you have the <errno.h> header file. */
+#undef HAVE_ERRNO_H
+
+/* Define to 1 if you have the `floor' function. */
+#undef HAVE_FLOOR
+
+/* Define to 1 if you have the `fmod' function. */
+#undef HAVE_FMOD
+
+/* Define to 1 if you have the `getcwd' function. */
+#undef HAVE_GETCWD
+
+/* Define to 1 if you have the `geteuid' function. */
+#undef HAVE_GETEUID
+
+/* Define to 1 if you have the `gethostbyname' function. */
+#undef HAVE_GETHOSTBYNAME
+
+/* Define to 1 if you have the `getinvent' function. */
+#undef HAVE_GETINVENT
+
+/* Define to 1 if you have the `getopt' function. */
+#undef HAVE_GETOPT
+
+/* Define to 1 if you have the <getopt.h> header file. */
+#undef HAVE_GETOPT_H
+
+/* Define to 1 if you have the `getopt_long' function. */
+#undef HAVE_GETOPT_LONG
+
+/* Define to 1 if you have the `getpagesize' function. */
+#undef HAVE_GETPAGESIZE
+
+/* Define unless using the symbol `getppid' results in a link error. */
+#undef HAVE_GETPPID
+
+/* Define to 1 if you have the `getpwuid' function. */
+#undef HAVE_GETPWUID
+
+/* Define to 1 if you have the `getrusage' function. */
+#undef HAVE_GETRUSAGE
+
+/* Define to 1 if you have the `gettimeofday' function. */
+#undef HAVE_GETTIMEOFDAY
+
+/* Define to 1 if you have the `getuid' function. */
+#undef HAVE_GETUID
+
+/* Define to 1 if you have the `get_cycles' function. */
+#undef HAVE_GET_CYCLES
+
+/* Define to 1 if you have the <gnugetopt.h> header file. */
+#undef HAVE_GNUGETOPT_H
+
+/* Define if the Hardware Abstraction Layer headers and libraries are
+   available. */
+#undef HAVE_HAL
+
+/* Define if we're running on a CPU in the IA-32 family. */
+#undef HAVE_IA32_CPU
+
+/* Define if we're running on a CPU in the IA-64 family. */
+#undef HAVE_IA64_CPU
+
+/* Define to 1 if you have the `ibv_get_devices' function. */
+#undef HAVE_IBV_GET_DEVICES
+
+/* Define to 1 if you have the `ibv_get_device_list' function. */
+#undef HAVE_IBV_GET_DEVICE_LIST
+
+/* Define to 1 if you have the <ieeefp.h> header file. */
+#undef HAVE_IEEEFP_H
+
+/* Define to 1 if you have the <infiniband/verbs.h> header file. */
+#undef HAVE_INFINIBAND_VERBS_H
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <invent.h> header file. */
+#undef HAVE_INVENT_H
+
+/* Define to 1 if you have the `kill' function. */
+#undef HAVE_KILL
+
+/* Define to 1 if you have the `kstat_data_lookup' function. */
+#undef HAVE_KSTAT_DATA_LOOKUP
+
+/* Define to 1 if you have the <kstat.h> header file. */
+#undef HAVE_KSTAT_H
+
+/* Define to 1 if you have the `cfg' library (-lcfg). */
+#undef HAVE_LIBCFG
+
+/* Define if QsNet Elan information is available. */
+#undef HAVE_LIBELAN
+
+/* Define to 1 if you have the `gnugetopt' library (-lgnugetopt). */
+#undef HAVE_LIBGNUGETOPT
+
+/* Define to 1 if you have the <libhal.h> header file. */
+#undef HAVE_LIBHAL_H
+
+/* Define to 1 if you have the `ibverbs' library (-libverbs). */
+#undef HAVE_LIBIBVERBS
+
+/* Define to 1 if you have the `lipr' library (-llipr). */
+#undef HAVE_LIBLIPR
+
+/* Define to 1 if you have the `m' library (-lm). */
+#undef HAVE_LIBM
+
+/* Define to 1 if you have the `odm' library (-lodm). */
+#undef HAVE_LIBODM
+
+/* Define to 1 if you have the `papi' library (-lpapi). */
+#undef HAVE_LIBPAPI
+
+/* Define to 1 if you have the `perfctr' library (-lperfctr). */
+#undef HAVE_LIBPERFCTR
+
+/* Define to 1 if you have the `popt' library (-lpopt). */
+#undef HAVE_LIBPOPT
+
+/* Define to 1 if you have the `sysfs' library (-lsysfs). */
+#undef HAVE_LIBSYSFS
+
+/* Define to 1 if you have the `uuid' library (-luuid). */
+#undef HAVE_LIBUUID
+
+/* Define to 1 if you have the <linux/timex.h> header file. */
+#undef HAVE_LINUX_TIMEX_H
+
+/* Define to 1 if you have the `llabs' function. */
+#undef HAVE_LLABS
+
+/* Define to 1 if you have the <machine/hal_sysinfo.h> header file. */
+#undef HAVE_MACHINE_HAL_SYSINFO_H
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define if we're running on a CPU in the MIPS family. */
+#undef HAVE_MIPS_CPU
+
+/* Define to 1 if you have the `MPI_Wtime' function. */
+#undef HAVE_MPI_WTIME
+
+/* Define to 1 if you have the `nanosleep' function. */
+#undef HAVE_NANOSLEEP
+
+/* Define to 1 if you have the `nearbyint' function. */
+#undef HAVE_NEARBYINT
+
+/* Define to 1 if you have the <netdb.h> header file. */
+#undef HAVE_NETDB_H
+
+/* Define to 1 if you have the <nx.h> header file. */
+#undef HAVE_NX_H
+
+/* Define to 1 if you have the <odmi.h> header file. */
+#undef HAVE_ODMI_H
+
+/* Define if OpenIB headers and library files are available. */
+#undef HAVE_OPENIB
+
+/* Define unless using the symbol `optopt' results in a link error. */
+#undef HAVE_OPTOPT
+
+/* Define to 1 if you have the <papi.h> header file. */
+#undef HAVE_PAPI_H
+
+/* Define if you have the PCI Utilities library (-lpci or -lpciutils) */
+#undef HAVE_PCIUTILS
+
+/* Define to 1 if you have the <pci/pci.h> header file. */
+#undef HAVE_PCI_PCI_H
+
+/* Define to 1 if you have the `popen' function. */
+#undef HAVE_POPEN
+
+/* Define if we're running on a CPU in the PowerPC family. */
+#undef HAVE_PPC_CPU
+
+/* Define if /proc/cpuinfo lists the CPU/timer frequency. */
+#undef HAVE_PROC_CPUINFO_FREQ
+
+/* Define to 1 if you have the <pwd.h> header file. */
+#undef HAVE_PWD_H
+
+/* Define if Cray XT mesh coordinates are available. */
+#undef HAVE_RCAMESHCOORD
+
+/* Define to 1 if you have the <rca_lib.h> header file. */
+#undef HAVE_RCA_LIB_H
+
+/* Define to 1 if you have the `realpath' function. */
+#undef HAVE_REALPATH
+
+/* Define to 1 if you have the `rint' function. */
+#undef HAVE_RINT
+
+/* Define to 1 if you have the `round' function. */
+#undef HAVE_ROUND
+
+/* Define if Cray XT event data is available. */
+#undef HAVE_RSMSEVENT
+
+/* Define to 1 if you have the <rsms/rs_id.h> header file. */
+#undef HAVE_RSMS_RS_ID_H
+
+/* Define to 1 if you have the <rsms/rs_meshcoord.h> header file. */
+#undef HAVE_RSMS_RS_MESHCOORD_H
+
+/* Define to 1 if you have the `sched_getaffinity' function. */
+#undef HAVE_SCHED_GETAFFINITY
+
+/* Define to 1 if you have the <sched.h> header file. */
+#undef HAVE_SCHED_H
+
+/* Define to 1 if you have the `setitimer' function. */
+#undef HAVE_SETITIMER
+
+/* Define to 1 if you have the `sigaction' function. */
+#undef HAVE_SIGACTION
+
+/* Define to 1 if you have the `signal' function. */
+#undef HAVE_SIGNAL
+
+/* Define to 1 if you have the <signal.h> header file. */
+#undef HAVE_SIGNAL_H
+
+/* Define to 1 if you have the `sleep' function. */
+#undef HAVE_SLEEP
+
+/* Define if we're running on a CPU in the SPARC family. */
+#undef HAVE_SPARC_CPU
+
+/* Define to 1 if the system has the type `ssize_t'. */
+#undef HAVE_SSIZE_T
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the `strerror' function. */
+#undef HAVE_STRERROR
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the `strsignal' function. */
+#undef HAVE_STRSIGNAL
+
+/* Define to 1 if you have the `strtok' function. */
+#undef HAVE_STRTOK
+
+/* Define to 1 if you have the `strtol' function. */
+#undef HAVE_STRTOL
+
+/* Define to 1 if you have the `strtoll' function. */
+#undef HAVE_STRTOLL
+
+/* Define to 1 if you have the `strtoq' function. */
+#undef HAVE_STRTOQ
+
+/* Define if you have the `CuAt' struct. */
+#undef HAVE_STRUCT_CUAT
+
+/* Define to 1 if `h_name' is member of `struct hostent'. */
+#undef HAVE_STRUCT_HOSTENT_H_NAME
+
+/* Define to 1 if you have the `sysconf' function. */
+#undef HAVE_SYSCONF
+
+/* Define to 1 if you have the `sysctl' function. */
+#undef HAVE_SYSCTL
+
+/* Define to 1 if you have the `sysmp' function. */
+#undef HAVE_SYSMP
+
+/* Define to 1 if you have the `syssgi' function. */
+#undef HAVE_SYSSGI
+
+/* Define to 1 if you have the <sys/cfgodm.h> header file. */
+#undef HAVE_SYS_CFGODM_H
+
+/* Define to 1 if you have the <sys/mman.h> header file. */
+#undef HAVE_SYS_MMAN_H
+
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
+
+/* Define to 1 if you have the <sys/resource.h> header file. */
+#undef HAVE_SYS_RESOURCE_H
+
+/* Define to 1 if you have the <sys/select.h> header file. */
+#undef HAVE_SYS_SELECT_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/sysctl.h> header file. */
+#undef HAVE_SYS_SYSCTL_H
+
+/* Define to 1 if you have the <sys/sysinfo.h> header file. */
+#undef HAVE_SYS_SYSINFO_H
+
+/* Define to 1 if you have the <sys/sysmp.h> header file. */
+#undef HAVE_SYS_SYSMP_H
+
+/* Define to 1 if you have the <sys/syssgi.h> header file. */
+#undef HAVE_SYS_SYSSGI_H
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#undef HAVE_SYS_TIME_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <sys/utsname.h> header file. */
+#undef HAVE_SYS_UTSNAME_H
+
+/* Define to 1 if you have the <sys/wait.h> header file. */
+#undef HAVE_SYS_WAIT_H
+
+/* Define to 1 if you have the `time' function. */
+#undef HAVE_TIME
+
+/* Define to 1 if you have the <time.h> header file. */
+#undef HAVE_TIME_H
+
+/* Define to 1 if you have the `trunc' function. */
+#undef HAVE_TRUNC
+
+/* Define to 1 if you have the `uname' function. */
+#undef HAVE_UNAME
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the <uuid/uuid.h> header file. */
+#undef HAVE_UUID_UUID_H
+
+/* Define if stdarg.h defines a va_copy() macro. */
+#undef HAVE_VA_COPY
+
+/* Define to 1 if you have the `vfprintf' function. */
+#undef HAVE_VFPRINTF
+
+/* Define to 1 if you have the `vsnprintf' function. */
+#undef HAVE_VSNPRINTF
+
+/* Define to 1 if you have the `vsprintf' function. */
+#undef HAVE_VSPRINTF
+
+/* Define to 1 if you have the <windows.h> header file. */
+#undef HAVE_WINDOWS_H
+
+/* Define if we're running on a CPU in the IA-32 family with 64-bit
+   extensions. */
+#undef HAVE_X86_64_CPU
+
+/* Define if the Cray XT node ID is available in _my_pnid. */
+#undef HAVE__MY_PNID
+
+/* Define to 1 if you have the `_strtoi64' function. */
+#undef HAVE__STRTOI64
+
+/* Define if the Cray XT clock frequency is available in __cpu_mhz. */
+#undef HAVE___CPU_MHZ
+
+/* Define if stdarg.h defines a __va_copy() macro. */
+#undef HAVE___VA_COPY
+
+/* Define as HOST_NAME_MAX, MAXHOSTNAMELEN, or whatever else refers to the
+   maximum hostname size in characters. */
+#undef HOST_NAME_MAX_VAR
+
+/* Define as a memory-mappable HPET device. */
+#undef HPET_DEVICE
+
+/* Define if a uint128_t must be fabricated out of two uint64_t values. */
+#undef MUST_FAKE_UINT128
+
+/* Define as the minimum (i.e., most negative) value an ncptl_int can accept.
+   */
+#undef NCPTL_INT_MIN
+
+/* Define as a suffix to attach to constants of type ncptl_int. */
+#undef NCPTL_INT_SUFFIX
+
+/* Define as the name of a file that discards all data written to it. */
+#undef NULL_DEVICE_NAME
+
+/* Define as the operating system's page size in bytes (only if it can't be
+   determined automatically). */
+#undef OS_PAGE_SIZE
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Define as PATH_MAX, MAXPATHLEN, or whatever else refers to the maximum
+   filename size in characters. */
+#undef PATH_MAX_VAR
+
+/* Define as the name of file that contains a process's original command line.
+   */
+#undef PROC_CMD_LINE
+
+/* Define as 0 if PROC_CMD_LINE is not to be used; 1 if it's a template that
+   replaces %d with the process ID; or, 2 for a complete filename. */
+#undef PROC_CMD_LINE_TYPE
+
+/* Define as the return type of signal handlers (`int' or `void'). */
+#undef RETSIGTYPE
+
+/* Define as a value that a signal handler should return. */
+#undef RETSIGVALUE
+
+/* Define as the number of words occupied by an MT_STATE structure. */
+#undef RNG_STATE_WORDS
+
+/* Define if the `round' function is likely to work. */
+#undef ROUND_WORKS
+
+/* The size of `long', as computed by sizeof. */
+#undef SIZEOF_LONG
+
+/* The size of `long double', as computed by sizeof. */
+#undef SIZEOF_LONG_DOUBLE
+
+/* The size of `long long', as computed by sizeof. */
+#undef SIZEOF_LONG_LONG
+
+/* The size of `unsigned char', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_CHAR
+
+/* The size of `unsigned int', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_INT
+
+/* The size of `unsigned long', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_LONG
+
+/* The size of `unsigned long long', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_LONG_LONG
+
+/* The size of `unsigned long long long', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_LONG_LONG_LONG
+
+/* The size of `unsigned short', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED_SHORT
+
+/* The size of `unsigned __int128', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED___INT128
+
+/* The size of `unsigned __int16', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED___INT16
+
+/* The size of `unsigned __int32', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED___INT32
+
+/* The size of `unsigned __int64', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED___INT64
+
+/* The size of `unsigned __int8', as computed by sizeof. */
+#undef SIZEOF_UNSIGNED___INT8
+
+/* The size of `u_int128_t', as computed by sizeof. */
+#undef SIZEOF_U_INT128_T
+
+/* The size of `u_int16_t', as computed by sizeof. */
+#undef SIZEOF_U_INT16_T
+
+/* The size of `u_int32_t', as computed by sizeof. */
+#undef SIZEOF_U_INT32_T
+
+/* The size of `u_int64_t', as computed by sizeof. */
+#undef SIZEOF_U_INT64_T
+
+/* The size of `u_int8_t', as computed by sizeof. */
+#undef SIZEOF_U_INT8_T
+
+/* The size of `__int64', as computed by sizeof. */
+#undef SIZEOF___INT64
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Define if `strtol' can correctly take the place of `strtoll'. */
+#undef STRTOL_IS_STRTOLL
+
+/* Define if `swig' is usable. */
+#undef SWIG_WORKS
+
+/* Define as a filename from which the timebase frequency can be read in hertz
+   as a binary integer. */
+#undef TIMEBASE_FREQUENCY_FILENAME
+
+/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
+#undef TIME_WITH_SYS_TIME
+
+/* Define if getopt_long should be used to parse the command line. */
+#undef USE_GETOPT_LONG
+
+/* Define to use the Performance API (PAPI). */
+#undef USE_PAPI
+
+/* Define if popt should be used to parse the command line. */
+#undef USE_POPT
+
+/* Define if it\'s okay for all processes to attempt to read /proc/interrupts
+   during initialization. */
+#undef USE_PROC_INTERRUPTS
+
+/* Version number of package */
+#undef VERSION
+
+/* Define to empty if `const' does not conform to ANSI C. */
+#undef const
+
+/* Define to `int' if <sys/types.h> doesn't define. */
+#undef gid_t
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
+
+/* If not already defined, then define as a datatype of *exactly* 64 bits. */
+#undef int64_t
+
+/* Define to `int' if <sys/types.h> doesn't define. */
+#undef uid_t
+
+/* If not already defined, then define as a datatype of *exactly* 128 bits. */
+#undef uint128_t
+
+/* If not already defined, then define as a datatype of *exactly* 16 bits. */
+#undef uint16_t
+
+/* If not already defined, then define as a datatype of *exactly* 32 bits. */
+#undef uint32_t
+
+/* If not already defined, then define as a datatype of *exactly* 64 bits. */
+#undef uint64_t
+
+/* If not already defined, then define as a datatype of *exactly* 8 bits. */
+#undef uint8_t
+
+/*----- There should be no need to modify anything beyond this point. -----*/
+
+/* Include a few extra function prototypes if we're using GNU C. */
+#if defined(__GNUC__) && !defined(_GNU_SOURCE)
+# define _GNU_SOURCE
+#endif
+
+/* Include standard headers and user-defined code provided by
+ * --with-header-code. */
+#include "extra_config.h"
+
+/* Include all of the header files we require. */
+#include <stdarg.h>
+#include <signal.h>
+#include <errno.h>
+#include <math.h>
+#include <fcntl.h>
+#include <ctype.h>
+#include <float.h>
+#if defined(HAVE_LINUX_TIMEX_H) && defined(HAVE_GET_CYCLES)
+# include <linux/timex.h>
+#endif
+#ifdef HAVE_SYS_RESOURCE_H
+# include <sys/resource.h>
+#endif
+#ifdef HAVE_SYS_SYSSGI_H
+# include <sys/syssgi.h>
+#endif
+#ifdef HAVE_INVENT_H
+# include <invent.h>
+#endif
+#ifdef HAVE_SYS_SYSINFO_H
+# include <sys/sysinfo.h>
+#endif
+#ifdef HAVE_SYS_MMAN_H
+# include <sys/mman.h>
+#endif
+#ifdef HAVE_UUID_UUID_H
+# include <uuid/uuid.h>
+#endif
+#ifdef HAVE_PCI_PCI_H
+# include <pci/pci.h>
+#endif
+#ifdef HAVE_ODMI_H
+# include <odmi.h>
+#endif
+#ifdef HAVE_CF_H
+# include <cf.h>
+#endif
+#ifdef HAVE_SYS_CFGODM_H
+# include <sys/cfgodm.h>
+#endif
+#ifdef HAVE_INFINIBAND_VERBS_H
+# include <infiniband/verbs.h>
+#endif
+#ifdef HAVE_MACHINE_HAL_SYSINFO_H
+# include <machine/hal_sysinfo.h>
+#endif
+#ifdef HAVE_KSTAT_H
+# include <kstat.h>
+#endif
+#ifdef HAVE_SYS_SYSMP_H
+# include <sys/sysmp.h>
+#endif
+#ifdef HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
+#ifdef HAVE_SYS_WAIT_H
+# include <sys/wait.h>
+#endif
+#ifdef HAVE_IEEEFP_H
+# include <ieeefp.h>
+#endif
+#ifdef HAVE_SYS_SYSCTL_H
+# include <sys/sysctl.h>
+#endif
+#ifdef HAVE_C_ASM_H
+# include <c_asm.h>
+#endif
+#ifdef HAVE_NX_H
+# include <nx.h>
+#endif
+#ifdef HAVE_PWD_H
+# include <pwd.h>
+#endif
+#ifdef HAVE_WINDOWS_H
+# include <windows.h>
+#endif
+#ifdef HAVE_SCHED_H
+# include <sched.h>
+#endif
+#ifdef HAVE_HAL
+# include <libhal.h>
+#endif
+#ifdef HAVE_LIBELAN
+# include <rms/rmscall.h>
+#endif
+#ifdef HAVE_BGPPERSONALITY
+# include <spi/kernel_interface.h>
+# include <common/bgp_personality.h>
+#endif
+#ifdef HAVE_BGLPERSONALITY
+# include <bglpersonality.h>
+# include <rts.h>
+#endif
+#ifdef HAVE_RSMS_RS_ID_H
+# include <rsms/rs_id.h>
+#endif
+#ifdef HAVE_RCAMESHCOORD
+# include <rca_lib.h>
+# include <rsms/rs_meshcoord.h>
+#endif
+#ifdef USE_POPT
+# include <popt.h>
+  /* Older versions of popt don't define POPT_TABLEEND. */
+# ifndef POPT_TABLEEND
+#  define POPT_TABLEEND { NULL, '\0', 0, 0, 0, NULL, NULL }
+# endif
+#endif
+#ifdef USE_GETOPT_LONG
+# if defined(HAVE_GNUGETOPT_H)
+#  include <gnugetopt.h>
+# elif defined(HAVE_GETOPT_H)
+#  include <getopt.h>
+# endif
+#elif defined(HAVE_GETOPT_H)
+# include <getopt.h>
+#endif
+#ifdef USE_PAPI
+# include <papi.h>
+#endif
+#ifdef FORCE_MPI_WTIME
+# include <mpi.h>
+#endif
+
+#endif

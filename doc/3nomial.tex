@@ -1,0 +1,97 @@
+% Show node numbering in a 3-nomial tree
+% By Scott Pakin <pakin@lanl.gov>
+
+% Copyright (C) 2009, Los Alamos National Security, LLC
+% All rights reserved.
+% 
+% Copyright (2009).  Los Alamos National Security, LLC.  This software
+% was produced under U.S. Government contract DE-AC52-06NA25396
+% for Los Alamos National Laboratory (LANL), which is operated by
+% Los Alamos National Security, LLC (LANS) for the U.S. Department
+% of Energy. The U.S. Government has rights to use, reproduce,
+% and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+% MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+% FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+% derivative works, such modified software should be clearly marked,
+% so as not to confuse it with the version available from LANL.
+% 
+% Additionally, redistribution and use in source and binary forms,
+% with or without modification, are permitted provided that the
+% following conditions are met:
+% 
+%   * Redistributions of source code must retain the above copyright
+%     notice, this list of conditions and the following disclaimer.
+% 
+%   * Redistributions in binary form must reproduce the above copyright
+%     notice, this list of conditions and the following disclaimer
+%     in the documentation and/or other materials provided with the
+%     distribution.
+% 
+%   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+%     National Laboratory, the U.S. Government, nor the names of its
+%     contributors may be used to endorse or promote products derived
+%     from this software without specific prior written permission.
+% 
+% THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+% EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+% OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+% OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+% BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+% WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+% OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+% EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+\input pst-eps
+\input pst-tree
+\nopagenumbers
+
+\psset{levelsep=1cm,treesep=0.25cm}
+\newbox\doubledigits
+\setbox\doubledigits=\hbox{99}
+\def\CN#1{\Tcircle{\hbox to \wd\doubledigits{\hss#1\hss}}}
+
+\TeXtoEPS
+\pstree{\CN{0}}{%
+  \pstree{\CN{1}}{%
+    \pstree{\CN{4}}{%
+      \CN{13}
+      \CN{22}}
+    \pstree{\CN{7}}{%
+      \CN{16}
+      \CN{25}}
+    \skiplevels{1}
+      \CN{10}
+      \CN{19}
+    \endskiplevels}
+  \pstree{\CN{2}}{%
+    \pstree{\CN{5}}{%
+      \CN{14}
+      \CN{23}}
+    \pstree{\CN{8}}{%
+      \CN{17}
+      \CN{26}}
+    \skiplevels{1}
+      \CN{11}
+      \CN{20}
+    \endskiplevels}
+  \skiplevels{1}
+    \pstree{\CN{3}}{%
+      \CN{12}
+      \CN{21}}
+    \pstree{\CN{6}}{%
+      \CN{15}
+      \CN{24}}
+  \endskiplevels
+  \skiplevels{2}
+    \psset{edge=\nccurve,angleA=-15,angleB=110}
+    \CN{9}
+    \psset{edge=\nccurve,angleA=-5,angleB=110}
+    \CN{18}
+    \psset{edge=\ncline}
+  \endskiplevels}
+\endTeXtoEPS
+
+\bye

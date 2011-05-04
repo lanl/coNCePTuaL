@@ -1,0 +1,31 @@
+########################################
+# Verify a network's leaf-switch radix #
+# By Scott Pakin <pakin@lanl.gov>      #
+########################################
+
+iters is "Number of iterations to perform" and comes from "--iters" or "-i" with default 1000.
+msgsize is "Message size (B)" and comes from "--bytes" or "-b" with default 1M.
+radix is "Expected switch radix" and comes from "--radix" or "-r" with default 0.
+
+Assert that "This program needs at least two tasks" with num_tasks >= 2.
+Assert that "You must specify an expected switch radix with --radix" with radix > 0.
+
+# Measure the bidirectional bandwidth of a ring of RADIX tasks.
+All tasks reset their counters then
+for iters repetitions plus 3 warmup repetitions and a synchronization {
+  tasks t such that (t/radix)*radix <= num_tasks-radix asynchronously send
+    a msgsize-byte page-aligned message to task
+    (t+1) mod radix + (t/radix)*radix then
+  all tasks await completion
+} then
+tasks t such that radix divides t /\ (t/radix)*radix <= num_tasks-radix
+  log total_bytes/(2*elapsed_usecs) as "Ring half bidi BW (B/us)".
+
+# Measure the bidirectional bandwidth of two tasks in isolation.
+All tasks reset their counters then
+for iters repetitions plus 3 warmup repetitions and a synchronization {
+  tasks t such that t<2 asynchronously send a msgsize-byte page-aligned
+    message to task 1-t then
+  all tasks await completion
+} then
+task 0 logs total_bytes/(2*elapsed_usecs) as "Solo half bidi BW (B/us)".

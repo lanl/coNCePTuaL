@@ -1,0 +1,39 @@
+#coNCePTuaL version of HYCOM communication pattern
+#by Paul Beinfest 6-16-05
+
+Require language version "1.2".
+
+msgsize is "Size of message to transmit in bytes" and comes from
+        "--msgsize" or "-m" with default 2K.
+xdim is "Size of X dimension" and comes from "--xdim" or
+        "-x" with default 2.
+ydim is "Size of Y dimension" and comes from "--ydim" or
+        "-y" with default 1.
+iter is "Number of times to repeat communication pattern"
+        and comes from "--iter" or "-i" with default 100.
+
+Assert that "The product of the X and Y dimensions must equal the number of tasks"
+        with xdim*ydim=num_tasks.
+Assert that "The HYCOM communication pattern requires at least two tasks"
+        with num_tasks>=2.
+
+
+For iter repetitions {
+        task 0 resets its counters then
+        #Phase I
+                all tasks i asynchronously send a msgsize byte message to tasks neighbors such that
+                        (neighbors=torus_neighbor(i, xdim, -1, ydim, 0)\/
+                        neighbors=torus_neighbor(i, xdim, 1, ydim, 0)\/
+                        neighbors=mesh_neighbor(i, xdim, 0, ydim, -1)\/
+                        neighbors=mesh_neighbor(i, xdim, 0, ydim, 1))/\neighbors<>i then
+                all tasks await completion then
+        #Phase II
+                tasks rest_row such that rest_row mod xdim<>0 asynchronously sends a msgsize byte message to task
+                        far_left such that xdim divides far_left/\far_left<rest_row/\far_left>rest_row-xdim then
+                all tasks await completion then
+        #Phase III
+                tasks rest_col such that xdim divides rest_col/\rest_col>0 asynchronously sends a msgsize byte
+                        message to task 0 then
+                all tasks await completion then
+        task 0 logs a histogram of elapsed_usecs as "Iteration time (usecs)"
+}

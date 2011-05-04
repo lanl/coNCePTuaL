@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+   "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<title>coNCePTuaL @PACKAGE_VERSION@ GUI</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div#conceptual-gui {
+  border:     2px solid black;
+  text-align: center;
+  width:      742px;
+  height:     752px;
+  margin:     auto;
+}
+-->
+/*]]>*/
+</style>
+</head>
+
+<body>
+<div id="conceptual-gui">
+<object
+  title="coNCePTuaL @PACKAGE_VERSION@ GUI"
+  codetype="application/x-java-applet"
+  archive="ncptlGUI-@PACKAGE_VERSION@.jar"
+  classid="java:gov.lanl.c3.ncptl.ncptlGUIApplet.class"
+  width="740" height="750">
+  <!-- The following is for Internet Explorer's sake. -->
+  <object classid="clsid:8AD9C840-044E-11D1-B3E9-00805F499D93"
+    height="740" width="750">
+    <param name="code" value="gov.lanl.c3.ncptl.ncptlGUIApplet" />
+    <param name="archive" value="ncptlGUI-@PACKAGE_VERSION@.jar" />
+
+The coNCePTuaL GUI cannot run unless Java is enabled within your Web
+browser.  If needed, you can <a
+href="http://java.sun.com/javase/downloads/index.jsp">download the
+Java Runtime Environment (JRE)</a> from Sun's Web site.
+
+  </object> 
+</object>
+</div>
+</body>
+</html>

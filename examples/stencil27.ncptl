@@ -1,0 +1,28 @@
+# 27-point torus stencil code (or 9-point if a dimension is 1)
+#
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+xdim is "Torus x dimension (tasks)" and comes from "--xdim" or "-x" with default 1.
+ydim is "Torus y dimension (tasks)" and comes from "--ydim" or "-y" with default 1.
+zdim is "Torus z dimension (tasks)" and comes from "--zdim" or "-z" with default 1.
+reps is "Number of test repetitions" and comes from "--reps" or "-r" with default 100.
+msgsize is "Message size (bytes)" and comes from "--msgsize" or "-s" with default 1M.
+
+Assert that "each torus dimension must be a positive integer" with xdim>=1 /\ ydim>=1 /\ zdim>=1.
+Assert that "the torus dimensions dictate more tasks than are available" with xdim*ydim*zdim<=num_tasks.
+
+For reps repetitions plus 2 warmup repetitions {
+  all tasks synchronize then
+  all tasks reset their counters then
+  for each xdelta in {-1, 0, 1}
+    if xdim-2 >= xdelta then
+      for each ydelta in {-1, 0, 1}
+        if ydim-2 >= ydelta then
+          for each zdelta in {-1, 0, 1}
+            if zdim-2 >= zdelta then
+              tasks self such that self <> torus_neighbor(self, xdim, xdelta, ydim, ydelta, zdim, zdelta) asynchronously send a msgsize-byte message to task torus_neighbor(self, xdim, xdelta, ydim, ydelta, zdim, zdelta) then
+  all tasks await completion then
+  all tasks log (total_bytes/elapsed_usecs)*(1E6/1M) as "Bandwidth (MB/s)"
+}

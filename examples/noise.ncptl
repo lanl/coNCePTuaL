@@ -1,0 +1,15 @@
+# Determine computational "noise"
+
+Require language version "1.2".
+
+accesses is "Number of data accesses to perform" and comes from
+  "--accesses" or "-a" with default 500000.
+
+trials is "Number of timings to take" and comes from "--timings" or
+  "-t" with default 1000.
+
+For trials repetitions {
+  all tasks reset their counters then
+  all tasks touch accesses words of a 1 word memory region then
+  all tasks log a histogram of elapsed_usecs as "Actual time (usecs)"
+}

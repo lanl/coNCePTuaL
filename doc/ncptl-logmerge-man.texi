@@ -1,0 +1,271 @@
+@menu
+* ncptl-logmerge manual page::     The result of running ``ncptl-logmerge --man''
+@end menu
+
+@c Copyright (C) 2009, Los Alamos National Security, LLC
+@c All rights reserved.
+@c 
+@c Copyright (2009).  Los Alamos National Security, LLC.  This software
+@c was produced under U.S. Government contract DE-AC52-06NA25396
+@c for Los Alamos National Laboratory (LANL), which is operated by
+@c Los Alamos National Security, LLC (LANS) for the U.S. Department
+@c of Energy. The U.S. Government has rights to use, reproduce,
+@c and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+@c MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+@c FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+@c derivative works, such modified software should be clearly marked,
+@c so as not to confuse it with the version available from LANL.
+@c 
+@c Additionally, redistribution and use in source and binary forms,
+@c with or without modification, are permitted provided that the
+@c following conditions are met:
+@c 
+@c   * Redistributions of source code must retain the above copyright
+@c     notice, this list of conditions and the following disclaimer.
+@c 
+@c   * Redistributions in binary form must reproduce the above copyright
+@c     notice, this list of conditions and the following disclaimer
+@c     in the documentation and/or other materials provided with the
+@c     distribution.
+@c 
+@c   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+@c     National Laboratory, the U.S. Government, nor the names of its
+@c     contributors may be used to endorse or promote products derived
+@c     from this software without specific prior written permission.
+@c 
+@c THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+@c EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+@c IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+@c PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+@c LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+@c OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+@c OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+@c BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+@c WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+@c OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+@c EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+@node ncptl-logmerge manual page,  , ncptl-logmerge, ncptl-logmerge
+@subsubheading NAME
+
+
+ncptl-logmerge - Merge @ncptl{} log files
+
+@subsubheading SYNOPSIS
+
+
+ncptl-logmerge
+@copt{usage} | @copt{help} | @copt{man}
+
+@sp 1
+@noindent
+ncptl-logmerge
+[@copt{output}=@var{filename}]
+[@copt{simplify}]
+@var{filename}...
+
+@subsubheading DESCRIPTION
+
+
+A @ncptl{} program produces one log file per process.  For large
+numbers of processes the result can be unwieldy.  @file{ncptl-logmerge}
+combines a large set of log files into a single, merged file which can
+later be expanded back into its constituent log files.  There are a
+number of restrictions on the input to @file{ncptl-logmerge}; see
+the Restrictions section for details.
+
+The merged output file does not modify lines which are identical in
+all of the input files.  Lines which do differ across input files are
+prefixed with the processors and processor ranges in which they
+appeared.
+
+As an example, the following text was extracted from a set of 186
+@ncptl{} log files (from a 186-processor run):
+
+@example
+    # Microsecond timer type: PAPI_get_real_usec()
+    # Average microsecond timer overhead: <1 microsecond
+    #[0-4,6-12,14-16,18-52,54-78,80-94,96-101,103-121,123-140,142-169,
+      171-185]# Microsecond timer increment: 1 +/- 0 microseconds
+      (ideal: 1 +/- 0)
+    #[5]# Microsecond timer increment: 1.00229 +/- 0.15854
+      microseconds (ideal: 1 +/- 0)
+    #[13]# Microsecond timer increment: 1.00228 +/- 0.158442
+      microseconds (ideal: 1 +/- 0)
+    #[17,79]# Microsecond timer increment: 1.00228 +/- 0.158392
+      microseconds (ideal: 1 +/- 0)
+    #[53]# Microsecond timer increment: 1.00228 +/- 0.158409
+      microseconds (ideal: 1 +/- 0)
+    #[102]# Microsecond timer increment: 1.00228 +/- 0.158458
+      microseconds (ideal: 1 +/- 0)
+    #[95,122]# Microsecond timer increment: 1.00228 +/- 0.158474
+      microseconds (ideal: 1 +/- 0)
+    #[141]# Microsecond timer increment: 1.00228 +/- 0.158491
+      microseconds (ideal: 1 +/- 0)
+    #[170]# Microsecond timer increment: 1.00228 +/- 0.158524
+      microseconds (ideal: 1 +/- 0)
+@end example
+
+All of the input files contained the same @code{Microsecond timer type}
+and @code{Average microsecond timer overhead} lines.  However, the
+measured @code{Microsecond timer increment} varied across input files.
+While many of the processors observed an increment of @code{1 +/- 0},
+@w{processor 5} was alone in observing @code{1.00229 +/- 0.15854};
+@w{processor 13} was alone in observing @code{1.00228 +/- 0.158442}; and,
+both @w{processor 17} and @w{processor 79} observed @code{1.00228 +/-
+0.158392} as the timer increment.
+
+@file{ncptl-logmerge} can also be instructed to output only the lines
+which differ across files.  Common lines are not output.  This feature
+is useful for discovering misconfigured nodes in a large computer
+system.  For example, on one computer system on which @ncptl{} was
+run, five processors were running at a higher clock rate than the
+remainder which naturally affected performance.  @file{ncptl-logmerge} can
+be used to help identify such outliers.
+
+@subsubheading OPTIONS
+
+
+@file{ncptl-logmerge} accepts the following command-line options:
+
+@table @asis
+@item @copts{u}, @copt{usage}
+Output the Synopsis section then exit the program.
+
+@item @copts{h}, @copt{help}
+Output the Synopsis section and the Options section then exit the program.
+
+@item @copts{m}, @copt{man}
+Output a complete Unix man (``manual'') page for @file{ncptl-logmerge} then
+exit the program.
+
+@item @copts{o} @var{filename}, @copt{output}=@var{filename}
+@file{ncptl-logmerge} normally writes to the standard output device.  The
+@copt{output} option redirects @file{ncptl-logmerge}'s output to a file.
+
+@item @copts{s}, @copt{simplify}
+Simplify the output by including only lines which differ across input
+files.  No data is output, only prologue and epilogue comments.
+@copt{simplify} can be specified up to four times on the command line:
+
+@table @asis
+@item once
+Omit all comments and all lines which are identical across all input
+files.
+
+@item twice
+Lines which differ across @var{all} output files (e.g., @code{Processor
+(0<=P<tasks)}) are also omitted.
+
+@item three times
+The amount of output is further reduced by rounding to two significant
+digits all numbers appearing in all input files.  Doing so makes
+@code{1.10644 +/- 0.593714} match @code{1.12511 +/- 0.58829}, for example.
+(Both are converted to @code{1.1 +/- 0.59}.)
+
+@item four times
+Lists of processors are replaced by the list size.  For example,
+@code{#[22,67,86,430]} becomes @code{#[4]}.
+
+@end table
+Note that @copt{simplify} is intended as a diagnostic tool; files output
+using @copt{simplify} cannot be un-merged to recover the original input
+files.
+
+@end table
+In addition to the preceding options @file{ncptl-logmerge} requires a list
+of log files to merge.  If a directory is specified, all of the files
+immediately under that directory are used.  (Note that
+@file{ncptl-logmerge} does not descend into subdirectories, however.)
+Files containing lists of filenames can be specified with a leading
+@w{at sign} (``@code{@@}'').  For example, @code{@@filelist.txt} means to read a
+list of filenames from @code{@@filelist.txt}.  Filenames beginning with an
+@w{at sign} can be specified by doubling the @w{at sign} on the command
+line.
+
+@subsubheading DIAGNOSTICS
+
+
+@table @asis
+@item @var{filename} @code{does not look like an unmerged coNCePTuaL log file}
+@file{ncptl-logmerge} accepts as input only log files produced directly by
+a @ncptl{} program.  It is not a general-purpose file combiner nor
+does it accept its own output as input.  Unrecognized input files
+cause @file{ncptl-logmerge} to abort with the preceding error message.
+
+@item @code{No processor number found in} @var{filename}
+@file{ncptl-logmerge} needs to map filenames to processor numbers to
+indicate which processors produced which lines of output.  If an input
+file does not contain a @code{Processor (0<=P<tasks)} comment,
+@file{ncptl-logmerge} aborts with the preceding error message.
+
+@end table
+@subsubheading EXAMPLES
+
+
+Merge a set of @ncptl{} log files:
+
+@example
+    ncptl-logmerge mybenchmark-[0-9]*.log > mybenchmark-all.log
+@end example
+
+The following command is equivalent to the preceding one:
+
+@example
+    ncptl-logmerge mybenchmark-[0-9]*.log --output=mybenchmark-all.log
+@end example
+
+Show only ``interesting'' differences among the input files:
+
+@example
+    ncptl-logmerge --simplify --simplify mybenchmark-[0-9]*.log
+@end example
+
+For convenience, one can abbreviate @copt{simplify} @copt{simplify}
+@copt{simplify} @copt{simplify} to @w{@copts{s} @copts{s} @copts{s} @copts{s}} or even
+@code{-ssss}:
+
+@example
+    ncptl-logmerge -ssss mybenchmark-[0-9]*.log
+@end example
+
+@subsubheading RESTRICTIONS
+
+
+The log files passed to @file{ncptl-logmerge} are subject to the following
+restrictions:
+
+@itemize @bullet
+@item
+All files must be produced by the same run of the same @ncptl{}
+program.
+
+@item
+None of the files can have been previously merged by @file{ncptl-logmerge}
+(i.e., @file{ncptl-logmerge} can't read its own output).
+
+@item
+Only the first filename passed to @file{ncptl-logmerge} is allowed to
+contain data.  Data from all other files is discarded with a warning
+message.
+
+@end itemize
+@subsubheading BUGS
+
+
+@file{ncptl-logmerge} is not a particularly robust script.  Specifically,
+it is confused when input files contain different numbers of comment
+lines.  For example, if one input file includes more environment
+variables than another or issued a warning about a timer where another
+input file didn't, @file{ncptl-logmerge} will erroneously report all
+subsequent lines as being mismatched across input files.
+
+@subsubheading SEE ALSO
+
+
+ncptl-logunmerge(1), ncptl-logextract(1), the @ncptl{} User's Guide
+
+@subsubheading AUTHOR
+
+
+Scott Pakin, @email{pakin@@lanl.gov}

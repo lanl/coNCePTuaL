@@ -1,0 +1,681 @@
+/* ----------------------------------------------------------------------
+ *
+ * Header file for using coNCePTuaL's run-time library
+ *
+ * By Scott Pakin <pakin@lanl.gov>
+ *
+ * ----------------------------------------------------------------------
+ *
+ * Copyright (C) 2009, Los Alamos National Security, LLC
+ * All rights reserved.
+ * 
+ * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * was produced under U.S. Government contract DE-AC52-06NA25396
+ * for Los Alamos National Laboratory (LANL), which is operated by
+ * Los Alamos National Security, LLC (LANS) for the U.S. Department
+ * of Energy. The U.S. Government has rights to use, reproduce,
+ * and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+ * MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+ * FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+ * derivative works, such modified software should be clearly marked,
+ * so as not to confuse it with the version available from LANL.
+ * 
+ * Additionally, redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided that the
+ * following conditions are met:
+ * 
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ * 
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer
+ *     in the documentation and/or other materials provided with the
+ *     distribution.
+ * 
+ *   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+ *     National Laboratory, the U.S. Government, nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * ----------------------------------------------------------------------
+ */
+
+#ifndef _NCPTL_H_
+#define _NCPTL_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* -----------------------
+ * Items to hide from SWIG
+ * ----------------------- */
+
+/* Unfortunately, SWIG treats everything within "%{" and "%}" as
+ * verbatim text, which means we can't conditionally include "%{" and
+ * "%}" in a file while unconditionally including the text between
+ * them.  As a workaround, we run a script on this file that uses
+ * "SWIG:" comments to indicate SWIG-specific operations. */
+
+/* SWIG: %module pyncptl */
+/* SWIG: %{ */
+/* SWIG: #include "config.h" */
+
+/* ----- The following are modified by configure; alter if necessary  ----- */
+
+/* Define each of the following to 1 if you have the corresponding
+ * header file. */
+#undef HAVE_UNISTD_H
+#undef HAVE_INTTYPES_H
+#undef HAVE_STDINT_H
+#undef HAVE_SYS_PARAM_H
+#undef HAVE_NETDB_H
+#undef HAVE_SYS_UTSNAME_H
+
+/* Define as the number of words occupied by an MT_STATE structure. */
+#ifndef RNG_STATE_WORDS
+#undef RNG_STATE_WORDS
+#endif
+
+/* If not already defined by an include file, then define the
+ * following as datatypes of *exactly* 64 bits. */
+#undef uint64_t
+#undef int64_t
+
+/* Define to use the Performance API (PAPI). */
+#undef USE_PAPI
+
+/* Define appropriately if not already supported by the C compiler. */
+#undef const
+#undef inline
+
+/* ---------- No need to change anything below this point ---------- */
+
+/* Load all of the header files we need. */
+#include <stdlib.h>
+#include <limits.h>
+#include <string.h>
+#if HAVE_UNISTD_H
+# include <sys/types.h>
+# include <unistd.h>
+#endif
+#if HAVE_INTTYPES_H
+# include <inttypes.h>
+#else
+# if HAVE_STDINT_H
+#  include <stdint.h>
+# endif
+#endif
+#if HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
+#ifdef HAVE_NETDB_H
+# include <netdb.h>
+#endif
+#if HAVE_SYS_UTSNAME_H
+# include <sys/utsname.h>
+#endif
+#ifdef USE_PAPI
+# include <papi.h>
+#endif
+
+/* Store information about how the run-time library was built. */
+#define RT_COMPILER "@CC@"
+#define RT_COMPOPTS "@CPPFLAGS@ @CFLAGS@"
+#define RT_LINKOPTS "@LDFLAGS@ @LIBS@"
+#define CONFIGURE_COMMAND "@CONFIGURE_COMMAND@"
+
+/* Define an opaque type for storing random-number-generator state. */
+typedef uint64_t RNG_STATE[RNG_STATE_WORDS];
+
+/* Define a datatype to use for all variables in a coNCePTuaL program. */
+typedef @NCPTL_INT@ ncptl_int;
+
+/* Define an enumerated type of the different command-line argument
+ * types.  Note the extra space before "{" which hides this enumerated
+ * type from the libncptl.i-constructing awk script in Makefile.am. */
+typedef enum  {
+  NCPTL_TYPE_INT,
+  NCPTL_TYPE_STRING
+} CMDLINE_TYPE;
+
+/* Define a union corresponding to CMDLINE_TYPE. */
+typedef union {
+  ncptl_int intval;
+  char *stringval;
+} CMDLINE_VALUE;
+
+/* Define a type that represents a command-line option. */
+typedef struct {
+  CMDLINE_TYPE type; /* Type of argument we expect. */
+  CMDLINE_VALUE *variable;  /* Variable that receives a value from the command line */
+  char *longname;    /* Long name of the argument */
+  char shortname;    /* One-letter argument name */
+  char *description; /* Description of the argument (for help strings) */
+  CMDLINE_VALUE defaultvalue;  /* Default value of the variable */
+} NCPTL_CMDLINE;
+
+/* Define a data type that represents a dynamically growing queue. */
+typedef struct {
+  ncptl_int eltbytes;        /* # of bytes per element */
+  ncptl_int alloced;         /* # of elements allocated */
+  ncptl_int used;            /* # of elements with valid data (including popped) */
+  ncptl_int head;            /* Next element to pop */
+  void *array;               /* Array of elements */
+} NCPTL_QUEUE;
+
+/* Define a data type that represents an unordered set. */
+typedef struct {
+  ncptl_int numchains;       /* # of hash-bucket chains */
+  ncptl_int keybytes;        /* # of bytes in each key */
+  ncptl_int valuebytes;      /* # of bytes in each value */
+  ncptl_int numelts;         /* # of key:value pairs in the set */
+  NCPTL_QUEUE **chains;      /* Array of hash-bucket chains */
+} NCPTL_SET;
+
+#ifndef NCPTL_LIBRARY_INTERNALS
+/* Define an opaque data type for use by the ncptl_log_*() functions. */
+struct ncptl_log_file_state;
+typedef struct ncptl_log_file_state NCPTL_LOG_FILE_STATE;
+
+/* Define an opaque data type for tracking virtual-to-physical task
+ * mappings. */
+struct ncptl_virt_phys_map;
+typedef struct ncptl_virt_phys_map NCPTL_VIRT_PHYS_MAP;
+#endif
+
+/* Correctly prototype the various rounding functions that aren't
+ * normally prototyped. */
+#ifdef HAVE_ROUND
+extern double round(double);
+#endif
+#ifdef HAVE_NEARBYINT
+extern double nearbyint(double);
+#endif
+
+/* SWIG: %} */
+
+
+/* -------------------------
+ * SWIG-specific definitions
+ * ------------------------- */
+
+#ifdef SWIG
+%include libncptl_extras.i
+#endif
+
+
+/* -----------------------------------
+ * Constants and variables that should
+ * be exposed to both C and SWIG
+ * ----------------------------------- */
+
+/* Define the current run-time library version number to match the
+ * Libtool version string's "current" field (@LIBTOOL_CURRENT@) while omitting
+ * "revision" (@LIBTOOL_REVISION@) and "age" (@LIBTOOL_AGE@).  Consequently, coNCePTuaL programs
+ * should be able to link against any coNCePTuaL library which
+ * defines the same interface even if the implementation is slightly
+ * different.
+ */
+#define NCPTL_RUN_TIME_VERSION @LIBTOOL_CURRENT@
+
+/* Define a printf() conversion specifier for an int64_t, a uint64_t,
+ * and a uint64_t in hexadecimal. */
+#ifndef PRId64
+# define PRId64 "lld"
+#endif
+#ifndef PRIu64
+# define PRIu64 "llu"
+#endif
+#ifndef PRIx64
+# define PRIx64 "llx"
+#endif
+
+/* Define INT64_C and UINT64_C if not already defined. */
+#ifndef INT64_C
+# define INT64_C(c) c ## LL
+#endif
+#ifndef UINT64_C
+# define UINT64_C(c) c ## ULL
+#endif
+
+/* Define an ncptl_int conversion specifier for printf() format strings. */
+#define NICS @NICS@
+
+/* Define as the minimum (i.e., most negative) number an ncptl_int can store. */
+#undef NCPTL_INT_MIN
+
+/* Define an enumerated type for the various aggregations we can
+ * perform on log data. */
+typedef enum {
+  NCPTL_FUNC_NO_AGGREGATE,   /* Log all data points. */
+  NCPTL_FUNC_MEAN,           /* Log only the arithmetic mean. */
+  NCPTL_FUNC_HARMONIC_MEAN,  /* Log only the harmonic mean. */
+  NCPTL_FUNC_GEOMETRIC_MEAN, /* Log only the geometric mean. */
+  NCPTL_FUNC_MEDIAN,         /* Log only the median. */
+  NCPTL_FUNC_STDEV,          /* Log only the standard deviation. */
+  NCPTL_FUNC_VARIANCE,       /* Log only the variance. */
+  NCPTL_FUNC_SUM,            /* Log only the sum. */
+  NCPTL_FUNC_MINIMUM,        /* Log only the minimum. */
+  NCPTL_FUNC_MAXIMUM,        /* Log only the maximum. */
+  NCPTL_FUNC_FINAL,          /* Log only the final measurement. */
+  NCPTL_FUNC_ONLY,           /* Log any data point, aborting if they're not all identical. */
+  NCPTL_FUNC_HISTOGRAM       /* Log a histogram of the data points */
+} LOG_AGGREGATE;
+
+/* Get access to the OS page size. */
+extern int ncptl_pagesize;
+
+/* Enable backends to initialize faster at the expense of getting
+ * completely bogus timing measurements. */
+extern int ncptl_fast_init;
+
+
+/* --------------------------------
+ * Miscellaneous run-time functions
+ * defined in runtimelib.c
+ * -------------------------------- */
+
+/* Output an error message (a la printf()) and abort the program. */
+#ifndef SWIG
+extern void ncptl_fatal (const char *, ...)
+#ifdef __GNUC__
+# if __GNUC__ > 2 || (__GNUC__ == 2 &&  __GNUC_MINOR__ >= 96)
+  __attribute__((format (printf, 1, 2)))  /* Function is like printf(). */
+  __attribute__((noreturn))               /* Function never returns. */
+# endif
+#endif
+;
+#endif
+
+/* Initialize the coNCePTuaL run-time library. */
+extern void ncptl_init (int, char *);
+
+/* Cleanly shut down the coNCePTuaL run-time library. */
+extern void ncptl_finalize (void);
+
+/* Fill a region of memory with known values. */
+extern void ncptl_fill_buffer (void *, ncptl_int, int);
+
+/* Verify the contents memory allocated by ncptl_malloc(). */
+extern ncptl_int ncptl_verify (void *, ncptl_int);
+
+/* Demand that the run-time library not trap a given signal. */
+extern void ncptl_permit_signal (int);
+
+/* Parse the command line. */
+extern void ncptl_parse_command_line (int, char **, NCPTL_CMDLINE *, int);
+
+/* Return the current time in microseconds. */
+extern uint64_t ncptl_time (void);
+
+/* Asynchronously set a variable to 1 after a given number of microseconds. */
+extern void ncptl_set_flag_after_usecs(volatile int *, uint64_t);
+
+/* Spin or sleep for a given number of microseconds. */
+extern void ncptl_udelay (int64_t, int);
+
+/* Initialize the random-number generator needed by ncptl_random_task(). */
+extern int ncptl_seed_random_task (int, ncptl_int);
+
+/* Return a randomly selected task number, possibly excluding the
+ * current task. */
+extern ncptl_int ncptl_random_task (ncptl_int, ncptl_int, ncptl_int);
+
+#ifndef NCPTL_LIBRARY_INTERNALS
+
+/* Allocate a data structure to map between (physical) processor IDs
+ * and (virtual) task IDs. */
+extern NCPTL_VIRT_PHYS_MAP *ncptl_allocate_task_map (ncptl_int);
+
+/* Map a (virtual) task ID to a (physical) processor ID. */
+extern ncptl_int ncptl_virtual_to_physical (NCPTL_VIRT_PHYS_MAP *, ncptl_int);
+
+/* Map a (physical) processor ID to a (virtual) task ID. */
+extern ncptl_int ncptl_physical_to_virtual (NCPTL_VIRT_PHYS_MAP *, ncptl_int);
+
+/* Assign a processor to a task ID. */
+extern ncptl_int ncptl_assign_processor (ncptl_int, ncptl_int,
+                                         NCPTL_VIRT_PHYS_MAP *, ncptl_int);
+
+#endif
+
+/* ---------------------------
+ * Memory-allocation functions
+ * defined in memfuncs.c
+ * --------------------------- */
+
+
+/* Apparently, SWIG wants function prototypes to end with ");" (i.e.,
+ * with no newline before the semicolon).  This requirement conflicts
+ * with the __attribute__((malloc)) #ifdefs we use below.  As a
+ * workaround, we #ifdef out everything after the function prototype,
+ * including the semicolon, and use a sed command in the Makefile to
+ * add a semicolon at the appropriate location. */
+
+/* Allocate memory with an optional alignment. */
+extern void *ncptl_malloc (ncptl_int, ncptl_int)
+#ifndef SWIG
+# ifdef __GNUC__
+#  if __GNUC__ > 2 || (__GNUC__ == 2 &&  __GNUC_MINOR__ >= 96)
+  __attribute__((malloc))       /* Return value cannot alias anything. */
+#  endif
+# endif
+;
+#endif
+
+
+/* Free memory returned by ncptl_malloc() or ncptl_realloc(). */
+extern void ncptl_free (void *);
+
+/* Reallocate memory with an optional alignment. */
+extern void *ncptl_realloc (void *, ncptl_int, ncptl_int)
+#ifndef SWIG
+# ifdef __GNUC__
+#  if __GNUC__ > 2 || (__GNUC__ == 2 &&  __GNUC_MINOR__ >= 96)
+  __attribute__((malloc))       /* Return value cannot alias anything. */
+#  endif
+# endif
+;
+#endif
+
+/* Provide the same functionality as strdup() but use ncptl_malloc()
+ * instead of malloc() to allocate memory. */
+#ifndef SWIG
+extern char *ncptl_strdup (const char *)
+#ifdef __GNUC__
+# if __GNUC__ > 2 || (__GNUC__ == 2 &&  __GNUC_MINOR__ >= 96)
+  __attribute__((malloc))       /* Return value cannot alias anything. */
+# endif
+#endif
+;
+#endif
+
+/* Allocate memory for a send/receive buffer or return previously
+ * allocated memory. */
+extern void *ncptl_malloc_message (ncptl_int, ncptl_int, ncptl_int, int)
+#ifndef SWIG
+# ifdef __GNUC__
+#  if __GNUC__ > 2 || (__GNUC__ == 2 &&  __GNUC_MINOR__ >= 96)
+  __attribute__((malloc))       /* Return value cannot alias anything. */
+#  endif
+# endif
+;
+#endif
+
+/* Allocate memory aligned a given distance from a page boundary. */
+extern void *ncptl_malloc_misaligned (ncptl_int, ncptl_int)
+#ifndef SWIG
+# ifdef __GNUC__
+#  if __GNUC__ > 2 || (__GNUC__ == 2 &&  __GNUC_MINOR__ >= 96)
+  __attribute__((malloc))       /* Return value cannot alias anything. */
+#  endif
+# endif
+;
+#endif
+
+/* Given a message-buffer number, return a pointer to the
+ * corresponding buffer data or NULL if the message buffer has not
+ * been initialized. */
+extern void *ncptl_get_message_buffer (ncptl_int);
+
+
+/* -------------------------
+ * Memory-touching functions
+ * defined in touchmem.c
+ * ------------------------- */
+
+/* Touch every byte in a given buffer. */
+extern void ncptl_touch_data (void *, ncptl_int);
+
+/* Walk a memory region of a given size with a given stride for a
+ * given number of accesses. */
+extern void ncptl_touch_memory (void *, ncptl_int, ncptl_int, ncptl_int,
+                                ncptl_int, ncptl_int);
+
+
+/* --------------------------
+ * Log-file functions defined
+ * in logfilefuncs.c
+ * -------------------------- */
+
+#ifndef NCPTL_LIBRARY_INTERNALS
+
+/* Add a backend-specific comment to the log file. */
+extern void ncptl_log_add_comment (const char *, const char *);
+
+/* Open a log file given a filename template and a processor number. */
+extern NCPTL_LOG_FILE_STATE *ncptl_log_open (char *, ncptl_int);
+
+/* Look up a key in the log-file comment database and return the
+ * corresponding value. */
+extern char *ncptl_log_lookup_string (NCPTL_LOG_FILE_STATE *, char *);
+
+/* Create a UUID to describe program execution. */
+extern char *ncptl_log_generate_uuid (void);
+
+/* Log a value with a given aggregate type and description to a given
+ * column of the log file. */
+extern void ncptl_log_write (NCPTL_LOG_FILE_STATE *,
+                             int, char *, LOG_AGGREGATE, double);
+
+/* Write a stock prologue to the log file. */
+extern void ncptl_log_write_prologue (NCPTL_LOG_FILE_STATE *,
+                                      char *, char *, char *, char *,
+                                      ncptl_int,
+                                      NCPTL_CMDLINE *, int,
+                                      char **);
+
+/* Write a stock epilogue to the log file. */
+extern void ncptl_log_write_epilogue (NCPTL_LOG_FILE_STATE *);
+
+/* Compute the values of all aggregate functions. */
+extern void ncptl_log_compute_aggregates (NCPTL_LOG_FILE_STATE *);
+
+/* Complete the current table and begin a new one. */
+extern void ncptl_log_commit_data (NCPTL_LOG_FILE_STATE *);
+
+/* Flush and close the log file. */
+extern void ncptl_log_close (NCPTL_LOG_FILE_STATE *);
+
+#endif
+
+
+/* ----------------------------
+ * Queue-manipulation functions
+ * defined in queuefuncs.c
+ * ---------------------------- */
+
+/* It's unlikely that a high-level language would need coNCePTuaL's
+ * queue- or set-manipulation functions.  Hence, we #ifdef out the
+ * following definitions when running with SWIG. */
+
+#ifndef SWIG
+
+/* Initialize a dynamically growing queue. */
+extern NCPTL_QUEUE *ncptl_queue_init (ncptl_int);
+
+/* Allocate a new data element at the end of a queue. */
+extern void *ncptl_queue_allocate (NCPTL_QUEUE *);
+
+/* Return the queue as an array of elements, optionally copying them. */
+extern void *ncptl_queue_contents (NCPTL_QUEUE *, int);
+
+/* Return the number of valid entries in the queue. */
+static inline ncptl_int ncptl_queue_length (NCPTL_QUEUE *queue)
+{
+  return queue->used - queue->head;
+}
+
+/* Empty a queue, freeing the memory it had previously used. */
+extern void ncptl_queue_empty (NCPTL_QUEUE *);
+
+/* Push an element onto a queue. */
+static inline void *ncptl_queue_push (NCPTL_QUEUE *queue, void *elt)
+{
+  return memcpy (ncptl_queue_allocate (queue), elt, queue->eltbytes);
+}
+
+/* Pop an element from a queue. */
+extern void *ncptl_queue_pop (NCPTL_QUEUE *);
+
+/* Pop an element from the tail of a queue. */
+extern void *ncptl_queue_pop_tail (NCPTL_QUEUE *);
+
+
+
+/* Initialize an unordered set. */
+extern NCPTL_SET *ncptl_set_init (ncptl_int, ncptl_int, ncptl_int);
+
+/* Given a key, return a pointer to the corresponding value. */
+extern void *ncptl_set_find (NCPTL_SET *, void *);
+
+/* Insert a key:value pair into a set. */
+extern void ncptl_set_insert (NCPTL_SET *, void *, void *);
+
+/* Invoke a user-defined function for every key:value pair in a set. */
+extern void ncptl_set_walk (NCPTL_SET *, void (*)(void *, void *));
+
+/* Given a key, remove the corresponding key:value pair from a set. */
+extern void ncptl_set_remove (NCPTL_SET *, void *);
+
+/* Empty a set, freeing the memory it had previously used. */
+extern void ncptl_set_empty (NCPTL_SET *);
+
+/* Return the number of valid entries in the set. */
+static inline ncptl_int ncptl_set_length (NCPTL_SET *set)
+{
+  return set->numelts;
+}
+
+#endif
+
+
+/* ----------------------------------------
+ * User-callable functions (ncptl_int and
+ * double versions) defined in userfuncs.c)
+ * ---------------------------------------- */
+
+/* Return the largest integer x such that x*x <= num. */
+extern ncptl_int ncptl_func_sqrt (ncptl_int);
+extern double ncptl_dfunc_sqrt (double);
+
+/* Return the largest-in-magnitude integer x such that x*x*x <= num. */
+extern ncptl_int ncptl_func_cbrt (ncptl_int);
+extern double ncptl_dfunc_cbrt (double);
+
+/* Return the nth root of of x. */
+extern ncptl_int ncptl_func_root (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_root (double, double);
+
+/* Return the minimum number of bits needed to represent a given number. */
+extern ncptl_int ncptl_func_bits (ncptl_int);
+extern double ncptl_dfunc_bits (double);
+
+/* Return a number left-shifted by a given number of bits. */
+extern ncptl_int ncptl_func_shift_left (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_shift_left (double, double);
+
+/* Return the floor of the base-10 logarithm of a given number. */
+extern ncptl_int ncptl_func_log10 (ncptl_int);
+extern double ncptl_dfunc_log10 (double);
+
+/* Return the given number rounded down to the nearest factor of a
+ * power of 10. */
+extern ncptl_int ncptl_func_factor10 (ncptl_int);
+extern double ncptl_dfunc_factor10 (double);
+
+/* Return the absolute value of a given number. */
+extern ncptl_int ncptl_func_abs (ncptl_int);
+extern double ncptl_dfunc_abs (double);
+
+/* Return one integer raised to the power of another integer. */
+extern ncptl_int ncptl_func_power (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_power (double, double);
+
+/* Return one integer modulo another integer. */
+extern ncptl_int ncptl_func_modulo (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_modulo (double, double);
+
+/* Return the floor of a number. */
+extern ncptl_int ncptl_func_floor (ncptl_int);
+extern double ncptl_dfunc_floor (double);
+
+/* Return the ceiling of a number. */
+extern ncptl_int ncptl_func_ceiling (ncptl_int);
+extern double ncptl_dfunc_ceiling (double);
+
+/* Return a number rounded away from zero. */
+extern ncptl_int ncptl_func_round (ncptl_int);
+extern double ncptl_dfunc_round (double);
+
+/* Return a task's parent in an N-ary tree. */
+extern ncptl_int ncptl_func_tree_parent (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_tree_parent (double, double);
+
+/* Return a child of a task in an N-ary tree. */
+extern ncptl_int ncptl_func_tree_child (ncptl_int, ncptl_int, ncptl_int);
+extern double ncptl_dfunc_tree_child (double, double, double);
+
+/* Return a task's x, y, or z coordinate on a 3-D mesh (or torus). */
+extern ncptl_int ncptl_func_grid_coord (ncptl_int, ncptl_int,
+                                        ncptl_int, ncptl_int, ncptl_int);
+extern double ncptl_dfunc_grid_coord (double, double,
+                                      double, double, double);
+
+/* Return a task's neighbor on a 3D mesh or torus. */
+extern ncptl_int ncptl_func_grid_neighbor (ncptl_int, ncptl_int,
+                                           ncptl_int, ncptl_int, ncptl_int,
+                                           ncptl_int, ncptl_int, ncptl_int);
+extern double ncptl_dfunc_grid_neighbor (double, double,
+                                         double, double, double,
+                                         double, double, double);
+
+/* Return a task's parent in an k-nomial tree. */
+extern ncptl_int ncptl_func_knomial_parent (ncptl_int, ncptl_int, ncptl_int);
+extern double ncptl_dfunc_knomial_parent (double, double, double);
+
+/* Return either a child of a task in a k-nomial tree or a tally of
+ * the number of children. */
+extern ncptl_int ncptl_func_knomial_child (ncptl_int, ncptl_int,
+                                           ncptl_int, ncptl_int,
+                                           ncptl_int);
+extern double ncptl_dfunc_knomial_child (double, double, double, double, double);
+
+#ifndef SWIG
+/* Return the minimum of a list of numbers. */
+extern ncptl_int ncptl_func_min (ncptl_int, ...);
+extern double ncptl_dfunc_min (double, ...);
+
+/* Return the maximum of a list of numbers. */
+extern ncptl_int ncptl_func_max (ncptl_int, ...);
+extern double ncptl_dfunc_max (double, ...);
+#endif
+
+/* Return a uniform random number from a range. */
+extern ncptl_int ncptl_func_random_uniform (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_random_uniform (double, double);
+
+/* Return a Gaussian random number with a given mean and standard deviation. */
+extern ncptl_int ncptl_func_random_gaussian (ncptl_int, ncptl_int);
+extern double ncptl_dfunc_random_gaussian (double, double);
+
+/* Return a Poisson random number with a given mean. */
+extern ncptl_int ncptl_func_random_poisson (ncptl_int);
+extern double ncptl_dfunc_random_poisson (double);
+
+#ifdef __cplusplus
+}
+#endif
+#endif

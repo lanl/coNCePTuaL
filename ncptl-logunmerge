@@ -1,0 +1,455 @@
+#! /usr/bin/env perl
+
+########################################################################
+#
+# Unmerge ncptl-logmerge output into multiple coNCePTuaL log files
+#
+# By Scott Pakin <pakin@lanl.gov>
+#
+# ----------------------------------------------------------------------
+#
+# Copyright (C) 2009, Los Alamos National Security, LLC
+# All rights reserved.
+# 
+# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# was produced under U.S. Government contract DE-AC52-06NA25396
+# for Los Alamos National Laboratory (LANL), which is operated by
+# Los Alamos National Security, LLC (LANS) for the U.S. Department
+# of Energy. The U.S. Government has rights to use, reproduce,
+# and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+# MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+# FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+# derivative works, such modified software should be clearly marked,
+# so as not to confuse it with the version available from LANL.
+# 
+# Additionally, redistribution and use in source and binary forms,
+# with or without modification, are permitted provided that the
+# following conditions are met:
+# 
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+# 
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer
+#     in the documentation and/or other materials provided with the
+#     distribution.
+# 
+#   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+#     National Laboratory, the U.S. Government, nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+# OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+########################################################################
+
+use POSIX;
+use DB_File;
+use File::Basename;
+use Getopt::Long;
+use Pod::Usage;
+use warnings;
+use strict;
+
+###########################################################################
+
+# Define some global variables needed to parse the command line.
+my $logfiletmpl;           # Template for the name of the log files to output
+my $want_docs = 0;         # 0=no documentation; 1=usage; 2=help; 3=man page
+my $extract_only;          # Comma-separated ranges of processes to extract
+my $verbose = 1;           # 1=show progress; 0=don't
+my $memcache = 8;          # Allow 8MB of memory cache
+
+# Define some other global variables.
+my ($progname, undef, undef) = fileparse $0, '\..*';    # Base executable name
+
+###########################################################################
+
+# Split a comma-separated list of ranges into a set of singletons.
+my %prior_singletons;      # Memoizing map from a string to a set of singletons
+sub range2set ($)
+{
+    my $rangestr = $_[0];
+    my %singletons;
+
+    return $prior_singletons{$rangestr} if defined $prior_singletons{$rangestr};
+    foreach my $range (split ",", $rangestr) {
+        if ($range =~ /^\s*(\d+)\s*-\s*(\d+)\s*$/o) {
+            # Dash-separated range
+            die "${progname}: Invalid process-list range \"$range\"\n" if $1 > $2;
+            foreach ($1 .. $2) {
+                $singletons{$_} = 1;
+            }
+        }
+        elsif ($range =~ /^\s*(\d+)\s*$/o) {
+            # Singleton
+            $singletons{$1} = 1;
+        }
+        else {
+            die "${progname}: Invalid process list \"$rangestr\"\n";
+        }
+    }
+    $prior_singletons{$rangestr} = \%singletons;
+    return \%singletons;
+}
+
+
+# Given a completion fraction in [0, 1], output a progress percentage
+# but only if it's changed from before.  Given a string, output it
+# verbatim followed by a newline character.
+my $progress_string = "?????";
+sub output_progress ($)
+{
+    my $new_string;         # Formatting string to output
+    my $final_string;       # 0=number; 1=final, textual message
+
+    if ("$_[0]" =~ /[^-+Ee.\d]/o) {
+        $final_string = 1;
+        $new_string = sprintf "%-6s\n", $_[0];
+    }
+    else {
+        $final_string = 0;
+        $new_string = sprintf "%5.1f%%", 100.0*$_[0];
+    }
+    if ($progress_string ne $new_string) {
+        $progress_string = $new_string;
+        print STDERR $progress_string;
+        if ($final_string) {
+            $progress_string = "?????";
+        }
+        else {
+            print STDERR "\b" x 6;
+        }
+    }
+}
+
+###########################################################################
+
+# Parse the command line.
+Getopt::Long::Configure ("noignore_case", "bundling");
+GetOptions ("u|usage"      => sub {$want_docs=1},
+            "h|help"       => sub {$want_docs=2},
+            "m|man"        => sub {$want_docs=3},
+            "texinfo-man"  => sub {eval "use Pod2NCPTLTexi";
+                                   die "${progname}: $@\n" if $@;
+                                   new TexinfoParser()->parse_from_file($0);
+                                   exit 0},
+            "p|procs=s"    => \$extract_only,
+            "q|quiet"      => sub {$verbose=0},
+            "M|memcache=i" => \$memcache,
+            "L|logfile=s"  => \$logfiletmpl) || pod2usage(2);
+pod2usage(-verbose => $want_docs-1,
+          -exitval => 1) if $want_docs;
+if (defined $logfiletmpl && $logfiletmpl !~ /(?<!\%)\%(\d*)p/) {
+    die "${progname}: The log-file template must contain a \"\%p\" (for processor number)\n";
+}
+pod2usage(-message => "${progname}: A log file needs to be specified explicitly",
+          -exitval => 2) if $#ARGV==-1 || $ARGV[0] eq "-";
+my $inputfile = $ARGV[0];
+$memcache *= 2**20;
+
+# Acquire some information about the input log file.
+my $is_merged = 0;      # 1="Merged coNCePTuaL log file" was found; 0=not found
+my $numtasks;           # Number of log files to generate
+my $numlines = 0;       # Number of lines in the input file
+open (INPUTLINES, "<$inputfile") || die "${progname}: Unable to open $inputfile\n";
+print STDERR "Acquiring information from $inputfile ... " if $verbose;
+while (my $oneline = <INPUTLINES>) {
+    $numlines++;
+    if ($oneline =~ /^\# Merged coNCePTuaL log file/o) {
+        $is_merged = 1;
+    }
+    elsif ($oneline =~ /^\# Number of tasks: (\d+)/o) {
+        if (defined $numtasks) {
+            die "${progname}: Unable to find a unique number of tasks in the input file\n" if $numtasks != $1;
+        }
+        else {
+            $numtasks = $1;
+        }
+    }
+    elsif (!defined $logfiletmpl && $oneline =~ /\# Log-file template: (.*)$/o) {
+        $logfiletmpl = basename $1;
+    }
+}
+output_progress "done." if $verbose;
+close INPUTLINES;
+die "${progname}: The input file does not look like a merged coNCePTuaL log file\n" if !$is_merged;
+die "${progname}: Unable to find a unique number of tasks in the input file\n" if !defined $numtasks;
+if (!defined $logfiletmpl) {
+    $logfiletmpl = "a.out-%p.log";
+    warn "${progname}: A log-file template was neither specified nor found; using \"$logfiletmpl\"\n";
+}
+if ($logfiletmpl !~ /(?<!\%)\%(\d*)p/) {
+    die "${progname}: Log-file template \"$logfiletmpl\" does not contain a \"\%p\" (for processor number)\n";
+}
+my %allprocs = map {($_ => 1)} (0 .. $numtasks-1);
+my %validprocs = defined $extract_only ? %{range2set $extract_only} : %allprocs;
+
+# Produce output filenames from the template name.
+my %outfilename;      # Map from a process number to a filename.
+foreach my $fnum (keys %validprocs) {
+    # Select a filename;
+    $outfilename{$fnum} = $logfiletmpl;
+    $outfilename{$fnum} =~ s/(?<!\%)\%(\d*)p/sprintf "\%$1d", $fnum/geo;
+    if ($outfilename{$fnum} =~ /(?<!\%)\%(\d*)r/o) {
+	# Generate a unique run number.
+	for (my $run=1; ; $run++) {
+	    my $newoutfilename = $outfilename{$fnum};
+	    $newoutfilename =~ s/(?<!\%)\%(\d*)r/sprintf "\%$1d", $run/geo;
+	    if (!-e $newoutfilename) {
+		$outfilename{$fnum} = $newoutfilename;
+		last;
+	    }
+	}
+    }
+
+    # Delete the file so we don't inadvertently append text to an
+    # existing file.
+    unlink $outfilename{$fnum};
+}
+
+# Extract the individual files to memory, occasionally flushing to
+# disk when memory gets tight.
+my $bytesused = 0;        # Total string space currently used
+my %task_to_file_data;    # Map from a task number to the complete file data
+my $flush_to_disk = sub {
+    # Flush all task data to disk then clear the data from memory.
+    while (my ($fnum, $filecontents) = each %task_to_file_data) {
+	# Append to the output file.
+	open (OUTFILE, ">>", $outfilename{$fnum}) || die "${progname}: Failed to open $outfilename{$fnum} ($!)\n";
+	print OUTFILE $task_to_file_data{$fnum};
+	close OUTFILE;
+	$task_to_file_data{$fnum} = "";
+    }
+    $bytesused = 0;
+};
+open (INPUTLINES, "<$inputfile") || die "${progname}: Unable to open $inputfile\n";
+if ($verbose) {
+    my $numprocs = keys %validprocs;
+    printf STDERR "Extracting %d %s ... ", $numprocs, $numprocs==1 ? "file" : "files";
+}
+my $lineno = 0;
+while (my $oneline = <INPUTLINES>) {
+    # Show our progress.
+    if ($verbose) {
+        $lineno++;
+        output_progress $lineno/$numlines if $verbose;
+    }
+
+    # Determine which output files receive the current line of input.
+    my $lineprocs = \%validprocs;      # Processes who output the current line
+    my $origline = $oneline;           # Line from original log file
+    if (substr($oneline, 0, 2) eq "#[") {
+	if ($oneline =~ /^\#\[(\d+)\](.*)$/os) {
+	    # Lines beginning with "#[...]" where "..." is a single
+	    # number get written to a single log file.
+	    $origline = $2;
+	    $lineprocs = {$1 => 1};
+	}
+	elsif ($oneline =~ /^\#\[([^\#]+?)\](.*)$/os) {
+	    # Other lines beginning with "#[...]" get written only to
+	    # a set of log files.
+	    $origline = $2;
+	    $lineprocs = range2set $1;
+	}
+	else {
+	    warn "${progname}: Unable to parse line $lineno; skipping\n";
+	    $lineprocs = {};
+	}
+    }
+    elsif ($oneline =~ /^\# Merged coNCePTuaL log file/o) {
+        $origline = "# coNCePTuaL log file\n";
+    }
+    elsif ($oneline =~ /^\# ==========================/o) {
+        $origline = "# ===================\n";
+    }
+
+    # Associate the current input line with a set of files.
+    my $origlinelen = length $origline;
+    foreach my $fnum (keys %$lineprocs) {
+        next if !defined $validprocs{$fnum};
+        $task_to_file_data{$fnum} .= $origline;
+	$bytesused += $origlinelen;
+    }
+
+    # Periodically flush the memory cache to disk.
+    $flush_to_disk->() if $bytesused > $memcache;
+}
+$flush_to_disk->();      # Flush any remaining data.
+output_progress "done." if $verbose;
+close INPUTLINES;
+exit 0;
+
+###########################################################################
+
+__END__
+
+=head1 NAME
+
+ncptl-logunmerge - Recover individual coNCePTuaL log files from ncptl-logmerge output
+
+
+=head1 SYNOPSIS
+
+ncptl-logunmerge
+B<--usage> | B<--help> | B<--man>
+
+=for texinfo
+@sp 1
+@noindent
+
+ncptl-logunmerge
+[B<--logfile>=I<template>]
+[B<--procs>=I<process_list>]
+[B<--quiet>]
+[B<--memcache>=I<megabytes>]
+I<filename>
+
+
+=head1 DESCRIPTION
+
+B<ncptl-logmerge> merges a set of coNCePTuaL log files into a more
+convenient, single file.  B<ncptl-logunmerge> performs the inverse
+operation, splitting a merged file into separate coNCePTuaL log files.
+Specifically, unadorned comment lines such as the following are
+written to all log files:
+
+    # Executable name: /home/me/mybenchmark
+
+Comment lines which specify processor ranges are written to the
+appropriate log files.  For example, the following line--with the
+leading C<#[35,43,89]> stripped--is written only to the log files
+corresponding to S<processes 35,> 43, S<and 89:>
+
+    #[35,43,89]# Minimum sleep time: 9.68 +/- 0.556776
+      microseconds (ideal: 1 +/- 0)
+
+Non-comment lines (i.e., measurement data) such as the following are
+written only to S<process 0's> log file:
+
+    "Contention factor","Msg. size (B)","1/2 RTT (us)","MB/s"
+    "(all data)","(all data)","(all data)","(all data)"
+    0,1048576,1368.0295,730.978389
+    0,524288,691.9115,722.6357706
+
+
+=head1 OPTIONS
+
+B<ncptl-logunmerge> accepts the following command-line options:
+
+=over 6
+
+=item B<-u>, B<--usage>
+
+Output L<"SYNOPSIS"> then exit the program.
+
+=item B<-h>, B<--help>
+
+Output L<"SYNOPSIS"> and L<"OPTIONS"> then exit the program.
+
+=item B<-m>, B<--man>
+
+Output a complete Unix man ("manual") page for B<ncptl-logunmerge>
+then exit the program.
+
+=item B<-L> I<template>, B<--logfile>=I<template>
+
+Specify a template for the names of the generated log files.  The
+template must contain the literal string C<%p> which will be replaced
+by the appropriate processor number.  The template may contain the
+literal string C<%r> (run number) which will be replaced by the
+smallest integer which produces a filename that does not already
+exist.  In addition, C<printf()>-style field widths can be used with
+C<%p> and C<%r>.  For example, C<%04p> outputs the processor number as
+a four-digit number padded on the left with zeroes.
+
+If C<--logfile> is not specified, B<ncptl-logunmerge> takes
+the default template from the merged log file's C<Log-file template>
+line, discards the directory component of the filename, and uses the
+result as the log-file template.
+
+=item B<-p> I<process_list>, B<--procs>=I<process_list>
+
+Identify a subset of log files to extract from the merged log file.
+By default, B<ncptl-logunmerge> extracts all of the constituent log
+files.  I<process_list> is a comma-separated list of process number or
+process ranges.
+
+=item B<-q>, B<--quiet>
+
+Suppress progress output.  Normally, B<ncptl-logunmerge> outputs
+status information regarding its operation.  The B<--quiet> option
+instruct B<ncptl-logunmerge> to output only warning and error
+messages.
+
+=item B<-M> I<megabytes>, B<--memcache>=I<megabytes>
+
+Specify the size of the in-memory file cache.  By default the program
+keeps up to S<8 MB> of extracted file data resident in memory to
+improve performance.  The B<--memcache> option enables more or less
+data to be cached in memory.  For example, B<--memcache=512> specifies
+that S<512 MB> of memory should be reserved for the file cache.
+
+=back
+
+In addition to the preceding options B<ncptl-logunmerge> requires the
+name of a merged coNCePTuaL log file.  If not provided,
+B<ncptl-logunmerge> reads the contents of the merged coNCePTuaL log
+file from standard input.
+
+
+=head1 DIAGNOSTICS
+
+=over 6
+
+=item C<The input file does not look like a merged coNCePTuaL log file>
+
+Only the output from B<ncptl-logmerge> is valid input to
+B<ncptl-logunmerge>.
+
+=item C<Unable to find a unique number of tasks in the input file>
+
+B<ncptl-logunmerge> determines the number of files to generate from
+the C<Number of tasks> prologue comment.  If that comment does not
+appear or takes on different values, B<ncptl-logunmerge> rejects the
+input file.
+
+=back
+
+
+=head1 EXAMPLES
+
+Extract a set of coNCePTuaL log files from a merged log file and name
+the extracted files F<happy-0.log>, F<happy-1.log>, F<happy-2.log>,
+etc.:
+
+    ncptl-logunmerge --logfile=happy-%p.log mybenchmark-all.log
+
+Extract only F<mybenchmark-0.log>, F<mybenchmark-50.log>,
+F<mybenchmark-51.log>, F<mybenchmark-52.log>, and
+F<mybenchmark-100.log> from F<mybenchmark-all.log> (assuming that
+F<mybenchmark-all.log> contains the line C<# Log-file template:
+mybenchmark-%p.log>):
+
+    ncptl-logunmerge --procs=0,50-52,100 mybenchmark-all.log
+
+
+=head1 SEE ALSO
+
+ncptl-logmerge(1), ncptl-logextract(1), printf(3),
+the coNCePTuaL User's Guide
+
+
+=head1 AUTHOR
+
+Scott Pakin, I<pakin@lanl.gov>

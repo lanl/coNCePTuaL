@@ -1,0 +1,74 @@
+                   +------------------------------+
+                   |          coNCePTuaL          |
+                   |          ----------          |
+                   |  A network correctness and   |
+                   | performance testing language |
+                   |                              |
+                   |       By Scott Pakin,        |
+                   |        pakin@lanl.gov        |
+                   +------------------------------+
+
+
+Description
+===========
+
+coNCePTuaL is a domain-specific programming language for rapidly
+generating programs that measure the performance and/or test the
+correctness of networks and network protocol layers.  A few lines of
+coNCePTuaL code can produce programs that would take significantly
+more effort to write in a conventional programming language.
+
+
+Installation
+============
+
+The basic installation procedure is as follows:
+
+    ./configure     <== Creates a Makefile
+    make            <== Uses the Makefile to build coNCePTuaL
+    make check      <== Verifies that coNCePTuaL built properly [optional]
+    make install    <== Installs coNCePTuaL
+
+In practice, however, it is common to pass arguments to configure to
+customize coNCePTuaL's configuration.  Running "./configure --help"
+provides information about the various options and the coNCePTuaL
+user's guide (doc/conceptual.pdf) expounds upon these in greater
+detail.  A non-root user installing coNCePTuaL for his own use (as
+opposed to the root user installing coNCePTuaL cluster-wide) will
+typically issue a command like the following:
+
+    ./configure --prefix=/home/pakin/conceptual
+
+The preceding --prefix option tells "make install" to install into
+/home/pakin/conceptual/bin, /home/pakin/conceptual/lib,
+/home/pakin/conceptual/man, etc. instead of the default
+/usr/local/{bin,lib,man}.  (Of course, "/home/pakin" should be
+replaced with the directory you intend to use as the root of the
+coNCePTuaL installation tree.)
+
+To reconfigure coNCePTuaL after running "./configure" and "make", run
+"make distclean" to restore coNCePTuaL to its pre-"./configure" state.
+
+
+Usage
+=====
+
+The coNCePTuaL distribution comes with a large set of sample programs.
+Here's how one might compile and run a latency test using the c_udgram
+backend (which runs locally on a workstation):
+
+   # Replace [...] with the appropriate directory for your installation
+   # (e.g., /usr/local/share/conceptual).
+   ncptl --backend=c_udgram --output=latency [...]/examples/latency.ncptl
+
+   # The following should take a bit of time to run.  If the dynamic
+   # linker can't find the ncptl library then you should append the
+   # full path of the coNCePTuaL [...]/lib/ directory to your
+   # LD_LIBRARY_PATH environment variable.
+   ./latency --tasks=2
+
+   # Let's look at the results.
+   cat latency-0.log
+
+See the coNCePTuaL user's guide (doc/conceptual.pdf) for a thorough
+description of coNCePTuaL usage.

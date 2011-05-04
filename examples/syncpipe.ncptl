@@ -1,0 +1,65 @@
+# Synchronous pipe benchmark
+# Based on the LSE code by Monk et al. (MITRE)
+# Converted to coNCePTuaL by Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+# Parse the command line.
+reps is "Number of repetitions of each pipeline flow" and comes from
+ "--reps" or "-r" with default 10000.
+msgsize is "Number of bytes per message" and comes from "--bytes" or
+  "-b" with default 64K.
+comptime is "Number of microseconds of \"computation\"" and comes from
+  "--compute" or "-t" with default 0.
+num_cols is "Number of columns in the task grid" and comes from
+  "--columns" or "-c" with default 4.
+
+Assert that "there must be at least one column" with num_cols>=1.
+
+Let num_rows be num_tasks/num_cols while {
+  # Ensure we have a valid processor grid.
+  assert that "the number of columns must evenly divide the total number
+    of processors" with num_cols divides num_tasks then
+  assert that "there must be at least one row in the processor array"
+    with num_rows>1 then
+
+  # Perform a number of repetitions of the test and gather performance
+  # statistics.
+  for reps repetitions {
+    # Reset the clock (and other counters).
+    task num_tasks-1 resets its counters then
+
+    # All tasks except those in the first row request data from each
+    # task in the previous row then receive the data.
+    for each x_delta in {0, ..., num_cols-1} {
+      task src such that src>=num_cols sends a 0 byte message to unsuspecting task
+        torus_neighbor(src, num_cols, -x_delta, num_rows, -1) then
+      task torus_neighbor(src, num_cols, x_delta, num_rows, +1) receives a
+        msgsize byte message from task src such that src<num_tasks-num_cols
+    } then
+
+    # All tasks except those in the first and last rows delay for a
+    # specified length of time.
+    task inner such that inner>=num_cols /\ inner<num_tasks-num_cols computes for
+      comptime microseconds then
+
+    # All tasks except those in the last row await a data request from
+    # each task in the subsequent row then provide the data.
+    for each x_delta in {0, ..., num_cols-1} {
+      task torus_neighbor(src, num_cols, -x_delta, num_rows, -1) receives
+        a 0 byte message from task src such that src>=num_cols then
+      task src such that src<num_tasks-num_cols sends a msgsize byte message to
+        unsuspecting task torus_neighbor(src, num_cols, x_delta, num_rows, +1)
+    } then
+
+    # Log a histogram and various statistics of the interarrival times.
+    task num_tasks-1 logs a histogram of elapsed_usecs/(num_cols*1000) as
+                       "Interarrival time (ms)"
+                     and the mean of elapsed_usecs/(num_cols*1000) as
+                       "Interarrival time (ms)"
+                     and the standard deviation of
+                       elapsed_usecs/(num_cols*1000) as "Interarrival time (ms)"
+                     and the mean of (msgsize*num_cols/elapsed_usecs)*(1E6/1M) as
+                       "Bandwidth (MB/s)"
+  }
+}

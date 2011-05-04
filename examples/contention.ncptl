@@ -1,0 +1,28 @@
+# Measure the intratask network contention factor as used by the
+# analytical SAGE performance model
+#
+# Benchmark by Darren J. Kerbyson
+# Implementation by Scott Pakin
+
+Require language version "1.2".
+
+reps is "Number of repetitions" and comes from "--reps" or "-r" with default 100.
+minsize is "Minimum message size" and comes from "--minsize" or "-m" with default 1M.
+maxsize is "Maximum message size" and comes from "--maxsize" or "-x" with default 1M.
+
+Assert that "the number of tasks must be even" with num_tasks is even.
+
+For each j in {0, ..., num_tasks/2-1} {
+  task 0 outputs "Working on contention factor " and j then
+  for each msgsize in {maxsize, maxsize/2, maxsize/4, ..., minsize} {
+    all tasks synchronize then
+    tasks i such that i<=j reset their counters then
+    tasks i such that i<=j asynchronously send reps msgsize-byte messages from buffer 0 to tasks i+num_tasks/2 then
+    all tasks await completion then
+    all tasks synchronize then
+    tasks i such that i<=j log j as "Contention factor" and
+                     msgsize as "Msg. size (B)" and
+                     elapsed_usecs/msgs_sent as "Overhead/message (us)" and
+                     (bytes_sent*1E6)/(elapsed_usecs*1M) as "Rate (MB/s)"
+  }
+}

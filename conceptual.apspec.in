@@ -1,0 +1,153 @@
+# -*- shell-script -*-
+
+[Meta]
+ShortName: conceptual
+SoftwareVersion: @VERSION@
+DisplayName: coNCePTuaL
+RootName: @conceptual.sourceforge.net/conceptual:$SOFTWAREVERSION
+PackageFileName: coNCePTuaL_$SOFTWAREVERSION.package
+Summary: A Network Correctness and Performance Testing Language
+Maintainer: Scott Pakin <pakin@lanl.gov>
+Packager: Scott Pakin <pakin@lanl.gov>
+PackageVersion: 1
+CPUArchitectures: @AP_ARCH@
+AutopackageTarget: 1.4
+InterfaceVersion: @LIBTOOL_CURRENT@.@LIBTOOL_REVISION@
+License: New BSD license, slightly modified
+URL: http://conceptual.sourceforge.net/
+
+[Description]
+coNCePTuaL is a domain-specific programming language for rapidly
+generating programs that measure the performance and/or test the
+correctness of networks and network protocol layers.  A few lines of
+coNCePTuaL code can produce programs that would take significantly
+more effort to write in a conventional programming language.
+
+[Globals]
+# Define a purely relative version of pkgpythondir.
+prefix=
+pythondir="@pythondir@"
+relative_pkgpythondir=`echo "@pkgpythondir@" | sed 's,/,,'`
+export relative_pkgpythondir
+
+[BuildPrepare]
+# Create a "pretend" ncptl_config.py that represents a similar build but
+# without all of Autopackage's hanky-panky.
+trace 'building a "pretend" ncptl_config.py'
+./configure CC=gcc CFLAGS="-O2 -pipe" --prefix="/P-R-E-F-I-X"
+make ncptl_config.py
+mv ncptl_config.py ncptl_config.py.PRETEND
+
+# We have to include .libs in the library path because if we don't,
+# then apgcc will give preference to an installed libncptl.so over the
+# one we're about to build when linking the writelog and validatetimer
+# applications.
+trace 'building coNCePTuaL'
+LDFLAGS="$LDFLAGS -L.libs"
+APBUILD_STATIC="popt uuid pci"
+export LDFLAGS APBUILD_STATIC
+prepareBuild --prefix="$PREFIX"
+
+# Replace ncptl_config.py with our "pretend" version.
+trace 'replacing the real ncptl_config.py with the "pretend" version'
+mv ncptl_config.py.PRETEND "$build_root/$relative_pkgpythondir/ncptl_config.py"
+cp py-compile $build_root
+
+# The Zero Install injector can't automatically run a script after
+# unpacking an archive.  For its benefit we create a script that
+# appropriately patches ncptl_config.py then passes control to ncptl.py.
+pkgdatadir=`make prefix=$build_root show-pkgdatadir 2>&1 | fgrep build-root`
+trace "creating a 0ncptl wrapper script in $pkgdatadir"
+zeroncptl="$pkgdatadir/0ncptl"
+echo '#! /bin/sh' > $zeroncptl 
+cat >> $zeroncptl <<'ZERONCPTL'
+scriptdir=`python -c 'import sys, os; print os.path.abspath(os.path.dirname(sys.argv[1]) + "/../..")' $0`
+pkgpythondir=`ls -d "$scriptdir"/lib/python*/site-packages/conceptual`
+flagfile="$scriptdir/.0ncptl"
+if [ ! -f "$flagfile" ] ; then
+  configpy="$pkgpythondir/ncptl_config.py"
+  cat $configpy | sed "s,/P-R-E-F-I-X,$scriptdir,g" > $configpy.tmp
+  mv $configpy.tmp $configpy
+  $scriptdir/py-compile $configpy
+  touch "$flagfile"
+fi
+PYTHONPATH=$PYTHONPATH:$pkgpythondir
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$scriptdir/lib
+export PYTHONPATH LD_LIBRARY_PATH
+$pkgpythondir/ncptl.py "$@"
+ZERONCPTL
+chmod +x $zeroncptl
+
+# Keep makepackage from complaining about encountering symbolic links in
+# the build directory.
+trace "removing symbolic links (to be recreated at installation time)"
+rm $build_root/bin/ncptl
+rm $build_root/bin/ncptl-replaytrace
+
+[BuildUnprepare]
+unprepareBuild
+
+[Prepare]
+requireAtLeast "@python.org/python:@PYTHON_VERSION@"
+removeOwningPackage "$PREFIX/bin/ncptl"
+
+[Imports]
+echo '*' | import
+
+[Install]
+# Install most of what we need to install.
+prefix=.
+exec_prefix=.
+datarootdir="@datarootdir@"
+datadir="@datadir@"
+installExe @bindir@/*
+installMan 1 @mandir@/man1/*
+installData @datadir@/@PACKAGE@/*
+copyFiles @libdir@/*.a "$PREFIX/lib"
+installLib @libdir@/*.so.*.*.*
+outputStatus "Installing C header files..."
+copyFiles --silent @includedir@/* "$PREFIX/include"
+
+# Install the Python modules and patch ncptl_config.py.
+outputStatus "Installing Python modules..."
+copyFiles --silent @libdir@/python@PYTHON_VERSION@ "$PREFIX/lib/"
+PYTHON="@PYTHON@"
+export PYTHON
+cat "$relative_pkgpythondir/ncptl_config.py" | replaceStr "/P-R-E-F-I-X" "$PREFIX" > "$PREFIX/$relative_pkgpythondir/ncptl_config.py"
+./py-compile --basedir="$PREFIX/$relative_pkgpythondir" ncptl_config.py 2>&1 > /dev/null
+for pyfile in `find @libdir@/python@PYTHON_VERSION@ -type f | sed "s,^\.,$PREFIX,"` ; do
+  logFile $pyfile
+done
+
+# Notify the user if Python is likely to be unhappy because of
+# version-number mismatches.
+outputTest "if $DISPLAYNAME's Python modules are compatible with `which $PYTHON`'s"
+USERS_PYTHON_VERSION=`"$PYTHON" -c 'import sys, string; print sys.version[:3]'`
+if [ "$USERS_PYTHON_VERSION" != @PYTHON_VERSION@ ] ; then
+  outputTestFail
+  warn "Python version mismatch: @PYTHON_VERSION@ (packaged) vs. $USERS_PYTHON_VERSION (installed)"
+  outputStatus "WARNING: $DISPLAYNAME was built with Python version @PYTHON_VERSION@ but your system is running Python $USERS_PYTHON_VERSION.  $DISPLAYNAME's interpreter-based backends may be unreliable."
+else
+  outputTestPass
+fi
+
+# Install the coNCePTuaL Emacs info pages.
+installInfo @infodir@/conceptual.info*
+
+# Create bootstrap scripts that automatically set PYTHONPATH correctly.
+outputStatus "Creating wrapper scripts..."
+for filename in @bindir@/* ; do
+  if [ -L $filename ] ; then
+    createBootstrapScript \
+      "$PREFIX/$relative_pkgpythondir"/`basename $filename`.py \
+      "$PREFIX/$filename" \
+      "export PYTHONPATH=\"$PREFIX/$relative_pkgpythondir:\$PYTHONPATH\""
+  fi
+done
+
+# Use Autopackage to create symbolic links.
+linkFile --silent "$PREFIX/$relative_pkgpythondir"/ncptl.py "$PREFIX/bin/ncptl"
+linkFile --silent "$PREFIX/$relative_pkgpythondir"/ncptl-replaytrace.py "$PREFIX/bin/ncptl-replaytrace"
+
+[Uninstall]
+uninstallFromLog

@@ -1,0 +1,16 @@
+# Ensure that every task can send to every other task.
+
+Require language version "1.2".
+
+msgsize is "Number of bytes each task sends" and comes from "--msgsize" or "-m" with default 1K.
+testlen is "Number of minutes for which to run" and comes from "--duration" or "-d" with default 1.
+
+Assert that "this program requires at least two tasks" with num_tasks>1.
+
+For testlen minutes
+  For each ofs in {1, ..., num_tasks-1} {
+    all tasks src asynchronously send a msgsize byte page aligned message with verification to task (src+ofs) mod num_tasks then
+    all tasks await completion
+  }
+
+All tasks log bit_errors as "Bit errors".

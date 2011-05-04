@@ -1,0 +1,4091 @@
+#! /usr/bin/env perl
+
+########################################################################
+#
+# Extract various bits of information from a coNCePTuaL log file
+#
+# By Scott Pakin <pakin@lanl.gov>
+#
+# ----------------------------------------------------------------------
+#
+# Copyright (C) 2009, Los Alamos National Security, LLC
+# All rights reserved.
+# 
+# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# was produced under U.S. Government contract DE-AC52-06NA25396
+# for Los Alamos National Laboratory (LANL), which is operated by
+# Los Alamos National Security, LLC (LANS) for the U.S. Department
+# of Energy. The U.S. Government has rights to use, reproduce,
+# and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+# MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+# FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+# derivative works, such modified software should be clearly marked,
+# so as not to confuse it with the version available from LANL.
+# 
+# Additionally, redistribution and use in source and binary forms,
+# with or without modification, are permitted provided that the
+# following conditions are met:
+# 
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+# 
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer
+#     in the documentation and/or other materials provided with the
+#     distribution.
+# 
+#   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+#     National Laboratory, the U.S. Government, nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+# OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+########################################################################
+
+use File::Basename;
+use File::Spec;
+use File::Find;
+use Getopt::Long;
+use Pod::Usage;
+use Pod::Parser;
+use Pod::Html;
+use POSIX;
+use warnings;
+use strict;
+
+###########################################################################
+
+# Get the base name of our executable.
+my ($progname, undef, undef) = fileparse $0, '\..*';
+
+# Define the number of header rows we expect to see.  This is normally
+# 2, but specifying "--merge=all" and either "--showfnames=first" or
+# "--showfnames=all" increases the number to 3.
+my $numheaderrows = 2;
+
+# Declare some variables that may be set from the command line.
+my $want_docs = 0;      # 1=output synopsis; 2=output synopsis and options; 3=output man page
+my $extract = "data";   # What to extract from the log file
+my $format;             # Output format for extracted data
+my @options;            # Additional options for formatting output
+my @before;             # Text to output before regular output
+my @after;              # Text to output after regular output
+my $forcemerge;         # [<filler #>]=try extra hard to merge incompatible log files
+my $outfile = "-";      # File to which to write our output
+my $unmerge_procs;      # Comma-separated ranges of processes to extract from a merged file
+my $verbose = 1;        # 1=show progress; 0=don't
+
+# Keep track of command-line options we actually used.
+my %optsused;
+
+###########################################################################
+
+# Define all of the program's arguments and their descriptions.
+my @arguments =
+    (["data" => ["Extract measurement data",
+                 [["csv" => ["Output each table in comma-separated-value format",
+                             [["noheaders" => ["Do not output column headers"]],
+                              ["colbegin=I<string>" => ["Specify the text placed at the beginning of each data column [default: '']"]],
+                              ["colsep=I<string>" => ["Specify the text used to separate data columns [default: ',']"]],
+                              ["colend=I<string>" => ["Specify the text placed at the end of each data column [default: '']"]],
+                              ["rowbegin=I<string>" => ["Specify the text placed at the beginning of each data row [default: '']"]],
+                              ["rowsep=I<string>" => ["Specify the text used to separate data rows [default: '']"]],
+                              ["rowend=I<string>" => ["Specify the text placed at the end of each data row [default: '\\n']"]],
+                              ["hcolbegin=I<string>" => ["Specify the text placed at the beginning of each header column [default: same as colbegin]"]],
+                              ["hcolsep=I<string>" => ["Specify the text used to separate header columns [default: same as colsep]"]],
+                              ["hcolend=I<string>" => ["Specify the text placed at the end of each header column [default: same as colend]"]],
+                              ["hrowbegin=I<string>" => ["Specify the text placed at the beginning of each header row [default: same as rowbegin]"]],
+                              ["hrowsep=I<string>" => ["Specify the text used to separate header rows [default: same as rowsep]"]],
+                              ["hrowend=I<string>" => ["Specify the text placed at the end of each header row [default: same as rowend]"]],
+                              ["tablebegin=I<string>" => ["Specify the text placed at the beginning of each table [default: '']"]],
+                              ["tablesep=I<string>" => ["Specify the text used to separate tables [default: '\\n']"]],
+                              ["tableend=I<string>" => ["Specify the text placed at the end of each table [default: '']"]],
+                              ["quote=I<string>" => ["Specify the text used to begin quoted text [default: '\"']"]],
+                              ["unquote=I<string>" => ["Specify the text used to end quoted text [default: same as quote]"]],
+                              ["excel" => ["Output strings in a format readable by Microsoft Excel"]],
+                              ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                              ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]],
+                  ["tsv" => ["Output each table in tab-separated-value format",
+                             [["noheaders" => ["Do not output column headers"]],
+                              ["colbegin=I<string>" => ["Specify the text placed at the beginning of each data column [default: '']"]],
+                              ["colsep=I<string>" => ["Specify the text used to separate data columns [default: '\\t']"]],
+                              ["colend=I<string>" => ["Specify the text placed at the end of each data column [default: '']"]],
+                              ["rowbegin=I<string>" => ["Specify the text placed at the beginning of each data row [default: '']"]],
+                              ["rowsep=I<string>" => ["Specify the text used to separate data rows [default: '']"]],
+                              ["rowend=I<string>" => ["Specify the text placed at the end of each data row [default: '\\n']"]],
+                              ["hcolbegin=I<string>" => ["Specify the text placed at the beginning of each header column [default: same as colbegin]"]],
+                              ["hcolsep=I<string>" => ["Specify the text used to separate header columns [default: same as colsep]"]],
+                              ["hcolend=I<string>" => ["Specify the text placed at the end of each header column [default: same as colend]"]],
+                              ["hrowbegin=I<string>" => ["Specify the text placed at the beginning of each header row [default: same as rowbegin]"]],
+                              ["hrowsep=I<string>" => ["Specify the text used to separate header rows [default: same as rowsep]"]],
+                              ["hrowend=I<string>" => ["Specify the text placed at the end of each header row [default: same as rowend]"]],
+                              ["tablebegin=I<string>" => ["Specify the text placed at the beginning of each table [default: '']"]],
+                              ["tablesep=I<string>" => ["Specify the text used to separate tables [default: '\\n']"]],
+                              ["tableend=I<string>" => ["Specify the text placed at the end of each table [default: '']"]],
+                              ["quote=I<string>" => ["Specify the text used to begin quoted text [default: '\"']"]],
+                              ["unquote=I<string>" => ["Specify the text used to end quoted text [default: same as quote]"]],
+                              ["excel" => ["Output strings in a format readable by Microsoft Excel"]],
+                              ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                              ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]],
+                  ["html" => ["Output each table in HTML table format",
+                              [["noheaders" => ["Do not output column headers"]],
+                               ["colbegin=I<string>" => ["Specify the text placed at the beginning of each data column [default: '<td>']"]],
+                               ["colsep=I<string>" => ["Specify the text used to separate data columns [default: ' ']"]],
+                               ["colend=I<string>" => ["Specify the text placed at the end of each data column [default: '</td>']"]],
+                               ["rowbegin=I<string>" => ["Specify the text placed at the beginning of each data row [default: '<tr>']"]],
+                               ["rowsep=I<string>" => ["Specify the text used to separate data rows [default: '']"]],
+                               ["rowend=I<string>" => ["Specify the text placed at the end of each data row [default: '</tr>\\n']"]],
+                               ["hcolbegin=I<string>" => ["Specify the text placed at the beginning of each header column [default: '<th>']"]],
+                               ["hcolsep=I<string>" => ["Specify the text used to separate header columns [default: same as colsep]"]],
+                               ["hcolend=I<string>" => ["Specify the text placed at the end of each header column [default: '</th>']"]],
+                               ["hrowbegin=I<string>" => ["Specify the text placed at the beginning of each header row [default: same as rowbegin]"]],
+                               ["hrowsep=I<string>" => ["Specify the text used to separate header rows [default: same as rowsep]"]],
+                               ["hrowend=I<string>" => ["Specify the text placed at the end of each header row [default: same as rowend]"]],
+                               ["tablebegin=I<string>" => ["Specify the text placed at the beginning of each table [default: '<table>\\n']"]],
+                               ["tablesep=I<string>" => ["Specify the text used to separate tables [default: '']"]],
+                               ["tableend=I<string>" => ["Specify the text placed at the end of each table [default: '</table>\\n']"]],
+                               ["quote=I<string>" => ["Specify the text used to begin quoted text [default: '']"]],
+                               ["unquote=I<string>" => ["Specify the text used to end quoted text [default: same as quote]"]],
+                               ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                               ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]],
+                  ["gnuplot" => ["Output each table as a gnuplot data file",
+                             [["noheaders" => ["Do not output column headers"]],
+                              ["colbegin=I<string>" => ["Specify the text placed at the beginning of each data column [default: '']"]],
+                              ["colsep=I<string>" => ["Specify the text used to separate data columns [default: ' ']"]],
+                              ["colend=I<string>" => ["Specify the text placed at the end of each data column [default: '']"]],
+                              ["rowbegin=I<string>" => ["Specify the text placed at the beginning of each data row [default: '']"]],
+                              ["rowsep=I<string>" => ["Specify the text used to separate data rows [default: '']"]],
+                              ["rowend=I<string>" => ["Specify the text placed at the end of each data row [default: '\\n']"]],
+                              ["hcolbegin=I<string>" => ["Specify the text placed at the beginning of each header column [default: same as colbegin]"]],
+                              ["hcolsep=I<string>" => ["Specify the text used to separate header columns [default: same as colsep]"]],
+                              ["hcolend=I<string>" => ["Specify the text placed at the end of each header column [default: same as colend]"]],
+                              ["hrowbegin=I<string>" => ["Specify the text placed at the beginning of each header row [default: '# '"]],
+                              ["hrowsep=I<string>" => ["Specify the text used to separate header rows [default: same as rowsep]"]],
+                              ["hrowend=I<string>" => ["Specify the text placed at the end of each header row [default: same as rowend]"]],
+                              ["tablebegin=I<string>" => ["Specify the text placed at the beginning of each table [default: '']"]],
+                              ["tablesep=I<string>" => ["Specify the text used to separate tables [default: '\\n\\n']"]],
+                              ["tableend=I<string>" => ["Specify the text placed at the end of each table [default: '']"]],
+                              ["quote=I<string>" => ["Specify the text used to begin quoted text [default: '\"']"]],
+                              ["unquote=I<string>" => ["Specify the text used to end quoted text [default: same as quote]"]],
+                              ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                              ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]],
+                  ["octave" => ["Output each table as an Octave text-format data file",
+                              [["noheaders" => ["Do not output column headers"]],
+                               ["colbegin=I<string>" => ["Specify the text placed at the beginning of each data column [default: '']"]],
+                               ["colsep=I<string>" => ["Specify the text used to separate data columns [default: '']"]],
+                               ["colend=I<string>" => ["Specify the text placed at the end of each data column [default: '\\n']"]],
+                               ["rowbegin=I<string>" => ["Specify the text placed at the beginning of each data row [default: '']"]],
+                               ["rowend=I<string>" => ["Specify the text placed at the end of each data row [default: '']"]],
+                               ["hcolbegin=I<string>" => ["Specify the text placed at the beginning of each header column [default: '']"]],
+                               ["hcolsep=I<string>" => ["Specify the text used to separate header columns [default: '_']"]],
+                               ["hcolend=I<string>" => ["Specify the text placed at the end of each header column [default: '']"]],
+                               ["hrowbegin=I<string>" => ["Specify the text placed at the beginning of each header row [default: '# ']"]],
+                               ["hrowsep=I<string>" => ["Specify the text used to separate header rows [default: '']"]],
+                               ["hrowend=I<string>" => ["Specify the text placed at the end of each header row [default: '\\n']"]],
+                               ["tablebegin=I<string>" => ["Specify the text placed at the beginning of each table [default: '']"]],
+                               ["tablesep=I<string>" => ["Specify the text used to separate tables [default: '\\n']"]],
+                               ["tableend=I<string>" => ["Specify the text placed at the end of each table [default: '']"]],
+                               ["quote=I<string>" => ["Specify the text used to begin quoted text [default: '']"]],
+                               ["unquote=I<string>" => ["Specify the text used to end quoted text [default: same as quote]"]],
+                               ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                               ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]],
+                  ["custom" => ["Output each table in a completely user-specified format",
+                                [["noheaders" => ["Do not output column headers"]],
+                                 ["colbegin=I<string>" => ["Specify the text placed at the beginning of each data column [default: '']"]],
+                                 ["colsep=I<string>" => ["Specify the text used to separate data columns [default: '']"]],
+                                 ["colend=I<string>" => ["Specify the text placed at the end of each data column [default: '']"]],
+                                 ["rowbegin=I<string>" => ["Specify the text placed at the beginning of each data row [default: '']"]],
+                                 ["rowsep=I<string>" => ["Specify the text used to separate data rows [default: '']"]],
+                                 ["rowend=I<string>" => ["Specify the text placed at the end of each data row [default: '']"]],
+                                 ["hcolbegin=I<string>" => ["Specify the text placed at the beginning of each header column [default: same as colbegin]"]],
+                                 ["hcolsep=I<string>" => ["Specify the text used to separate header columns [default: same as colsep]"]],
+                                 ["hcolend=I<string>" => ["Specify the text placed at the end of each header column [default: same as colend]"]],
+                                 ["hrowbegin=I<string>" => ["Specify the text placed at the beginning of each header row [default: same as rowbegin]"]],
+                                 ["hrowsep=I<string>" => ["Specify the text used to separate header rows [default: same as rowsep]"]],
+                                 ["hrowend=I<string>" => ["Specify the text placed at the end of each header row [default: same as rowend]"]],
+                                 ["tablebegin=I<string>" => ["Specify the text placed at the beginning of each table [default: '']"]],
+                                 ["tablesep=I<string>" => ["Specify the text used to separate tables [default: '']"]],
+                                 ["tableend=I<string>" => ["Specify the text placed at the end of each table [default: '']"]],
+                                 ["quote=I<string>" => ["Specify the text used to begin quoted text [default: '']"]],
+                                 ["unquote=I<string>" => ["Specify the text used to end quoted text [default: same as quote]"]],
+                                 ["excel" => ["Output strings in a format readable by Microsoft Excel"]],
+                                 ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                                 ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]],
+                  ["latex" => ["Output each table as a LaTeX tabular environment",
+                               [["dcolumn" => ["Use the dcolumn package to align numbers on the decimal point"]],
+                                ["booktabs" => ["Use the booktabs package for a more professionally typeset look"]],
+                                ["longtable" => ["Use the longtable package to enable multi-page tables"]],
+                                ["merge=I<function>" => ["Specify how to merge data from multiple files [default: 'mean']"]],
+                                ["showfnames=I<option>" => ["Add an extra header row showing the filename the data came from [default: 'none']"]]]]]]]],
+     ["params" => ["Extract the program's run-time parameters and environment variables",
+                   [["text" => ["Output the parameters in plain-text format",
+                                [["include=I<filename>" => ["Read from a file the list of keys to output"]],
+                                 ["exclude=I<regexp>" => ["Ignore any keys whose name matches a regular expression"]],
+                                 ["sort" => ["Sort the list of parameters alphabetically by key"]],
+                                 ["noenv" => ["Exclude environment variables"]],
+                                 ["noparams" => ["Exclude run-time parameters"]],
+                                 ["envformat=I<template>" => ["Format environment variable names using the given template [default: '%s (environment variable)']"]],
+                                 ["columns=I<number>" => ["Output the parameters as a 1-, 2-, or 3-column table [default: 1]"]],
+                                 ["colsep=I<string>" => ["Specify the text used to separate data columns [default: ': ']"]],
+                                 ["rowbegin=I<string>" => ["Specify the text that's output at the start of each data row [default: '']"]],
+                                 ["rowend=I<string>" => ["Specify the text that's output at the end of each data row [default: '\\n']"]]]]],
+                    ["dumpkeys" => ["Output a list of the keys only (i.e., no values)",
+                                    [["include=I<filename>" => ["Read the list of parameters to output from a given file"]],
+                                     ["exclude=I<regexp>" => ["Ignore any keys whose name matches a regular expression"]],
+                                     ["envformat=I<template>" => ["Format environment variable names using the given template [default: '%s (environment variable)']"]],
+                                     ["sort" => ["Sort the list of parameters alphabetically by key"]],
+                                     ["noenv" => ["Exclude environment variables"]],
+                                     ["noparams" => ["Exclude run-time parameters"]]]]],
+                    ["latex" => ["Output the parameters as a LaTeX tabular environment",
+                                 [["include=I<filename>" => ["Read from a file the list of keys to output"]],
+                                  ["exclude=I<regexp>" => ["Ignore any keys whose name matches a regular expression"]],
+                                  ["envformat=I<template>" => ["Format environment variable names using the given template [default: '%s (environment variable)']"]],
+                                  ["sort" => ["Sort the list of parameters alphabetically by key"]],
+                                  ["booktabs" => ["Use the booktabs package for a more professionally typeset look"]],
+                                  ["tabularx" => ["Use the tabularx package to enable line wraps within the value column"]],
+                                  ["longtable" => ["Use the longtable package to enable multi-page tables"]],
+                                  ["noenv" => ["Exclude environment variables"]],
+                                  ["noparams" => ["Exclude run-time parameters"]]]]]]]],
+     ["env" => ["Extract the environment in which the program was run",
+                [["sh" => ["Use Bourne shell syntax for setting environment variables",
+                           [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                            ["unset" => ["Unset all other environment variables"]],
+                            ["chdir" => ["Switch to the program's original working directory"]]]]],
+                 ["bash" => ["Use Bourne Again shell syntax for setting environment variables",
+                             [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                              ["unset" => ["Unset all other environment variables"]],
+                              ["chdir" => ["Switch to the program's original working directory"]]]]],
+                 ["ksh" => ["Use Korn shell syntax for setting environment variables",
+                            [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                             ["unset" => ["Unset all other environment variables"]],
+                             ["chdir" => ["Switch to the program's original working directory"]]]]],
+                 ["csh" => ["Use C shell syntax for setting environment variables",
+                            [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                             ["unset" => ["Unset all other environment variables"]],
+                             ["chdir" => ["Switch to the program's original working directory"]]]]],
+                 ["zsh" => ["Use Z shell syntax for setting environment variables",
+                            [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                             ["unset" => ["Unset all other environment variables"]],
+                             ["chdir" => ["Switch to the program's original working directory"]]]]],
+                 ["tcsh" => ["Use tcsh syntax for setting environment variables",
+                             [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                              ["unset" => ["Unset all other environment variables"]],
+                              ["chdir" => ["Switch to the program's original working directory"]]]]],
+                 ["ash" => ["Use ash syntax for setting environment variables",
+                            [["newlines" => ["Separate commands with newlines instead of semicolons"]],
+                             ["unset" => ["Unset all other environment variables"]],
+                             ["chdir" => ["Switch to the program's original working directory"]]]]]]]],
+     ["source" => ["Extract coNCePTuaL source code",
+                   [["text" => ["Output the source code in plain-text format",
+                                [["linebegin=I<string>" => ["Specify the text placed at the beginning of each line [default: '']"]],
+                                 ["lineend=I<string>" => ["Specify the text placed at the end of each line [default: '\\n']"]],
+                                 ["kwbegin=I<string>" => ["Specify the text placed before each keyword [default: '']"]],
+                                 ["kwend=I<string>" => ["Specify the text placed after each keyword [default: '']"]],
+                                 ["strbegin=I<string>" => ["Specify the text placed before each string [default: '']"]],
+                                 ["strend=I<string>" => ["Specify the text placed after each string [default: '']"]],
+                                 ["combegin=I<string>" => ["Specify the text placed before each comment [default: '']"]],
+                                 ["comend=I<string>" => ["Specify the text placed after each comment [default: '']"]],
+                                 ["indent=I<number>" => ["Indent each line by a given number of spaces"]],
+                                 ["wrap=I<number>" => ["Wrap the source code into a paragraph with a given character width"]]]]]]]],
+     ["warnings" => ["Extract a list of warnings the program issued during initialization",
+                   [["text" => ["Output warnings in plain-text format",
+                                [["listbegin=I<string>" => ["Specify text to appear at the beginning of the list [default: '']"]],
+                                 ["listend=I<string>" => ["Specify text to appear at the end of the list [default: '']"]],
+                                 ["itembegin=I<string>" => ["Specify text to appear before each warning [default: '* ']"]],
+                                 ["itemend=I<string>" => ["Specify text to appear after each warning [default: '\\n']"]]]]],
+                    ["html" => ["Output warnings as an HTML list",
+                                [["listbegin=I<string>" => ["Specify text to appear at the beginning of the list [default: '<ul>\\n']"]],
+                                 ["listend=I<string>" => ["Specify text to appear at the end of the list [default: '</ul>\\n']"]],
+                                 ["itembegin=I<string>" => ["Specify text to appear before each warning [default: '  <li>']"]],
+                                 ["itemend=I<string>" => ["Specify text to appear after each warning [default: '</li>\\n']"]]]]],
+                    ["latex" => ["Output warnings as a LaTeX list",
+                                [["listbegin=I<string>" => ["Specify text to appear at the beginning of the list [default: '\\begin{itemize}\\n']"]],
+                                 ["listend=I<string>" => ["Specify text to appear at the end of the list [default: '\\end{itemize}\\n']"]],
+                                 ["itembegin=I<string>" => ["Specify text to appear before each warning [default: '  \\item ']"]],
+                                 ["itemend=I<string>" => ["Specify text to appear after each warning [default: '\\n']"]]]]]]]]);
+
+###########################################################################
+
+# Define a list of coNCePTuaL keywords.  The following was
+# automatically inserted into ncptl-logextract by configure.
+my @keyword_list = qw (
+@LOGEXTRACT_KEYWORDS@
+);
+
+###########################################################################
+
+# We'd like our POD documentation to show ncptl-logextract's
+# command-line options as a tree because many options are meaningful
+# only when another option is also used.  The following function
+# automatically generates an options tree as a nested list and splices
+# it into ncptl-logextract, outputting a modified ncptl-logextract
+# file with the updated POD documentation.
+sub output_options_tree ()
+{
+    my @newpod;
+
+    # Produce a POD version of the tree.
+    push @newpod, "Z<>Z<>Z<>Z<>Z<>";     # Placeholder
+    foreach my $extract (@arguments) {
+        my $ename = $extract->[0];
+        my $edesc = $extract->[1][0];
+        push @newpod, "=over 4" if $extract==$arguments[0];
+        push @newpod, "=item C<--extract=$ename>";
+        $newpod[$#newpod] .= " [default] " if $extract==$arguments[0];
+        push @newpod, $edesc;
+        my @formats = @{$extract->[1][1]};
+        foreach my $fmt (@formats) {
+            my $fname = $fmt->[0];
+            my $fdesc = $fmt->[1][0];
+            push @newpod, "=over 4" if $fmt==$formats[0];
+            push @newpod, "=item C<--format=$fname>";
+            $newpod[$#newpod] .= " [default] " if $fmt==$formats[0];
+            push @newpod, $fdesc;
+            my @options = @{$fmt->[1][1]};
+            foreach my $opt (@options) {
+                my $oname = $opt->[0];
+                $oname =~ s/=(I<([^>]+))>/=>$1/;
+                my $odesc = $opt->[1][0];
+                $odesc =~ s/</LESSTHAN/g;
+                $odesc =~ s/>/GREATERTHAN/g;
+                $odesc =~ s/LESSTHAN/E<lt>/g;
+                $odesc =~ s/GREATERTHAN/E<gt>/g;
+                $odesc =~ s/\\[nt]/\\$&/g;
+                $odesc =~ s/default: \'([^\']*)\'/default: S<\"C<$1>\">/;
+                push @newpod, "=over 4" if $opt==$options[0];
+                push @newpod, "=item C<--$oname>";
+                push @newpod, $odesc;
+            }
+            push @newpod, "=back";
+        }
+        push @newpod, "=back";
+    }
+    push @newpod, "=back";
+    @newpod = map {($_, "")} @newpod;
+    push @newpod, "Z<>Z<>Z<>";     # Placeholder
+
+    # Read our own source code and replace the old POD with the new POD.
+    open (SELF, "<$0") || die "${progname}: unable to open $0 ($!)\n";
+    my $oneline;
+    while (defined($oneline=<SELF>) &&
+           (chomp $oneline, $oneline) ne $newpod[0]) {
+        print $oneline, "\n";
+    }
+    while (defined($oneline=<SELF>) &&
+           (chomp $oneline, $oneline) ne $newpod[$#newpod]) {
+    }
+    print join ("\n", @newpod), "\n";
+    print <SELF>;
+    close SELF;
+}
+
+
+# ncptl-logextract's tree of options is rather complex.  Output a
+# poster in AT&T's "dot" format.
+sub output_options_as_dot ()
+{
+    my @extractnodes;      # Names/labels/shapes corresponding to --extract
+    my @formatnodes;       # Same for --format
+    my @optionnodes;       # Same for options
+    my $numnodes = 0;      # Unique node identifier
+
+    # Output a graph header.
+    open (OUTFILE, ">$outfile") || die "${progname}: unable to write to $outfile ($!)\n";
+    print OUTFILE "digraph logextract_options
+{
+  /* Select an ISO A0 page size. */
+  page=\"33,46.75\";
+  orientation=landscape;
+  size=\"44.75,31\";
+  overlap=scale;
+  center=true;
+  label=\"ncptl-logextract command-line options\";
+  fontsize=72;
+
+";
+
+    # Walk the arguments tree, building up nodes as we go.
+    foreach my $extract (@arguments) {
+        my $ename = $extract->[0];
+        my $edesc = $extract->[1][0];
+        my $enode = sprintf "e%d", ++$numnodes;
+        push @extractnodes, [$enode, $ename,
+                             $extract==$arguments[0] ? "doublecircle" : "circle"];
+        my @formats = @{$extract->[1][1]};
+        foreach my $fmt (@formats) {
+            my $fname = $fmt->[0];
+            my $fdesc = $fmt->[1][0];
+            my $fnode = sprintf "f%d", ++$numnodes;
+            push @formatnodes, [$fnode, $fname,
+                                $fmt==$formats[0] ? "doubleoctagon" : "octagon"];
+            my @options = @{$fmt->[1][1]};
+            foreach my $opt (@options) {
+                my $oname = $opt->[0];
+                $oname =~ s/=I.*$//;
+                my $odesc = $opt->[1][0];
+                $odesc =~ s/ \[default.*//;
+                my $onode = sprintf "o%d", ++$numnodes;
+                push @optionnodes, [$onode, $oname, "box"];
+            }
+        }
+    }
+
+    # Output all of the nodes.
+    print OUTFILE "  /* Values for --extract */
+  {
+";
+    foreach my $enode (@extractnodes) {
+        printf OUTFILE ("    %s [label=%s, shape=%s];\n",
+                        $enode->[0], $enode->[1], $enode->[2]);
+    }
+    print OUTFILE "  }\n\n";
+    print OUTFILE "  /* Values for --format */
+  {
+";
+    foreach my $fnode (@formatnodes) {
+        printf OUTFILE ("    %s [label=%s, shape=%s];\n",
+                        $fnode->[0], $fnode->[1], $fnode->[2]);
+    }
+    print OUTFILE "  }\n\n";
+    print OUTFILE "  /* Options */
+  {
+";
+    foreach my $onode (@optionnodes) {
+        printf OUTFILE ("    %s [label=%s, shape=%s];\n",
+                        $onode->[0], $onode->[1], $onode->[2]);
+    }
+    print OUTFILE "  }\n\n";
+
+    # Walk the arguments tree again, outputting edges as we go.
+    $numnodes = 0;
+    print OUTFILE "  /* Edges */\n";
+    foreach my $extract (@arguments) {
+        my $enode = sprintf "e%d", ++$numnodes;
+        my @formats = @{$extract->[1][1]};
+        foreach my $fmt (@formats) {
+            my $fnode = sprintf "f%d", ++$numnodes;
+            print OUTFILE "  $enode -> $fnode;\n";
+            my @options = @{$fmt->[1][1]};
+            foreach my $opt (@options) {
+                my $onode = sprintf "o%d", ++$numnodes;
+                print OUTFILE "  $fnode -> $onode;\n";
+            }
+        }
+    }
+
+    # Create a top-level "command line" node.
+    print OUTFILE "
+  /* Top-level node and its edges */
+  root [label=\"ncptl-logextract\\ncommand line\",
+        shape=diamond,style=bold,height=3,width=3,fontsize=28];
+  root -> {",
+    join("; ", map {$_->[0]} @extractnodes),
+    "}\n";
+
+    # Output a graph trailer.
+    print OUTFILE "}\n";
+    close OUTFILE;
+}
+
+
+# Output the ncptl-logextract documentation as a DHTML file
+# (ncptl-logextract.html).
+sub output_dhtml_documentation ()
+{
+    my $htmlfilename = "${progname}.html";
+
+    # Create an initial ncptl-logextract.html file.
+    pod2html("--infile=$0",
+             "--outfile=$htmlfilename",
+             "--noindex");
+
+    # Read the HTML file into memory.
+    open (HTMLFILE, "<$htmlfilename") || die "${progname}: unable to open $htmlfilename ($!)\n";
+    my $entirefile = join ("", <HTMLFILE>);
+    close HTMLFILE;
+
+    # Remove characters from anchor names that the HTML verifies rejects.
+    my @substitutions;
+    while ($entirefile =~ /\"[^\"]*\"/g) {
+        my $oldname = $&;
+        my $newname = $oldname;
+        $newname =~ s/[\%\s]/_/g;
+        push @substitutions, [$oldname => $newname];
+    }
+    foreach my $subst (@substitutions) {
+        $entirefile =~ s/$subst->[0]/$subst->[1]/g;
+    }
+
+    # Remove the index anchor because it (a) not used and (b) breaks
+    # compatibility with the XHTML 1.1 Strict standard.
+    $entirefile =~ s|<A NAME="__index__"></A>||;
+
+    # Pretty-print "coNCePTuaL".  The trick is that this needs to be
+    # only within the HTML body and not within a <PRE>...</PRE> block.
+    my ($header, $bodytag, $body) = split "(<BODY>)", $entirefile;
+    my @pre_nopre = split m|(<PRE>.*?</PRE>)|s, $body;
+    for (my $p=0; $p<=$#pre_nopre; $p+=2) {
+        $pre_nopre[$p] =~ s|coNCePTuaL|<span class="ncptl">coNCePTuaL</span>|gs;
+    }
+    $entirefile = $header . $bodytag . join("", @pre_nopre);
+
+    # Pretty-print "LaTeX".
+    $entirefile =~ s|LaTeX|L<span class="highA">a</span>T<span class="lowE">e</span>X|g;
+
+    # Replace double quotes with <q>...</q>.
+    $entirefile =~ s|\`\`|<q>|g;
+    $entirefile =~ s|\'\'|</q>|g;
+
+    # Keep HTML Tidy from removing empty <q></q> pairs.  In the future
+    # we might want to insert a thin space (&thinsp;) although some
+    # browsers render thin spaces as full spaces, which is visually
+    # confusing in the given context.
+    $entirefile =~ s|<q><CODE></CODE></q>|<q><!-- Empty --></q>|g;
+
+    # Remove the LINK REV tag and insert a META tag for HTML content-type.
+    $entirefile =~ s|<LINK REV=\"made\".*?>|<META http-equiv="Content-Type" content="text/html; charset=utf-8">|g;
+
+    # Insert the core DHTML mechanisms at the end of the HTML header.
+    $entirefile =~ s|</HEAD>|<<DHTML|e;
+
+<style type="text/css">
+//<![CDATA[
+body {
+  background: white;
+  color: black;
+}
+
+h1 {
+  color: rgb(0, 64, 0);
+}
+
+h2 {
+  color: rgb(80, 60, 15);
+}
+
+/* Present a button for expanding or collapsing the entire
+ * hierarchical list. */
+.list_button {
+  color: rgb(0, 0, 127);
+  background: rgb(225, 255, 225);
+  font-weight: bold;
+  border: medium outset green;
+  padding: 1ex;
+  margin: 3ex 1em 2ex 1em;
+  text-decoration: none;
+}
+
+.list_button:hover {
+  background: yellow;
+}
+
+/* Present a hyperlink for toggling the display of sublists. */
+.toggleMe {
+  color: rgb(0, 0, 127);
+}
+
+.toggleMe:hover {
+  background: yellow;
+}
+
+/* Help typeset the coNCePTuaL logogram. */
+.ncptl {
+  font-variant: small-caps;
+}
+
+/* Typeset the LaTeX logogram. */
+.lowE {
+   position:       relative;
+   top:            0.5ex;
+   text-transform: uppercase;
+   margin-left:    -0.1667em;
+   margin-right:   -0.125em
+}
+.highA {
+   position:       relative;
+   top:            -0.5ex;
+   text-transform: uppercase;
+   margin-left:    -0.40em;
+   margin-right:   -0.15em;
+   font-size:      smaller
+}
+//]]>
+</style>
+
+<script type="text/javascript">
+//<![CDATA[
+
+// Given the ID of a <DL> node, make the node visible if it's
+// invisible and invisible if it's visible.
+function toggleDL (id)
+{
+  dlNode = document.getElementById (id);
+  if (dlNode.style.display == "none")
+    dlNode.style.display = "block";
+  else
+    dlNode.style.display = "none";
+}
+
+var nextId = 0;     // Next ID to assign to a DL node.
+var linkNode;       // Hyperlink to create in a DD node and use in a DT node.
+
+// Given a <DL> node and a flag, make each child <DT> node's contents
+// control the visiblility of any <DL> nodes nested within the
+// corresponding <DD> node.
+function makeListDynamic (node, expandNodes)
+{
+  var kids = node.childNodes;    // List of all our child nodes
+  var oldLinkNode;               // Value of linkNode for DL to save/restore
+  var k;
+
+  try {
+    for (k=0; k<kids.length; k++) {
+      switch (kids[k].nodeName) {
+        case "DL":
+          // We were called initially from the <body> tag's onload script.
+          if (!kids[k].getAttribute("id")) {
+            try {
+              var dlID = "ulId" + ++nextId;
+              kids[k].setAttribute ("id", dlID);
+              oldLinkNode = linkNode;
+              linkNode.setAttribute ("class", "toggleMe");
+              linkNode.addEventListener ("click", new Function ('toggleDL ("' + dlID + '");'), false);
+              toggleDL (dlID);
+            }
+            catch (problem) {
+              // Some browsers support style but not getAttribute().
+              kids[k].style.display = "none";
+            }
+          }
+          else
+            // We were called initially by "Expand all" or "Collapse all".
+            if (expandNodes)
+              kids[k].style.display = "block";
+            else
+              kids[k].style.display = "none";
+          break;
+
+        case "#text":
+
+          // Store in a global variable because we need to pass the
+          // <A> node (node.parentNode) from the current <DT> ancestor to
+          // its <DD> sibling.  (If we were passing between parents and
+          // children, we could use a function parameter instead.)
+          if (node.nodeName == "CODE" && kids[k].nodeValue.substr(0,2) == "--")
+            linkNode = node.parentNode;
+          break;
+      }
+
+      // Invoke ourself recursively for each child node.
+      makeListDynamic (kids[k], expandNodes);
+      if (kids[k].nodeName == "DL")
+        linkNode = oldLinkNode;
+    }
+  }
+  catch (problem) {
+    // Keep the browser happy.
+  }
+}
+//]]>
+</script>
+</HEAD>
+DHTML
+
+    # Tell the browser to invoke makeListDynamic() on initialization
+    # and indicate which list should be made dynamic.
+    $entirefile =~ s|<BODY>|<BODY onload='javascript:makeListDynamic(document.getElementById("collapseList"), 0)'>|;
+    $entirefile =~ s|(format-specific options):(.*?)<DL>|<<LISTBUTTONS|se;
+$1.
+
+Click on any <code>--extract</code> or <code>--format</code> option
+below to toggle the display of the options that depend on it (i.e.,
+the options lying deeper in the option hierarchy) or use the <q>Expand
+all</q> button to open every level of the hierarchy, making it easy to
+search the page; <q>Collapse all</q> resets the hierarchy to its
+initial, fully collapsed state.  Note that these interactivity
+features will not work completely or at all in Web browsers lacking
+sufficient support of the <a
+href="http://www.ecma-international.org/publications/standards/Ecma-262.htm">ECMAScript</a>,
+<a href="http://www.w3.org/Style/CSS/">CSS</a>, and <a
+href="http://www.w3.org/DOM/">W3C DOM</a> standards.
+
+
+<div style="margin-top: 5ex; margin-bottom: 4ex;">
+<a class="list_button" href='javascript:makeListDynamic(document.getElementById("collapseList"),1)'>Expand all</a>
+
+<a class="list_button" href='javascript:makeListDynamic(document.getElementById("collapseList"),0)'>Collapse all</a>
+</div>
+
+<DL id="collapseList">
+LISTBUTTONS
+
+    # Write the resulting HTML file to disk.
+    open (HTMLFILE, ">$htmlfilename") || die "${progname}: unable to open $htmlfilename for writing ($!)\n";
+    print HTMLFILE $entirefile;
+    close HTMLFILE;
+}
+
+
+###########################################################################
+
+# Extract the complete coNCePTuaL source program from a log file.
+sub extract_source (\@)
+{
+    # Extract the source code from a log file.
+    my @sourcecode;
+    my $state = "need title1";
+    foreach my $oneline (@{$_[0]}) {
+        $state eq "need title1" && $oneline =~ /^\# coNCePTuaL source code/o && do {
+            $state = "need title2";
+            next;
+        };
+        $state eq "need title2" && $oneline =~ /^\# ----------------------/o && do {
+            $state = "need code";
+            next;
+        };
+        $state eq "need code" && $oneline =~ /^\#    /o && do {
+            $oneline = substr($oneline, 6);
+            push @sourcecode, $oneline;
+            next;
+        };
+        $state eq "need code" && last;
+    }
+
+    # Strip leading and trailing blank lines and return the result.
+    return () if !@sourcecode;
+    while ($sourcecode[0] eq "") {
+        shift @sourcecode;
+    }
+    while ($sourcecode[$#sourcecode] eq "") {
+        pop @sourcecode;
+    }
+    return @sourcecode;
+}
+
+
+# Extract all of the program parameters and run-time characteristics
+# from a log file.  Return environment variables separately from
+# non-environment variables.
+sub extract_parameters (\@)
+{
+    my @envvars;            # List of environment variables
+    my @parameters;         # List of everything else
+    my $storingenvs = 0;    # 1=currently storing environment variables
+
+    foreach my $oneline (@{$_[0]}) {
+        $storingenvs=1, next if $oneline eq "# Environment variables";
+        next if $oneline =~ /^\# ---------------------$/;
+        $storingenvs=0, next if $oneline !~ /^\# ([^:]+): (.*)$/o;
+        next if $1 eq "WARNING";    # For now, always ignore warning messages.
+        if ($storingenvs) {
+            push @envvars, [$1, $2];
+        }
+        else {
+            push @parameters, [$1, $2];
+        }
+    }
+    return (\@parameters, \@envvars);
+}
+
+
+# Extract a list of warning messages from a log file.
+sub extract_warnings (\@)
+{
+    my @warnings;
+    foreach my $oneline (@{$_[0]}) {
+        next if $oneline !~ /^\# ([^:]+): (.*)$/;
+        push @warnings, $2 if $1 eq "WARNING";
+    }
+    return @warnings;
+}
+
+
+# Extract a list of data tables from the log file.  Each table is a
+# 2-D array, the first two rows of which are headers strings.
+sub extract_data (\@)
+{
+    my @datatables;                 # List of all the tables in the data file
+    my ($row, $col) = (-1, -1);     # Offset into @currenttable
+    my @entirefile = @{$_[0]};      # All lines of the log file
+    my $lineno;                     # Current line number to read
+    my $oneline;                    # Contents of line number $lineno
+
+    # Skip the log-file prologue.
+    for ($lineno=0; $lineno<=$#entirefile; $lineno++) {
+        $oneline = $entirefile[$lineno];
+        last if $oneline !~ /^#/;
+    }
+
+    # Process the remaining lines in the log file.  Although the loop
+    # progresses line by line, note that the loop body increments the
+    # loop variable, so the loop is really progressing table-by-table.
+    while ($lineno <= $#entirefile) {
+        my @currenttable;               # A 2-D array of data values
+
+        # Skip the blank lines between tables.
+        while ($oneline !~ /\S/) {
+            $oneline = $entirefile[++$lineno];
+        }
+
+        # Process header lines (always a single description line
+        # followed by a single aggregation-type line).
+        for (0 .. $numheaderrows-1) {
+            $row++;
+            $col = 0;
+            while ($oneline=~/(?<!\\)\"(.*?)(?<!\\)\"/go) {
+                $currenttable[$row][$col++] = $1;
+            }
+            $oneline = $entirefile[++$lineno];   # Next header line
+        }
+
+        # Process data lines.
+        $oneline = $entirefile[$lineno];         # First data line
+        while ($oneline =~ /^[-0-9.,]/o) {
+            $currenttable[++$row] = [split /,/, $oneline, -1];
+            $oneline = $entirefile[++$lineno];   # Next data line
+        }
+
+        # Store the current table.
+        push @datatables, \@currenttable;
+        $row = -1;
+        last if $oneline =~ /^\#/;               # End of the log file
+    }
+
+    # Return the resulting list of tables.
+    return @datatables;
+}
+
+
+# Force garbage collection.  I don't know if eval necessarily achives
+# this goal but it seems to work in Perl v5.8.4, at least.
+sub collect_garbage ()
+{
+    print STDERR "Cleaning up ... " if $verbose > 1;
+    eval 'my $dummy = 123;';
+    print STDERR "done.\n" if $verbose > 1;
+}
+
+
+# Given a completion fraction in [0, 1], output a progress percentage
+# but only if it's changed from before.  Given a string, output it
+# verbatim followed by a newline character.
+my $progress_string = "?????";
+sub output_progress ($)
+{
+    my $new_string;         # Formatting string to output
+    my $final_string;       # 0=number; 1=final, textual message
+
+    if ("$_[0]" =~ /[^-+Ee.\d]/o) {
+        $final_string = 1;
+        $new_string = sprintf "%-6s\n", $_[0];
+    }
+    else {
+        $final_string = 0;
+        $new_string = sprintf "%5.1f%%", 100.0*$_[0];
+    }
+    if ($progress_string ne $new_string) {
+        $progress_string = $new_string;
+        print STDERR $progress_string;
+        if ($final_string) {
+            $progress_string = "?????";
+        }
+        else {
+            print STDERR "\b" x 6;
+        }
+    }
+}
+
+
+# Add an extra header row to each data table listing the filename that
+# produced it.
+sub append_file_header ($\@)
+{
+    # Input parameters include a filename and the file's complete contents.
+    my $filename = shift;
+    my @oldfiledata;
+
+    # If we have nothing to do, return the input file as is.
+    my $fileheader = find_option ("showfnames", "first", "none");
+    return $_[0] if $fileheader eq "none";
+    if ($fileheader !~ /^all|first$/) {
+        die "${progname}: unknown filename-header type \"$fileheader\"\n";
+    }
+    $numheaderrows = 3;
+
+    # Process the file line-by-line.
+    print STDERR "Appending \"$filename\" to table headers ... " if $verbose;
+    my @newfiledata;               # Modified file contents
+    my $newtable = 1;              # 1=we're at the start of a new table
+    my $cleanfname = $filename;    # Filename with certain characters escaped
+    $cleanfname =~ s/[\"\\]/\\$&/g;
+    @oldfiledata = @{$_[0]};
+    foreach my $lineno (0 .. $#oldfiledata) {
+        output_progress $lineno/$#oldfiledata if $verbose;
+        if (substr($oldfiledata[$lineno], 0, 1) ne "#") {
+            # Add an extra header line if we're at the start of a new table.
+            if ($newtable) {
+                # Calculate the number of columns per table.
+                my $numcols = () = $oldfiledata[$lineno] =~ /(?<!\\)\".*?(?<!\\)\"/go;
+
+                # Depending on the value of $fileheader, we prepend a
+                # header to the top of each column or at the top of
+                # the first column only.
+                my @extraheader;
+                push @extraheader, $cleanfname;
+                if ($fileheader eq "all") {
+                    push @extraheader, ($cleanfname) x ($numcols-1);
+                }
+                else {
+                    push @extraheader, ("") x ($numcols-1);
+                }
+                push @newfiledata, join (",",
+                                         map {"\"$_\""} @extraheader);
+                $newtable = 0;
+            }
+            $newtable=1 if $oldfiledata[$lineno] !~ /\S/;
+        }
+
+        # Copy the current line from the original file to the modified file.
+        push @newfiledata, $oldfiledata[$lineno];
+    }
+    output_progress "done." if $verbose;
+
+    # Return the modified file contents.
+    return \@newfiledata;
+}
+
+
+# Older versions of Perl (e.g., v5.6.0) lack the File::Temp module.
+# Try to compensate.
+my @tempdirlist;              # List of directories to delete on exit
+sub create_temp_dir ($)
+{
+    my $template = $_[0];
+
+    # First try the more robust File::Temp::tempdir() call.
+    eval "use File::Temp qw(tempdir)";
+    return tempdir ($template, CLEANUP => 1, TMPDIR => 1) if !$@;
+
+    # Fall back on POSIX::tmpnam().
+    my $tmpdirname = tmpnam();
+    mkdir $tmpdirname || die "${progname}: Unable to create $tmpdirname ($!)\n";
+    push @tempdirlist, $tmpdirname;
+    return $tmpdirname;
+}
+END {
+    # Remove all temporary directories when the program exits.
+    foreach my $tmpdirname (@tempdirlist) {
+        foreach my $fname (glob File::Spec->catfile($tmpdirname, "*")) {
+            unlink $fname;
+        }
+        rmdir $tmpdirname;
+    }
+}
+
+
+# Older versions of Perl (e.g., v5.6.0) lack the File::Temp module.
+# Try to compensate.
+my @tempfilelist;             # List of files to delete on exit
+sub create_temp_file ($$)
+{
+    my $template = $_[0];
+    my $suffix = $_[1];
+
+    # First try the more robust File::Temp::tempdir() call.
+    eval "use File::Temp qw(tempfile)";
+    return tempfile ($template, UNLINK => 1, SUFFIX => $suffix) if !$@;
+
+    # Fall back on POSIX::tmpnam().
+    my $tmpfilename = tmpnam() . $suffix;
+    return (undef, $tmpfilename);
+}
+END {
+    # Remove all temporary files when the program exits.
+    foreach my $tmpfilename (@tempfilelist) {
+        unlink $tmpfilename;
+    }
+}
+
+
+# Given the name or contents of a merged log file, call
+# ncptl-logunmerge to expand those contents into a set of temporary
+# files and return the list of filenames.
+sub log_unmerge ($)
+{
+    my $filename = shift;
+    my $tempdir = create_temp_dir $progname . "-XXXXXX";
+
+    # If we read from standard input, write the data to a temporary file so
+    # ncptl-logunmerge can repeatedly open it.
+    if (ref $filename) {
+        my @filedata = @$filename;
+        $filename = File::Spec->catfile($tempdir, "stdin");
+        open (INFILE, ">$filename") || die "${progname}: unable to open $filename ($!)\n";
+        foreach my $oneline (@filedata) {
+            print INFILE $oneline, "\n";
+        }
+        close INFILE;
+    }
+
+    # Invoke ncptl-logunmerge to expand the merged file.
+    my @command = ("ncptl-logunmerge",
+                   "--logfile=" . File::Spec->catfile($tempdir, 'unmerged-%07p.log'),
+                   $filename);
+    push @command, "--procs=$unmerge_procs" if defined $unmerge_procs;
+    push @command, "--quiet" if !$verbose;
+    system(@command) && die "${progname}: unable to run ncptl-logextract ($!)\n";
+    return glob File::Spec->catfile($tempdir, "*.log");
+}
+
+
+# Replace directory names with the names of every file in the
+# directory (recursively).
+sub recurse_directory ($)
+{
+    my $dirname = $_[0];  # Name of directory to search
+    my @plainfiles;       # List of plain files beneath the given directory
+
+    print STDERR "Finding all files beneath $dirname ... " if $verbose;
+    find (sub {push @plainfiles, $File::Find::name if -f $_}, $dirname);
+    if ($verbose) {
+        printf STDERR "done (%d %s).\n", 1+$#plainfiles, $#plainfiles==0 ? "file" : "files";
+    }
+    return @plainfiles;
+}
+
+
+# Given the name of a compressed file, return a subroutine that will
+# decompress it into a temporary file and return the name of the
+# temporary file.  Ordinary files are returned unmodified.
+sub decompress_if_compressed ($)
+{
+    my $filename = shift;
+    my $decompress_cmd;
+
+    # Determine the command to use to decompress the given file.
+    return $filename if $filename !~ /\.([^.]*)$/;
+    my $suffix = $1;
+    $filename =~ /\.([^.]*)\.\Q$suffix\E$/;
+    my $target_suffix = $1;
+  FIND_DECOMPRESSOR:
+    {
+        # gzip
+        $suffix eq "gz" && do {
+            $decompress_cmd = "gunzip -c";
+            last FIND_DECOMPRESSOR;
+        };
+
+        # bzip2
+        $suffix eq "bz2" && do {
+            $decompress_cmd = "bunzip2 -c";
+            last FIND_DECOMPRESSOR;
+        };
+
+        # tar + gzip
+        $suffix eq "tgz" && do {
+            $decompress_cmd = "gunzip -c";
+            $target_suffix = ".tar";
+            last FIND_DECOMPRESSOR;
+        };
+
+        # compress
+        $suffix eq "Z" && do {
+            $decompress_cmd = "uncompress -d -c";
+            last FIND_DECOMPRESSOR;
+        };
+
+        # tar + compress
+        $suffix eq "taz" && do {
+            $decompress_cmd = "uncompress -d -c";
+            $target_suffix = ".tar";
+            last FIND_DECOMPRESSOR;
+        };
+
+        # Not a (known) compressed format.
+        return $filename;
+    }
+
+    # Return a subroutine that will uncompress the compressed file.
+    return sub {
+        my (undef, $tempfile) = create_temp_file $progname . "-XXXXXX", "." . $target_suffix;
+        print STDERR "Decompressing $filename into $tempfile ... " if $verbose;
+        system ("$decompress_cmd $filename > $tempfile") == 0 || die "${progname}: '$decompress_cmd $filename' failed ($!)\n";
+        print STDERR "done.\n" if $verbose;
+        return $tempfile;
+    };
+}
+
+
+# Given the name of an archive file, return a subroutine that will
+# expand it into a temporary directory and return the name of the
+# temporary directory.  Ordinary files are returned unmodified.
+sub expand_if_archive ($)
+{
+    my $filename = shift;
+    my ($archiver_cmd, $archiver_verb);
+
+    # Determine the command to use to expand the given archive.
+    return $filename if $filename !~ /\.([^.]*)$/;
+    my $suffix = $1;
+  FIND_ARCHIVER:
+    {
+        # tar
+        $suffix eq "tar" && do {
+            $archiver_cmd = "tar -xvf";
+            $archiver_verb = "Untarring";
+            last FIND_ARCHIVER;
+        };
+
+        # zip
+        $suffix eq "zip" && do {
+            $archiver_cmd = "unzip -q";
+            $archiver_verb = "Unzipping";
+            last FIND_ARCHIVER;
+        };
+
+        # Not a (known) archive format.
+        return $filename;
+    }
+
+    # Return a subroutine that will expand the archive.
+    return sub {
+        my $full_filename = File::Spec->rel2abs ($filename);
+        my $tempdir = create_temp_dir $progname . "-XXXXXX";
+        print STDERR "$archiver_verb $filename into $tempdir ... " if $verbose;
+        my $prevdir = File::Spec->rel2abs (File::Spec->curdir());
+        chdir $tempdir || die "${progname}: unable to change directories to $tempdir ($!)\n";
+        system ("$archiver_cmd $full_filename") == 0 || die "${progname}: '$archiver_cmd $full_filename' failed ($!)\n";
+        chdir $prevdir || die "${progname}: unable to change directories to $prevdir ($!)\n";
+        print STDERR "done.\n" if $verbose;
+        return $tempdir;
+    };
+}
+
+
+# Open a file and return its contents as a tuple containing either the
+# string "NORMAL", "MERGED", "DIRECTORY", or "CODE" (indicating the
+# type of input) and a reference to a list of lines or undef if the
+# filename is "-".
+sub read_file_data ($)
+{
+    my $filename = $_[0];      # Name of the file to open
+    my @entirefile;            # Entire contents of the file
+    my $is_conceptual = 0;     # 1=we encountered a "coNCePTuaL log file" line
+    my $mergestr = "NORMAL";   # Type of resulting string ("NORMAL", "MERGED", etc.)
+
+    # Decompress compressed files.
+    $filename = decompress_if_compressed $filename;
+    return ("CODE", $filename) if ref $filename;
+
+    # Expand archive files.
+    $filename = expand_if_archive $filename;
+    return ("CODE", $filename) if ref $filename;
+
+    # Expand directories.
+    return ("DIRECTORY", undef) if -d $filename;
+
+    # Read the entire file into a list.
+    print STDERR "Reading $filename ... " if $verbose;
+    open (INFILE, "<$filename") || die "${progname}: unable to open $filename ($!)\n";
+    my (undef, undef, undef, undef, undef, undef, undef, $totalbytes, undef, undef, undef, undef) = stat INFILE;
+    my $bytesread = 0;
+    while (my $oneline = <INFILE>) {
+        $bytesread += length $oneline;
+        chomp $oneline;
+        if ($oneline =~ /^\# (Merged )?coNCePTuaL log file$/o) {
+            $is_conceptual = 1;
+            if ($oneline =~ /Merged/) {
+                $mergestr = "MERGED";
+                if ($filename ne "-") {
+                    # No need to read further; read_all_file_data will
+                    # just discard the remaining lines anyway.
+                    output_progress "done.";
+                    return ("MERGED", undef);
+                }
+            }
+        }
+        push @entirefile, $oneline;
+        output_progress $bytesread/$totalbytes if $verbose;
+    }
+    close INFILE;
+    if ($verbose) {
+        my $units;
+        foreach (qw(B KB MB GB TB)) {
+            $units = $_;
+            last if $totalbytes < 1024;
+            $totalbytes /= 1024;
+        }
+        my $donestr = sprintf "done (%.1f %s).", $totalbytes, $units;
+        output_progress $donestr;
+    }
+
+    # Make sure the input file at least *claims* to be from coNCePTuaL.
+    die "${progname}: $filename does not look like it was produced by coNCePTuaL\n" if !$is_conceptual;
+
+    # Return the result with an filename header prepended to each
+    # table if requested by the user.
+    return ($mergestr,
+            append_file_header ($filename eq "-" ? "<standard input>" : $filename,
+                                @entirefile));
+}
+
+
+# Merge a bunch of input files into one.
+sub read_all_file_data ($@)
+{
+    my $mergetemplate = shift;  # How to merge files (scalar or comma-separated scalars)
+    my @allfilelist;        # List of filenames to read
+    my @allfiledata;        # All lines from all files
+    my @singlefile;         # Single, merged list of lines
+    my $deathmsg = "${progname}: all input files must be produced by the same program in the same environment\n";
+
+    # Read each file into an element of @allfiledata.
+    my @filelist = $#_==-1 ? ("-") : @_;
+    my %unique_lengths;
+    my $need_gc = 0;
+    while (@filelist) {
+        # Read the file's complete contents.
+        collect_garbage() if $need_gc++;
+        my $fname = shift @filelist;
+        my ($mergestr, $lastfiledata) = read_file_data $fname;
+
+        # Execute any code we're given (e.g., to uncompress a
+        # compressed file or expand an archive).
+        if ($mergestr eq "CODE") {
+            unshift @filelist, $lastfiledata->();
+            next;
+        }
+
+        # Replace directories with the names of all of the plain files
+        # beneath them.
+        if ($mergestr eq "DIRECTORY") {
+            unshift @filelist, recurse_directory $fname;
+            next;
+        }
+
+        # Replace merged log files with their expansion.
+        if ($mergestr eq "MERGED") {
+            unshift @filelist, log_unmerge($fname eq "-" ? $lastfiledata : $fname);
+            next;
+        }
+
+        # Store the contents and line counts of normal log files.
+        push @allfiledata, $lastfiledata;
+        push @allfilelist, $fname;
+        $unique_lengths{$#{$lastfiledata}}++;
+    }
+
+    # Try to recover from different number of comment lines in the
+    # different files.
+    if ((keys %unique_lengths) > 1) {
+        warn "${progname}: warning: files do not all contain the same number of lines; compensating by canonicalizing comment lines\n";
+
+        # Store the comments used by the first log file.
+        my @prologuecomments;
+        my @epiloguecomments;
+        my $lineno = 0;
+        my $numseps = 0;
+        while ($lineno<=$#{$allfiledata[0]} && $allfiledata[0]->[$lineno]=~/^\#/o) {
+            push @prologuecomments, $allfiledata[0]->[$lineno++];
+            $numseps++ if substr($prologuecomments[$#prologuecomments], 0, 2) eq "##";
+            last if $numseps == 2;     # Exit after encountering both the top and bottom separators.
+        }
+        while ($lineno<=$#{$allfiledata[0]} && $allfiledata[0]->[$lineno]!~/^\#/) {
+            $lineno++;
+        }
+        while ($lineno<=$#{$allfiledata[0]} && $allfiledata[0]->[$lineno]=~/^\#/o) {
+            push @epiloguecomments, $allfiledata[0]->[$lineno++];
+        }
+
+        # Strip the comments from all of the log files and replace
+        # with the first log file's comments.
+        foreach my $fileno (0 .. $#allfiledata) {
+            @{$allfiledata[$fileno]} =
+                (@prologuecomments,
+                 (grep !/^\#/, @{$allfiledata[$fileno]}),
+                 @epiloguecomments);
+            if ($#{$allfiledata[$fileno]} < $#{$allfiledata[0]}) {
+                # We have fewer data rows than our predecessors -- add
+                # enough empty rows to make up the difference.
+                die "${progname}: all files must contain the same number of data rows\n" unless $forcemerge;
+                my @datarows_self = grep !/^\#/, @{$allfiledata[$fileno]};
+                my @datarows0 = grep !/^\#/, @{$allfiledata[0]};
+                my $extrarows = $#datarows0 - $#datarows_self;
+                warn "${progname}: warning: adding $extrarows extra header/data row@{[$extrarows==1 ? '' : 's']}\n";
+                foreach my $row (1+$#datarows_self .. $#datarows0) {
+                    if (substr($datarows0[$row], 0, 1) eq '"') {
+                        # Copy headers verbatim.
+                        push @datarows_self, $datarows0[$row];
+                    }
+                    else {
+                        # Replace data with either blanks or a given number.
+                        my $numcols = 1 + @{[$datarows0[$row] =~ /,/go]};
+                        if (defined $forcemerge->[0]) {
+                            push @datarows_self, join(",", ($forcemerge->[0]) x $numcols);
+                        }
+                        else {
+                            push @datarows_self, "," x ($numcols-1);
+                        }
+                    }
+                }
+                @{$allfiledata[$fileno]} = (@prologuecomments,
+                                            @datarows_self,
+                                            @epiloguecomments);
+            }
+            elsif ($#{$allfiledata[$fileno]} > $#{$allfiledata[0]}) {
+                # We have more data rows than our predecessors -- give
+                # them enough empty rows to make up the difference.
+                die "${progname}: all files must contain the same number of data rows\n" unless $forcemerge;
+                my @datarows_self = grep !/^\#/, @{$allfiledata[$fileno]};
+                foreach my $fno (0 .. $fileno-1) {
+                    my @datarows_other = grep !/^\#/, @{$allfiledata[$fno]};
+                    warn "${progname}: warning: adding @{[$#datarows_self-$#datarows_other]} extra header/data rows\n" if !$fno;
+                    foreach my $row (1+$#datarows_other .. $#datarows_self) {
+                        if (substr($datarows_self[$row], 0, 1) eq '"') {
+                            # Copy headers verbatim.
+                            push @datarows_other, $datarows_self[$row];
+                        }
+                        else {
+                            # Replace data with either blanks or a given number.
+                            my $numcols = 1 + @{[$datarows_self[$row] =~ /,/go]};
+                            if (defined $forcemerge->[0]) {
+                                push @datarows_other, join(",", ($forcemerge->[0]) x $numcols);
+                            }
+                            else {
+                                push @datarows_other, "," x ($numcols-1);
+                            }
+                        }
+                    }
+                    @{$allfiledata[$fno]} = (@prologuecomments,
+                                             @datarows_other,
+                                             @epiloguecomments);
+                }
+            }
+        }
+    }
+
+    # If we have only a single file there's no need to merge anything.
+    return @{$allfiledata[0]} if $#allfiledata == 0;
+
+    # Merge the lines.
+    print STDERR "Merging files ... " if $verbose;
+    my $showedpaddingmsg = 0;   # 1=we already gave a warning message
+    foreach my $lineno (0 .. $#{$allfiledata[0]}) {
+        my $allcomments = 1;    # Line is a comment in every file.
+        my $alldata = 1;        # Line is a non-comment in every file.
+        my $allblank = 1;       # Line is blank in every file.
+        foreach my $fileno (0 .. $#allfiledata) {
+            $allcomments=0 if substr($allfiledata[$fileno]->[$lineno], 0, 1) ne "#";
+            $alldata=0     if substr($allfiledata[$fileno]->[$lineno], 0, 1) eq "#";
+            $allblank=0    if $allfiledata[$fileno]->[$lineno] =~ /\S/o;
+        }
+        if ($allcomments || $allblank) {
+            # Assume the comments are all the same.  Plus, we know
+            # that all blanks are the same.
+            push @singlefile, $allfiledata[0]->[$lineno];
+        }
+        elsif ($alldata && $mergetemplate eq "concat") {
+            # Concatenate all of the data horizontally.
+            my @oneline;
+            foreach my $fileno (0 .. $#allfiledata) {
+                push @oneline, $allfiledata[$fileno]->[$lineno];
+            }
+            push @singlefile, join ",", @oneline;
+        }
+        elsif ($alldata) {
+            # Put all of the data into a 2-D array indexed by
+            # column and file.
+            my @linedata;
+            my $numcolumns = @{[split /,/, $allfiledata[0]->[$lineno]]};
+            foreach my $fileno (0 .. $#allfiledata) {
+                my @oneline = split /,/, $allfiledata[$fileno]->[$lineno];
+                if (1+$#oneline < $numcolumns) {
+                    # We have fewer columns than everyone else --
+                    # pad with either blanks or a given number.
+                    die $deathmsg if !$forcemerge;
+                    my $numextrazeroes = $numcolumns - @oneline;
+                    warn "${progname}: warning: padding with $numextrazeroes extra column@{[$numextrazeroes==1 ? '' : 's']}\n" if !$showedpaddingmsg;
+                    $showedpaddingmsg = 1;
+                    push @oneline, ($forcemerge->[0]) x $numextrazeroes;
+                }
+                elsif (1+$#oneline > $numcolumns) {
+                    # We have more columns than everyone else --
+                    # pad everyone else with either blanks or a
+                    # given number.
+                    die $deathmsg if !$forcemerge;
+                    my $numextrazeroes = @oneline - $numcolumns;
+                    warn "${progname}: warning: padding with $numextrazeroes extra column@{[$numextrazeroes==1 ? '' : 's']}\n" if !$showedpaddingmsg;
+                    $showedpaddingmsg = 1;
+                    foreach my $fno (0 .. $fileno-1) {
+                        # Pad everyone else's data with zeroes.
+                        foreach my $col ($numcolumns .. $#oneline) {
+                            $linedata[$col]->[$fno] = $forcemerge->[0];
+                        }
+                    }
+                    foreach my $hrow (0 .. $#singlefile) {
+                        # Pad the header lines.
+                        last if $singlefile[$#singlefile-$hrow] !~ /^\"/;
+                        $singlefile[$#singlefile-$hrow] = $allfiledata[$fileno]->[$lineno-$hrow-1];
+                    }
+                    $numcolumns = @oneline;
+                }
+                foreach my $col (0 .. $#oneline) {
+                    $linedata[$col]->[$fileno] = $oneline[$col];
+                }
+            }
+
+            # Determine how each column should be merged.
+            my @mergelist;
+            if ($mergetemplate =~ /,/o) {
+                # Each column may be merged differently.
+                @mergelist = split /,/, $mergetemplate;
+                if (1+$#mergelist != $numcolumns) {
+                    # Force the number of merge operations to match
+                    # the number of columns.
+                    die "${progname}: @{[1+$#mergelist]} merge operation(s) were specified for $numcolumns column(s)\n" unless $forcemerge;
+                    while (1+$#mergelist < $numcolumns) {
+                        # Cycle over the list of merge operations.
+                        push @mergelist, @mergelist;
+                    }
+                    @mergelist = @mergelist[0 .. $numcolumns-1];
+                }
+            }
+            else {
+                # All columns are merged the same way.
+                @mergelist = ($mergetemplate) x $numcolumns;
+            }
+
+            # Merge non-empty data cells across files as instructed.
+            my @mergeddata;      # An entire row of merged data
+            foreach my $col (0 .. $numcolumns-1) {
+                my $merge = $mergelist[$col];
+              MERGELINES: {
+                  # Concatenate cells from separate files.
+                  $merge eq "all" && do {
+                      push @mergeddata, @{$linedata[$col]};
+                      last MERGELINES;
+                  };
+
+                  # Any function of a list of strings returns the first string.
+                  $linedata[$col]->[0] =~ /\"/o && do {
+                      push @mergeddata, $linedata[$col]->[0];
+                      last MERGELINES;
+                  };
+
+                  # Compute the arithmetic mean.
+                  $merge eq "mean" && do {
+                      my $mergedcell = 0;
+                      my $nonblanks = 0;
+                      foreach my $fileno (0 .. $#allfiledata) {
+                          if (defined $linedata[$col]->[$fileno]) {
+                              $mergedcell += $linedata[$col]->[$fileno];
+                              $nonblanks++;
+                          }
+                      }
+                      $mergedcell /= $nonblanks;
+                      push @mergeddata, $mergedcell;
+                      last MERGELINES;
+                  };
+
+                  # Compute the harmonic mean.
+                  $merge eq "hmean" && do {
+                      my $mergedcell = 0;
+                      my $nonblanks = 0;
+                      foreach my $fileno (0 .. $#allfiledata) {
+                          if (defined $linedata[$col]->[$fileno]) {
+                              if (!$linedata[$col]->[$fileno]) {
+                                  die "${progname}: unable to take the harmonic mean of sets including zero ($allfilelist[$fileno]:@{[1+$lineno]})\n";
+                              }
+                              $mergedcell += 1.0 / $linedata[$col]->[$fileno];
+                              $nonblanks++;
+                          }
+                      }
+                      $mergedcell = $nonblanks / $mergedcell;
+                      push @mergeddata, $mergedcell;
+                      last MERGELINES;
+                  };
+
+                  # Compute the minimum.
+                  $merge eq "min" && do {
+                      my $mergedcell;
+                      foreach my $fileno (0 .. $#allfiledata) {
+                          if (defined $linedata[$col]->[$fileno]) {
+                              $mergedcell=$linedata[$col]->[$fileno] if
+                                  !defined $mergedcell ||
+                                  $mergedcell>$linedata[$col]->[$fileno];
+                          }
+                      }
+                      push @mergeddata, $mergedcell;
+                      last MERGELINES;
+                  };
+
+                  # Compute the maximum.
+                  $merge eq "max" && do {
+                      my $mergedcell;
+                      foreach my $fileno (0 .. $#allfiledata) {
+                          if (defined $linedata[$col]->[$fileno]) {
+                              $mergedcell=$linedata[$col]->[$fileno] if
+                                  !defined $mergedcell ||
+                                  $mergedcell<$linedata[$col]->[$fileno];
+                          }
+                      }
+                      push @mergeddata, $mergedcell;
+                      last MERGELINES;
+                  };
+
+                  # Compute the median.
+                  $merge eq "median" && do {
+                      my $mergedcell;
+                      my @sortedcols = sort {$a <=> $b} grep {defined($_)} @{$linedata[$col]};
+                      $mergedcell =
+                          ($sortedcols[int(@sortedcols/2)] +
+                           $sortedcols[$#sortedcols-int(@sortedcols/2)]) / 2;
+                      push @mergeddata, $mergedcell;
+                      last MERGELINES;
+                  };
+
+                  # Compute the sum.
+                  $merge eq "sum" && do {
+                      my $mergedcell = 0.0;
+                      foreach my $fileno (0 .. $#allfiledata) {
+                          if (defined $linedata[$col]->[$fileno]) {
+                              $mergedcell += $linedata[$col]->[$fileno];
+                          }
+                      }
+                      push @mergeddata, $mergedcell;
+                      last MERGELINES;
+                  };
+
+                  # Complain about the incorrect use of "concat".
+                  $merge eq "concat" && die "${progname}: \"concat\" cannot be combined with any other merge type\n";
+
+                  # None of the above were specified.
+                  die "${progname}: unknown merge type \"$merge\"\n";
+              }
+            }
+
+            # Store the merged data lines.
+            {
+                no warnings;
+                push @singlefile, join (",", @mergeddata);
+            }
+        }
+        else {
+            # The files all have the same number of lines but the
+            # number of each type (comment, data, blank) differs.  #
+            # Even --force-merge can't save us here.
+            die $deathmsg;
+        }
+        output_progress $lineno/(1+$#{$allfiledata[0]}) if $verbose;
+    }
+    output_progress "done." if $verbose;
+
+    # Return the result.
+    return @singlefile;
+}
+
+###########################################################################
+
+# Perform the opposite function of Perl's built-in quotemeta function.
+sub unquotemeta ($)
+{
+    my $string = $_[0];
+
+    $string =~ s/\"/\\\"/g;
+    return eval "\"$string\"";
+}
+
+
+# Modify a string so that it can be processed with LaTeX.
+sub latexify ($)
+{
+    $_ = $_[0];
+
+    # Note that the order of the following substitutions is critical.
+    s/[{}]/\\$&/g;            # Backslash open and close curly quotes.
+    s/\\/\\textbackslash{}/g; # Replace "\" with "\textbackslash".
+    s/[\$\%_\#]/\\$&/g;       # Backslash various special characters.
+    s/</\\textless{}/g;       # Replace "<" with "\textless".
+    s/>/\\textgreater{}/g;    # Replace ">" with "\textgreater".
+    s/\|/\\textbar{}/g;       # Replace "|" with "\textbar".
+    s/(?<=\S)\"/\'\'/g;       # Replace straight quotes with open/close quotes.
+    s/\"/\`\`/g;
+    s/\.(\s)/\.\\$1/g;        # Assume that periods never end sentences.
+    return $_;
+}
+
+
+# If the given argument begins with "@", treat the rest of the
+# argument as a filename and return its contents.  Otherwise, return
+# the argument unmodified.
+sub expand_if_file ($)
+{
+    # Return the argument as is if it doesn't start with "@".
+    my $retval = $_[0];
+    return $retval if !defined $retval || $retval !~ /^\@./;
+
+    # If the argument starts with "@@", replace those with a single
+    # "@" and return the argument.
+    my $atfile = substr($retval, 1);
+    return $atfile if substr($atfile, 0, 1) eq "@";
+
+    # Treat the argument as a filename and return its contents.
+    open (ATFILE, "<$atfile") || die "${progname}: unable to open $atfile\n";
+    {
+        local $/ = undef;
+        $retval = <ATFILE>;
+    }
+    close ATFILE;
+    chomp $retval;
+    return $retval;
+}
+
+
+# Search for a particular option in @options.  Return $defaultval if
+# not found; $defaultarg if found but no argument was given; or, the
+# given argument if present.
+sub find_option ($;$$)
+{
+    my $optname = $_[0];        # Name of option to look for
+    my $defaultarg = $_[1];     # Default argument to the option
+    my $defaultval = $_[2];     # Default value if option is not found
+    my $retval;                 # Value to return
+
+    # The option is now considered "used".
+    $optsused{$optname} = 1;
+
+    # See what value was specified.
+    my @matches = grep /^--$optname(=.*)?$/, @options;
+    if (!@matches) {
+        $retval = $defaultval;
+    }
+    else {
+        $matches[$#matches] =~ /^--$optname(=(.*))?$/;
+        $retval = (defined $2 ? $2 : $defaultarg);
+    }
+
+    # If the value begins with "@", treat the rest of the line as a
+    # filename and return its contents.
+    return expand_if_file $retval;
+}
+
+
+# Format the coNCePTuaL source code listed in the log file.
+sub format_source (\@)
+{
+    my @sourcecode = extract_source @{$_[0]};
+
+    # Default to no special formatting.
+    $format="text" if !defined $format;
+
+    # Output in one of the formats we know about (currently just "text").
+    $format eq "text" && do {
+        # If requested, wrap keywords, strings, and comments with
+        # additional text.
+        my $bkeyword = find_option "kwbegin", "", "";
+        my $ekeyword = find_option "kwend", "", "";
+        my $bstring  = find_option "strbegin", "", "";
+        my $estring  = find_option "strend", "", "";
+        my $bcomment = find_option "combegin", "", "";
+        my $ecomment = find_option "comend", "", "";
+        my $bline    = find_option "linebegin", "", "";
+        my $eline    = find_option "lineend", "", "\n";
+        my $formatted_source = "";
+        foreach my $oneline (@sourcecode) {
+            my $newline = "";
+            my $incomment = 0;
+            foreach my $maybestring (split /(\".*?(?<!\\)\")/, $oneline) {
+                if ($maybestring =~ /^\"(.*)\"$/) {
+                    # Format a string.
+                    $newline .= sprintf '"%s%s%s"', $bstring, $1, $estring;
+                }
+                elsif ($incomment) {
+                    # Do nothing within comments.
+                }
+                else {
+                    # Format all keywords we encounter.
+                    $maybestring =~ /^([^\#]*)(\#.*)?$/;
+                    my $noncomment = $1 | "";
+                    my $comment = $2 || "";
+                    foreach my $keyw (@keyword_list) {
+                        $noncomment =~ s/\b$keyw\b/$bkeyword$&$ekeyword/ig;
+                    }
+                    $newline .= $noncomment;
+                    if ($comment ne "") {
+                        $newline .= $bcomment . $comment;
+                        $incomment = 1;
+                    }
+                }
+            }
+            $newline .= $ecomment if $incomment;
+            $formatted_source .= $bline . $newline . $eline;
+        }
+        @sourcecode = split "\n", $formatted_source;
+
+        # See if we were told to indent the output and, if so, by how much.
+        my $indentcols = find_option "indent", 2, 0;
+
+        # If we were told to wrap the output then do so.
+        my $wrapcols = find_option "wrap", 72;
+        if (defined $wrapcols) {
+            my $format = ("format OUTFILE =\n" .
+                          " " x $indentcols . "^" . "<" x ($wrapcols-$indentcols) . " ~~\n" .
+                          '$oneline' . "\n" .
+                          ".\n");
+            no strict;
+            no warnings;
+            eval $format;
+            die "${progname}: $@\n" if $@;
+            select OUTFILE;
+            foreach $oneline (@sourcecode) {
+                write;
+            }
+            select STDOUT;
+            use warnings;
+            use strict;
+        }
+        else {
+            # Default is not to wrap the output.
+            print OUTFILE map {" " x $indentcols . "$_\n"} @sourcecode;
+        }
+        return;
+    };
+
+    # We're baffled.
+    die "${progname}: unknown source-code format \"$format\"\n";
+}
+
+
+# Format the measurement data recorded in the log file.
+sub format_data (\@)
+{
+    my @datatables = extract_data @{$_[0]};
+
+    # Default to CSV (i.e., merely strip out the log-file comments).
+    $format="csv" if !defined $format;
+
+    # The "noheaders" option suppresses header output.
+    my $suppress_headers = find_option ("noheaders", 1, 0);
+
+    # Define a function that outputs all of the data (i.e., excluding
+    # the header) in a table with each row and column separated by
+    # given separators.
+    my $output_data = sub ($%) {
+        my @table = @{shift @_};    # Data as a 2-D array
+        my %args = @_;              # Various formatting parameters
+        my $colbegin = $args{colbegin} || "";
+        my $colsep   = $args{colsep} || "";
+        my $colend   = $args{colend} || "";
+        my $rowbegin = $args{rowbegin} || "";
+        my $rowsep   = $args{rowsep} || "";
+        my $rowend   = $args{rowend} || "";
+        my @rowlist;
+
+        foreach my $tablerow (@table) {
+            push @rowlist, $rowbegin . join ($colsep, map {"$colbegin$_$colend"} @{$tablerow}) . $rowend;
+        }
+        print OUTFILE join ($rowsep, @rowlist);
+    };
+
+    # Define a function for generic formatting of a single table.
+    my $generic_output = sub (%) {
+        # Parameter priority:
+        #   1. command line
+        #   2. arguments to $generic_output
+        #   3. empty string
+        my @validkeys =               # Parameters we care about
+            qw (excel quote unquote
+                colbegin colsep colend
+                rowbegin rowsep rowend
+                hcolbegin hcolsep hcolend
+                hrowbegin hrowsep hrowend
+                tablebegin tablesep tableend);
+        my %params = @_;              # Given parameters and their values
+
+        # Strings in Microsoft Excel CSV/TSV have a few special cases
+        # that need to be dealt with.
+        $params{"excel"} = find_option "excel", 1, 0;
+
+        # Use the given arguments but allow them to be overridden (not
+        # recommended when outputting in Excel's quirky format).
+        foreach my $key (@validkeys) {
+            $params{$key} = find_option $key, $params{$key}, $params{$key};
+        }
+
+        # The values of some parameters depend upon the values of
+        # other parameters.  Specifically, unquote gets the value of
+        # "--quote" unless "--unquote" is explicitly specified.  Also,
+        # a header string defaults to the corresponding data string.
+        if (!find_option("unquote",1) && find_option("quote",1)) {
+            $params{"unquote"} = $params{"quote"};
+        }
+        foreach my $key (map {substr $_, 1} grep /^h(row|col)/, @validkeys) {
+            $params{"h$key"}=$params{"$key"} if !defined $params{"h$key"};
+        }
+
+        # Unquote metacharacters in all parameters.  Any parameter not
+        # yet defined is set to the empty string.
+        foreach my $key (@validkeys) {
+            $params{$key}="" if !defined $params{$key};
+        }
+        if ($params{"quote"}=~/\\/ || $params{"unquote"}=~/\\/) {
+            die "${progname}: backslashes may not be used within quote symbols";
+        }
+        foreach my $key (@validkeys) {
+            $params{$key} = unquotemeta $params{$key};
+        }
+
+        # Process each table in turn.
+        foreach my $tableref (@datatables) {
+            # Get the table's dimensions.
+            my @table = @{$tableref};
+            my ($numrows, $numcols) = (1+$#table, 1+$#{$table[0]});
+
+            # Output the table header.
+            print OUTFILE $params{"tablebegin"};
+
+            # Octave is quite different from all of the other data
+            # formats and must be handled specially.
+            if ($format eq "octave") {
+                # Output each column as a separate Octave variable.
+                foreach my $col (0 .. $#{$table[0]}) {
+                    # Extract the entire column into an array.
+                    my @column;
+                    foreach my $row (0 .. $#table) {
+                        push @column, $table[$row]->[$col] if defined $table[$row]->[$col];
+                    }
+
+                    # Combine all header rows into a single Octave variable name.
+                    my $tempquote = join ("", map {chr(ord("A") + rand 26)} (1 .. 10));
+                    my $tempunquote = join ("", map {chr(ord("A") + rand 26)} (1 .. 10));
+                    my @varnameparts = ();
+                    my $varname = join ($params{hcolsep},
+                                        map {s/\\\"/\"/g;
+                                             s/\Q$params{quote}\E/$tempquote/g if $params{"quote"};
+                                             s/\Q$params{unquote}\E/$tempunquote/g if $params{"unquote"};
+                                             s/$tempquote/\\$params{quote}/g if $params{"quote"};
+                                             s/$tempunquote/\\$params{unquote}/g if $params{"unquote"};
+                                             "$params{hcolbegin}$params{quote}$_$params{unquote}$params{hcolend}"}
+                                        @column[0 .. $numheaderrows-1]);
+                    $varname =~ s/\W/_/g;
+                    $varname =~ s/_+/_/g;
+                    $varname =~ s/^_?(.*?)_?$/$1/;
+                    $varname =~ s/^\d/_$&/;
+                    our %octavevars;
+                    if (defined $octavevars{$varname}) {
+                        $varname = sprintf "%s_%d", $varname, 1+$octavevars{$varname};
+                    }
+                    $octavevars{$varname}++;
+
+                    # Output an Octave variable header.
+                    unless ($suppress_headers) {
+                        print OUTFILE join ($params{"hrowsep"},
+                                            ("$params{hrowbegin}name: $varname$params{hrowend}",
+                                             "$params{hrowbegin}type: matrix$params{hrowend}",
+                                             "$params{hrowbegin}rows: " . ($#column-$numheaderrows+1) . $params{hrowend},
+                                             "$params{hrowbegin}columns: 1$params{hrowend}"));
+                    }
+
+                    # Output all column data.
+                    print OUTFILE $params{"rowbegin"};
+                    print OUTFILE join ($params{"colsep"},
+                                        map {"$params{colbegin}$_$params{colend}"}
+                                        @column[$numheaderrows .. $#column]);
+                    print OUTFILE $params{"rowend"};
+                }
+            }
+            else {
+                # We're not outputting Octave files.
+                unless ($suppress_headers) {
+                    # Output the header rows specially.
+                    my $tempquote = join ("", map {chr(ord("A") + rand 26)} (1 .. 10));
+                    my $tempunquote = join ("", map {chr(ord("A") + rand 26)} (1 .. 10));
+                    foreach my $row (0 .. $numheaderrows-1) {
+                        if ($params{"excel"}) {
+                            # Microsoft Excel has special cases for double
+                            # quotes and for strings that begin with "=".
+                            my @columns = map {s/\\\"/\"\"/g;
+                                               s/\\\\/\\/g;
+                                               $_} @{$table[$row]};
+                            print OUTFILE $params{"hrowbegin"};
+                            foreach my $c (0 .. $#columns) {
+                                my $onecol = $columns[$c];
+                                print OUTFILE "=" if substr($onecol, 0, 1) eq "=";
+                                print OUTFILE "$params{hcolbegin}$params{quote}$onecol$params{unquote}$params{hcolend}";
+                                print OUTFILE $params{"hcolsep"} if $c!=$#columns;
+                            }
+                            print OUTFILE $params{"hrowend"};
+                            print OUTFILE $params{"hrowsep"};
+                        }
+                        else {
+                            # Backslash all occurences of the quote and unquote characters.
+                            my @columns =
+                                map {s/\\\"/\"/g;
+                                     s/\Q$params{quote}\E/$tempquote/g if $params{"quote"};
+                                     s/\Q$params{unquote}\E/$tempunquote/g if $params{"unquote"};
+                                     s/$tempquote/\\$params{quote}/g if $params{"quote"};
+                                     s/$tempunquote/\\$params{unquote}/g if $params{"unquote"};
+                                     "$params{hcolbegin}$params{quote}$_$params{unquote}$params{hcolend}"}
+                            @{$table[$row]};
+                            print OUTFILE ($params{"hrowbegin"},
+                                           join ("$params{hcolsep}", @columns),
+                                           $params{"hrowend"} . $params{"hrowsep"});
+                        }
+                    }
+                }
+
+                # Output the data rows as they are.
+                my @tabledata = @table[$numheaderrows..$#table];
+                $output_data->(\@tabledata, %params);
+            }
+
+            # Output the table footer and separator.
+            print OUTFILE $params{"tableend"};
+            print OUTFILE $params{"tablesep"} unless $tableref==$datatables[$#datatables];
+        }
+    };
+
+    # Define a mapping from a format type to the formatting code itself.
+    my %formatmap = ("csv"     => sub {$generic_output->(colsep      => ",",
+                                                         rowend     => "\n",
+                                                         tablesep   => "\n",
+                                                         quote      => '"',
+                                                         unquote    => '"')},
+                     "tsv"     => sub {$generic_output->(colsep     => "\t",
+                                                         rowend     => "\n",
+                                                         tablesep   => "\n",
+                                                         quote      => '"',
+                                                         unquote    => '"')},
+                     "gnuplot" => sub {$generic_output->(colsep     => " ",
+                                                         rowend     => "\n",
+                                                         tablesep   => "\n\n",
+                                                         quote      => '"',
+                                                         unquote    => '"',
+                                                         hrowbegin  => "# ")},
+                     "octave"  => sub {$generic_output->(colend     => "\n",
+                                                         rowend     => "",
+                                                         hrowbegin  => "# ",
+                                                         hrowend    => "\n",
+                                                         hcolsep    => "_",
+                                                         tablesep   => "\n")},
+                     "html"    => sub {$generic_output->(rowbegin   => "<tr>",
+                                                         rowend     => "</tr>\n",
+                                                         colbegin   => "<td>",
+                                                         colend     => "</td>",
+                                                         colsep     => " ",
+                                                         hcolbegin  => "<th>",
+                                                         hcolend    => "</th>",
+                                                         tablebegin => "<table>\n",
+                                                         tableend   => "</table>\n")},
+                     "custom" => sub {$generic_output->()},
+                     "latex" => sub {
+                         # Output a LaTeX tabular or longtable environment.
+                         my $booktabs = find_option ("booktabs", 1, 0);
+                         my $dcolumn = find_option ("dcolumn", 1, 0);
+                         my $longtable = find_option ("longtable", 1, 0);
+                         my $tabletype = $longtable ? "longtable" : "tabular";
+
+                         # Define top, middle, and bottom rules.
+                         my @rules;
+                         if ($booktabs) {
+                             @rules = qw (toprule midrule bottomrule);
+                         }
+                         else {
+                             @rules = ("hline") x 3;
+                         }
+
+                         # Process each table in turn.
+                         foreach my $tableref (@datatables) {
+                             # Get the table's dimensions.
+                             my @table = @{$tableref};
+                             my ($numrows, $numcols) = (1+$#table, 1+$#{$table[0]});
+
+                             # Begin the tabular or longtable.
+                             print OUTFILE "\\begin{$tabletype}{\@{}*{$numcols}";
+                             if ($dcolumn) {
+                                 print OUTFILE "{D{.}{.}{-1}}";
+                             }
+                             else {
+                                 print OUTFILE "{r}";
+                             }
+                             print OUTFILE "\@{}}\n";
+
+                             # Output the header rows specially.  In
+                             # addition to using \multicolumn, we need
+                             # to escape "special" LaTeX characters.
+                             my $showheaderrows = sub {
+                                 print OUTFILE "\\$rules[0]\n";
+                                 foreach my $row (0 .. $numheaderrows-1) {
+                                     my @columns = map {
+                                         s/\\(.)/$1/g;
+                                         latexify $_;
+                                     } @{$table[$row]};
+                                     print OUTFILE "\\multicolumn{1}{\@{}c}{";
+                                     print OUTFILE join ("} & \\multicolumn{1}{c}{",
+                                                         @columns[0..$#columns-1]);
+                                     print OUTFILE "} & \\multicolumn{1}{c\@{}}{$columns[$#columns]} \\\\\n";
+                                 }
+                                 print OUTFILE "\\$rules[1]\n";
+                             };
+                             $showheaderrows->();
+                             if ($longtable) {
+                                 print OUTFILE <<"LONGTABLE_HEAD";
+\\endfirsthead
+\\multicolumn{$numcols}{\@{}c\@{}}{\\textit{(continued from the previous page)}} \\\\
+LONGTABLE_HEAD
+;
+                                 $showheaderrows->();
+                                 print OUTFILE <<"LONGTABLE_FOOT";
+\\endhead
+\\$rules[2]
+\\multicolumn{$numcols}{\@{}c\@{}}{\\textit{(continued on the next page)}} \\\\
+\\endfoot
+\\$rules[2]
+\\endlastfoot
+LONGTABLE_FOOT
+;
+                             }
+
+                             # Output the data rows as they are.
+                             my @tabledata = @table[$numheaderrows..$#table];
+                             $output_data->(\@tabledata,
+                                            "colsep" => " & ",
+                                            "rowend" => " \\\\\n");
+
+                             # End the tabular.
+                             print OUTFILE "\\$rules[2]\n" if !$longtable;
+                             print OUTFILE "\\end{$tabletype}\n";
+                             print OUTFILE "\n" unless $tableref==$datatables[$#datatables];
+                         }
+                     });
+
+    # Call the appropriate formatting function.
+    my $formatfunc = $formatmap{$format};
+    pod2usage "${progname}: unrecognized data format \"$format\"" if !defined $formatfunc;
+    &$formatfunc;
+}
+
+
+# Format the coNCePTuaL parameters listed in the log file.
+sub format_parameters (\@)
+{
+    my ($runtimeref, $envref) = extract_parameters @{$_[0]};
+    my @runtimevars = @{$runtimeref};
+    my @envvars = @{$envref};
+
+    # Mark environment variables as such.
+    my $envformat = find_option "envformat", "%s", "%s (environment variable)";
+    if ($envformat !~ /\%s/) {
+        warn "${progname}: warning: environment-variable format string does not contain \"\%s\"\n";
+    }
+    @envvars = map {[sprintf($envformat, $_->[0]), $_->[1]]} @envvars;
+
+    # Decide which of @runtimevars and @envvars to drop.
+    @envvars = () if find_option "noenv", 1, 0;
+    @runtimevars = () if find_option "noparams", 1, 0;
+    my @parameters = (@runtimevars, @envvars);
+
+    # Default to textual output.
+    $format="text" if !defined $format;
+
+    # Include only those keys found in a given file.
+    my $includes_file = find_option "include";
+    if (defined $includes_file) {
+        # Construct a hash that maps from a key to a {key, value} array.
+        my %paramhash;
+        foreach my $keyval (@parameters) {
+            $paramhash{$keyval->[0]} = $keyval;
+        }
+
+        # Process the file.
+        my @newparams;
+        my $lineno = 0;
+        open (INCFILE, "<$includes_file") || die "${progname}: unable to open $includes_file ($!)\n";
+        while (<INCFILE>) {
+            $lineno++;
+            chomp;
+            my $keyval = $paramhash{$_};
+            if (!defined $keyval) {
+                my $infile = @ARGV ? $ARGV[0] : "the log file";
+                warn "${progname}: warning: the \"$_\" key in $includes_file line $lineno does not appear in $infile\n";
+                next;
+            }
+            push @newparams, $keyval;
+        }
+        close INCFILE;
+        @parameters = @newparams;
+    }
+
+    # Exclude any keys that match the given regexps.
+    my @exclude_res;
+    foreach (@options) {
+        /^--exclude=(.*)/ && push @exclude_res, $1;
+    }
+    if (@exclude_res) {
+        my @newparams;
+      TEST_PARAMS:
+        foreach my $keyval (@parameters) {
+            foreach my $regexp (@exclude_res) {
+                next TEST_PARAMS if $keyval->[0] =~ $regexp;
+            }
+            push @newparams, $keyval;
+        }
+        @parameters = @newparams;
+    }
+
+    # Sort the parameters if instructed to do so.
+    if (find_option "sort", 1, 0) {
+        @parameters = sort {$a->[0] cmp $b->[0]} @parameters;
+    }
+
+    # Define a generic function for formatting a parameter table.
+    my $generic_output = sub ($$$$) {
+        # We can output in 1, 2, or 3 "column" format.  Three columns
+        # means that keys, separators, and values are each aligned.
+        # Two columns mean that keys+separators and values are each
+        # aligned.  One column means that nothing is aligned.
+        my ($columns, $colsep, $rowbegin, $rowend) = @_;
+        if ($columns == 1) {
+            # One column -- output pretty much as is.
+            foreach my $keyval (@parameters) {
+                print OUTFILE "$rowbegin$keyval->[0]$colsep$keyval->[1]$rowend";
+            }
+        }
+        elsif ($columns == 2) {
+            # Two columns -- combine the key and separator columns.
+            my $maxwidth = -1;
+            foreach my $keyval (@parameters) {
+                my $key = $keyval->[0] . $colsep;
+                $maxwidth=length($key) if $maxwidth<length($key);
+            }
+            foreach my $keyval (@parameters) {
+                printf OUTFILE ("%s%-${maxwidth}s%s%s",
+                                $rowbegin,
+                                $keyval->[0] . $colsep,
+                                $keyval->[1],
+                                $rowend);
+            }
+        }
+        elsif ($columns == 3) {
+            # Three columns -- output each column separately.
+            my $maxwidth = -1;
+            foreach my $keyval (@parameters) {
+                $maxwidth=length($keyval->[0]) if $maxwidth<length($keyval->[0]);
+            }
+            foreach my $keyval (@parameters) {
+                printf OUTFILE ("%s%-${maxwidth}s%s%s%s",
+                                $rowbegin,
+                                $keyval->[0],
+                                $colsep,
+                                $keyval->[1],
+                                $rowend);
+            }
+        }
+        else {
+            die "${progname}: --columns must be set to either 1, 2, or 3";
+        }
+    };
+
+    # Determine how to format the parameters.
+    if ($format eq "text") {
+        # Output in plain-text format.
+        my $columns = find_option "columns", 2, 1;
+        my $colsep = unquotemeta find_option "colsep", ": ", ": ";
+        my $rowbegin = unquotemeta find_option "rowbegin", "", "";
+        my $rowend = unquotemeta find_option "rowend", "\n", "\n";
+        $generic_output->($columns, $colsep, $rowbegin, $rowend);
+    }
+    elsif ($format eq "dumpkeys") {
+        # Output only the keys, for use with the --include option.
+        foreach my $keyval (@parameters) {
+            print OUTFILE "$keyval->[0]\n";
+        }
+    }
+    elsif ($format eq "latex") {
+        # Output a LaTeX tabular or tabularx environment.
+        my $booktabs = find_option "booktabs", 1, 0;
+        my @rules;
+        if ($booktabs) {
+            @rules = qw (toprule midrule bottomrule);
+        }
+        else {
+            @rules = ("hline") x 3;
+        }
+        my $col1name = find_option "col1name", "Parameter", "Parameter";
+        my $col2name = find_option "col2name", "Value", "Value";
+
+        # Ensure that all keys and values can pass through LaTeX.
+        foreach my $keyval (@parameters) {
+            $keyval->[0] = latexify $keyval->[0];
+            $keyval->[1] = latexify $keyval->[1];
+            $keyval->[1] =~ s| \+/- |~\$\\pm\$~|g;  # Optional, but looks nice
+            $keyval->[1] =~ s| --\b| -{}-|g;        # Ditto
+        }
+
+        # Output the complete tabular or tabularx.
+        my $tabularx = find_option "tabularx", 1, 0;
+        my $longtable = find_option "longtable", 1, 0;
+        my $colchar = $tabularx ? "X" : "l";
+        my ($begintab, $endtab);
+      BEGIN_END_TABLE: {
+          # Neither longtable nor tabularx
+          !$longtable && !$tabularx && do {
+              $begintab = "{tabular}";
+              $endtab = "{tabular}";
+              last BEGIN_END_TABLE;
+          };
+
+          # tabularx but not longtable
+          !$longtable && $tabularx && do {
+              $begintab = "{tabularx}{\\linewidth}";
+              $endtab = "{tabularx}";
+              last BEGIN_END_TABLE;
+          };
+
+          # longtable with or without tabularx
+          # (N.B.: longtable + tabularx = ltxtable)
+          $longtable && do {
+              $begintab = "{longtable}";
+              $endtab = "{longtable}";
+              last BEGIN_END_TABLE;
+          };
+
+          die "${progname}: internal error";
+      }
+        print OUTFILE "\\begin$begintab" . "{\@{}l$colchar\@{}}\n";
+        print OUTFILE "\\$rules[0]\n";
+        print OUTFILE "$col1name & $col2name \\\\\n";
+        print OUTFILE "\\$rules[1]\n";
+        if ($longtable) {
+            # Specify continuation headers and footers for longtable.
+            print OUTFILE <<"LONGTABLE";
+\\endfirsthead
+\\multicolumn{2}{\@{}c\@{}}{\\textit{(continued from the previous page)}} \\\\
+\\$rules[0]
+$col1name & $col2name \\\\
+\\$rules[1]
+\\endhead
+\\$rules[2]
+\\multicolumn{2}{\@{}c\@{}}{\\textit{(continued on the next page)}} \\\\
+\\endfoot
+\\$rules[2]
+\\endlastfoot
+LONGTABLE
+;
+        }
+        $generic_output->(1, " & ", "", " \\\\\n");
+        print OUTFILE "\\$rules[2]\n" if !$longtable;
+        print OUTFILE "\\end$endtab\n";
+    }
+    else {
+        die "${progname}: unknown parameter format \"$format\"\n";
+    }
+}
+
+
+# Format the coNCePTuaL environment variables listed in the log file.
+sub format_environment (\@)
+{
+    # Quote values properly.  Try to use a minimum of backslashes.
+    my ($paramref, $envref) = extract_parameters @{$_[0]};
+    my %value;
+    foreach my $keyval (@{$envref}) {
+        my ($key, $val) = @{$keyval};
+        my $cleanvalue = quotemeta $val;
+        $cleanvalue =~ s|\\([-/.:=,])|$1|g;
+        if ($val eq $cleanvalue) {
+            $value{$key} = $val;
+        }
+        else {
+            $value{$key} = $cleanvalue;
+        }
+    }
+
+    # Default to Bourne shell output.
+    $format="sh" if !defined $format;
+
+    # Decide whether to use semicolons or newlines to separate
+    # commands.
+    my $newlines = find_option "newlines", 1, 0;
+    my $sep = $newlines ? "\n" : "; ";
+    my $eol = $newlines ? "\n" : ";\n";
+
+    # Unset all other environment variables if instructed to do so.
+    my $unsetall = find_option "unset", 1, 0;
+
+  OUTPUT_FOR_SHELL: {
+      # Bourne shell
+      $format eq "sh" && do {
+          if ($unsetall) {
+              print OUTFILE "for oldvar in `env | awk -F= '{print \$1}'`${sep}do\n";
+              print OUTFILE "  unset \$oldvar$eol";
+              print OUTFILE "done$eol";
+          }
+          foreach my $key (map {$_->[0]} @{$envref}) {
+              print OUTFILE "$key=$value{$key}${sep}export $key$eol";
+          }
+          last OUTPUT_FOR_SHELL;
+      };
+
+      # Bourne shell derivatives
+      $format =~ /^(bash|ksh|ash)$/ && do {
+          if ($unsetall) {
+              print OUTFILE "for oldvar in `env | awk -F= '{print \$1}'`${sep}do\n";
+              print OUTFILE "  unset \$oldvar$eol";
+              print OUTFILE "done$eol";
+          }
+          foreach my $key (map {$_->[0]} @{$envref}) {
+              print OUTFILE "export $key=$value{$key}$eol";
+          }
+          last OUTPUT_FOR_SHELL;
+      };
+
+      # C-shell and derivatives
+      $format =~ /^(csh|tcsh|zsh)$/ && do {
+          if ($unsetall) {
+              if ($format eq "zsh") {
+                  # Note that zsh (a) uses Bourne-shell syntax and (b)
+                  # can't unset the "_" variable.
+                  print OUTFILE "for oldvar in `env | awk -F= '\$1!=\"_\" {print \$1}'`${sep}do\n";
+                  print OUTFILE "  unset \$oldvar$eol";
+                  print OUTFILE "done$eol";
+              }
+              else {
+                  # csh and tcsh are pretty stupid when it comes to
+                  # foreach loops.
+                  die "${progname}: --newlines must be specified when --unset is used with --format=$format\n" if !$newlines;
+                  print OUTFILE "foreach oldvar (`env | awk -F= '{print \$1}'`)\n";
+                  print OUTFILE "  unsetenv \$oldvar\n";
+                  print OUTFILE "end\n";
+              }
+          }
+          foreach my $key (map {$_->[0]} @{$envref}) {
+              print OUTFILE "setenv $key $value{$key}$eol";
+          }
+          last OUTPUT_FOR_SHELL;
+      };
+
+      # None of the above
+      die "${progname}: unknown environment format \"$format\"\n";
+  }
+
+    # If requested, switch to whatever directory was current when the
+    # program ran.
+    if (find_option "chdir", 1, 0) {
+        @_ = grep {$_->[0] eq "Working directory"} @{$paramref};
+        die "${progname}: unable to determine what directory to change to\n" if $#_;
+        print OUTFILE "cd $_[0]->[1]$eol";
+    }
+}
+
+
+# Format any coNCePTuaL warnings which appear in the log file.
+sub format_warnings (\@)
+{
+    my @warnings = extract_warnings @{$_[0]};
+
+    # Default to textual output.
+    $format="text" if !defined $format;
+
+    # Determine how to format the parameters.
+    my ($itembegin, $itemend);     # Text to put at the beginning and end of each item
+    my ($listbegin, $listend);     # Text to put at the beginning and end of the entire list
+    if ($format eq "text") {
+        # Output in plain-text format.
+        $itembegin = unquotemeta find_option "itembegin", "* ", "* ";
+        $itemend = unquotemeta find_option "itemend", "\n", "\n";
+        $listbegin = unquotemeta find_option "listbegin", "", "";
+        $listend = unquotemeta find_option "listend", "", "";
+    }
+    elsif ($format eq "html") {
+        # Output an HTML list.
+        $itembegin = unquotemeta find_option "itembegin", "  <li>", "  <li>";
+        $itemend = unquotemeta find_option "itemend", "</li>\n", "</li>\n";
+        $listbegin = unquotemeta find_option "listbegin", "<ul>\n", "<ul>\n";
+        $listend = unquotemeta find_option "listend", "</ul>\n", "</ul>\n";
+    }
+    elsif ($format eq "latex") {
+        # Output a LaTeX list.
+        $itembegin = unquotemeta find_option "itembegin", "  \\\\item ", "  \\\\item ";
+        $itemend = unquotemeta find_option "itemend", "\n", "\n";
+        $listbegin = unquotemeta find_option "listbegin", "\\\\begin{itemize}\n", "\\\\begin{itemize}\n";
+        $listend = unquotemeta find_option "listend", "\\\\end{itemize}\n", "\\\\end{itemize}\n";
+    }
+    else {
+        die "${progname}: unknown warning format \"$format\"\n";
+    }
+
+    # Output the list of warnings.
+    print OUTFILE $listbegin;
+    foreach my $onewarning (@warnings) {
+        print $itembegin, $onewarning, $itemend;
+    }
+    print OUTFILE $listend;
+}
+
+
+###########################################################################
+
+#----------------------------------------#
+# The program begins its execution here. #
+#----------------------------------------#
+
+# Parse the command line.
+Getopt::Long::Configure ("noignore_case", "pass_through", "bundling");
+GetOptions ("u|usage"          => sub {$want_docs=1},
+            "h|help"           => sub {$want_docs=2},
+            "m|man"            => sub {$want_docs=3},
+            "options-tree"     => sub {output_options_tree(); exit 0},
+            "options-poster"   => sub {output_options_as_dot(); exit 0},
+            "dhtml-man"        => sub {output_dhtml_documentation(); exit 0},
+            "texinfo-man"      => sub {eval "use Pod2NCPTLTexi";
+                                       die "${progname}: $@\n" if $@;
+                                       new TexinfoParser()->parse_from_file($0);
+                                       exit 0},
+            "e|extract=s"      => \$extract,
+            "f|format=s"       => \$format,
+            "b|before=s"       => \@before,
+            "a|after=s"        => \@after,
+            "p|procs=s"        => \$unmerge_procs,
+            "q|quiet"          => sub {$verbose=0},
+            "v|verbose+"       => \$verbose,
+            "F|force-merge:s"  => sub {$forcemerge=[$_[1]], return if $_[1] =~ /^[-+]?\d+$/;
+                                       $forcemerge=[undef], return if $_[1] eq "";
+                                       die "Value \"$_[1]\" invalid for option force-merge (number expected)\n"},
+            "o|output=s"       => \$outfile) || pod2usage(2);
+if ($want_docs == 2) {
+    # Present terser help than that provided by pod2usage(-verbose => 1).
+    pod2usage(-verbose => 0,
+              -exitval => "NOEXIT");
+    print <<'HELP';
+Options:
+    ncptl-logextract processes a hierarchy of command-line options.
+    The first-level option, "--extract" tells ncptl-logextract what to
+    extract from the log file and must be one of "data" (the default),
+    "params", "env", "source", or "warnings".  The second-level
+    option, "--format", tells ncptl-logextract how to format whatever
+    it extracted.  Valid arguments depend upon the argument to
+    "--extract" and include formats such as "text", "html", and "csv".
+    Third-level options vary widely and are used to provide precise
+    control over the formatting.
+
+    There are too many command-line options to document here.  For the
+    complete set run "ncptl-logextract --man" or "man
+    ncptl-logextract" or see the coNCePTuaL User's Guide.
+
+Examples:
+    Extract data from a log file and format it as
+    comma-separated-value data suitable for inclusion in a
+    spreadsheet:
+
+        ncptl-logextract results-0.log
+
+    Extract data from a log file, format it with spaces separating
+    columns, and discard column headers:
+
+        ncptl-logextract --colsep=" " --noheaders results-0.log
+HELP
+    ;#'
+    exit 1;
+}
+pod2usage(-verbose => $want_docs-1,
+          -exitval => 1) if $want_docs;
+@options = grep /^--\w/, @ARGV;
+@ARGV = map {split " ", expand_if_file $_} grep !/^--\w/, @ARGV;
+my @singlefile = read_all_file_data find_option("merge", "mean", "mean"), @ARGV;
+
+# Expand all values that begin with "@" into file contents.
+$extract = expand_if_file $extract;
+$format = expand_if_file $format;
+@before = map {expand_if_file($_)} @before;
+@after = map {expand_if_file($_)} @after;
+$outfile = expand_if_file $outfile;
+
+# Determine the appropriate extracting/formatting function.
+my %extractmap = ("source"   => sub {format_source @singlefile},
+                  "data"     => sub {format_data @singlefile},
+                  "params"   => sub {format_parameters @singlefile},
+                  "env"      => sub {format_environment @singlefile},
+                  "warnings" => sub {format_warnings @singlefile});
+my $extractfunc = $extractmap{$extract};
+pod2usage "${progname}: unrecognized extraction type \"$extract\"" if !defined $extractfunc;
+
+# Open the output file.
+print STDERR "Extracting $extract ... " if $verbose;
+open (OUTFILE, ">$outfile") || die "${progname}: unable to write to $outfile ($!)\n";
+
+# Output verbatim all of our "before" text.
+foreach my $oneline (@before) {
+    print OUTFILE unquotemeta $oneline;
+}
+
+# Call the appropriate extracting/formatting function.
+&$extractfunc;
+
+# Output verbatim all of our "after" text.
+foreach my $oneline (@after) {
+    print OUTFILE unquotemeta $oneline;
+}
+print STDERR "done.\n" if $verbose;
+
+# Warn about command-line options we never used in case the user mistyped.
+foreach my $oneopt (@options) {
+    $oneopt =~ /^--([^=]+)/;
+    if (!defined $optsused{$1}) {
+        warn "${progname}: warning: option --$1 was not used\n";
+    }
+}
+
+# Finish up cleanly.
+close OUTFILE;
+exit 0;
+
+###########################################################################
+
+__END__
+
+=head1 NAME
+
+ncptl-logextract - Extract various bits of information from a coNCePTuaL log file
+
+
+=head1 SYNOPSIS
+
+ncptl-logextract
+B<--usage> | B<--help> | B<--man>
+
+=for texinfo
+@sp 1
+@noindent
+
+ncptl-logextract
+[B<--extract>=[data|params|env|source|warnings]]
+[B<--format>=I<format>]
+[I<format-specific options>...]
+[B<--before>=I<string>]
+[B<--after>=I<string>]
+[B<--force-merge>[=I<number>]]
+[B<--procs>=I<string>]
+[B<--quiet>]
+[B<--verbose>]
+[B<--output>=I<filename>]
+[I<filename>...]
+
+
+=head1 DESCRIPTION
+
+=head2 Background
+
+coNCePTuaL is a domain-specific programming language designed to
+facilitate writing networking benchmarks and validation suites.
+coNCePTuaL programs can log data to a file but in only a single file
+format.  B<ncptl-logextract> extracts this log data and outputs it in
+a variety of formats for use with other applications.
+
+The coNCePTuaL-generated log files that serve as input to
+B<ncptl-logextract> are plain ASCII files.  Syntactically, they
+contain a number of newline-separated tables.  Each table contains a
+number of newline-separated rows of comma-separated columns.  This is
+known generically as I<comma-separated value> or I<CSV> format.  Each
+table begins with two rows of header text followed by one or more rows
+of numbers.  Text is written within double quotes.  Double-quote
+characters and backslashes within text are escaped with a backslash.
+No other escaped characters are recognized.  Lines that begin with
+C<#> are considered comments.
+
+Semantically, there are four types of data present in every
+coNCePTuaL-generated log file:
+
+=over 4
+
+=item 1.
+
+The complete source code of the coNCePTuaL program that produced the
+log file
+
+=item 2.
+
+Characteristics of the run-time environment and the values of all
+command-line parameters
+
+=item 3.
+
+A list of warning messages that coNCePTuaL issued while analyzing the
+run-time environment
+
+=item 4.
+
+One or more tables of measurement data produced by the coNCePTuaL program
+
+=back
+
+The first three items appear within comment lines.  The measurement
+data is written in CSV format.
+
+
+=head2 Extracting information from coNCePTuaL log files
+
+It is common to want to extract information (especially measurement
+data) from log files.  For simple formatting operations, a one-line
+awk or Perl script suffices.  However, as the complexity of the
+formatting increases, the complexity of these scripts increases even
+more.  That's where B<ncptl-logextract> fits in.  B<ncptl-logextract>
+makes it easy to extract any of the four types of log data described
+above and format it in variety of ways.  Although the number of
+options that B<ncptl-logextract> supports may be somewhat daunting, it
+is well worth learning how to use B<ncptl-logextract> to avoid
+reinventing the wheel every time a coNCePTuaL log file needs to be
+processed.  B<ncptl-logextract> takes care of all sorts of special
+cases that crop up when manipulating coNCePTuaL log files.
+
+
+=head1 OPTIONS
+
+B<ncptl-logextract> accepts the following command-line options
+regardless of what data is extracted from the log file and what
+formatting occurs:
+
+=over 6
+
+=item B<-h>, B<--help>
+
+Output L<"SYNOPSIS"> and L<"OPTIONS"> then exit the program.
+
+=item B<-m>, B<--man>
+
+Output a complete Unix man ("manual") page for B<ncptl-logextract>
+then exit the program.
+
+=item B<-e> I<info>, B<--extract>=I<info>
+
+Specify what sort of data should be extracted from the log file.
+Acceptable values for I<info> are listed and described in
+L<"ADDITIONAL OPTIONS"> and include C<data>, C<params>, C<env>, and
+C<source>.
+
+=item B<-f> I<format>, B<--format>=I<format>
+
+Specify how the extracted data should be formatted.  Valid arguments
+depend upon the value passed to C<--extract> and include such formats
+as C<csv>, C<html>, C<latex>, C<text>, and C<bash>.  See L<"ADDITIONAL
+OPTIONS"> for details, explanations, and descriptions of
+applicability.
+
+=item B<-b> I<string>, B<--before>=I<string>
+
+Output an arbitrary string of text before any other output.  I<string>
+can contain escape characters such as C<\n> for newline, C<\t> for
+tab, and C<\\> for backslash.
+
+=item B<-a> I<string>, B<--after>=I<string>
+
+Output an arbitrary string of text after all other output.  I<string>
+can contain escape characters such as C<\n> for newline, C<\t> for
+tab, and C<\\> for backslash.
+
+=item B<-F> [I<number>], B<--force-merge>[=I<number>]
+
+Try extra hard to merge multiple log files, even if they seem to have
+been produced by different programs or in different execution
+environments.  This generally implies padding empty rows and columns
+with blanks.  However, if C<--force-merge> is given a numeric
+argument, the value of that argument is used instead of blanks to pad
+empty locations.  Note that C<--force-merge> is different from
+C<--force-merge=0> because data-merging functions (C<mean>, C<max>,
+etc.) ignore blanks but consider zeroes.
+
+=item B<-p> I<string>, B<--procs>=I<string>
+
+When given a "merged" log file, unmerge only the data corresponding to
+the comma-separated processor ranges in I<string>.  For example,
+C<--procs=0,16-20,25> unmerges the data for S<processors 0>, 16, 17,
+18, 19, 20, S<and 25>.  By default, B<ncptl-logextract> uses all of
+the data from a merged log file.
+
+=item B<-q>, B<--quiet>
+
+Suppress progress output.  Normally, B<ncptl-logextract> outputs
+status information regarding its operation.  The B<--quiet> option
+instruct B<ncptl-logextract> to output only warning and error
+messages.
+
+=item B<-v>, B<--verbose>
+
+Increase progress output.  Normally, B<ncptl-logextract> outputs basic
+status information regarding its operation.  The B<--verbose> option
+instruct B<ncptl-logextract> to output more detailed information.
+Each time B<--verbose> is specified, the program's verbosity increases
+(up to a maximum).
+
+=item B<-o> I<filename>, B<--output>=I<filename>
+
+Redirect the output from B<ncptl-logextract> to a file.  By default,
+B<ncptl-logextract> writes to the standard output device.
+
+=back
+
+The above is merely a terse summary of the B<ncptl-logextract>
+command-line options.  The reader is directed to L</ADDITIONAL
+OPTIONS> for descriptions of the numerous ways that
+B<ncptl-logextract> can format information.  Note that C<--extract>
+and C<--format> are the two most common options as they specify what
+to extract and how to format it; most of the remaining options in
+L</"ADDITIONAL OPTIONS"> exist to provide precise control over
+formatting details.
+
+
+=head1 ADDITIONAL OPTIONS
+
+The B<ncptl-logextract> command-line options follow a hierarchy.  At
+the top level is C<--extract>, which specifies which of the four types
+of data B<ncptl-logextract> should extract.  Next, C<--format>
+specifies how the extracted data should be formatted.  Valid values
+for C<--format> differ based on the argument to C<--extract>.
+Finally, there are various format-specific options that fine-tune the
+formatted output.  Each output format accepts a different set of
+options.  Many of the options appear at multiple places within the
+hierarchy, although usually with different default values.
+
+The following hierarchical list describes all of the valid
+combinations of C<--extract>, C<--format>, and the various
+format-specific options:
+
+Z<>Z<>Z<>Z<>Z<>
+
+=over 4
+
+=item C<--extract=data> [default]
+
+Extract measurement data
+
+=over 4
+
+=item C<--format=csv> [default]
+
+Output each table in comma-separated-value format
+
+=over 4
+
+=item C<--noheaders>
+
+Do not output column headers
+
+=item C<--colbegin=>I<string>
+
+Specify the text placed at the beginning of each data column [default: S<"C<>">]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C<,>">]
+
+=item C<--colend=>I<string>
+
+Specify the text placed at the end of each data column [default: S<"C<>">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text placed at the beginning of each data row [default: S<"C<>">]
+
+=item C<--rowsep=>I<string>
+
+Specify the text used to separate data rows [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text placed at the end of each data row [default: S<"C<\\n>">]
+
+=item C<--hcolbegin=>I<string>
+
+Specify the text placed at the beginning of each header column [default: same as colbegin]
+
+=item C<--hcolsep=>I<string>
+
+Specify the text used to separate header columns [default: same as colsep]
+
+=item C<--hcolend=>I<string>
+
+Specify the text placed at the end of each header column [default: same as colend]
+
+=item C<--hrowbegin=>I<string>
+
+Specify the text placed at the beginning of each header row [default: same as rowbegin]
+
+=item C<--hrowsep=>I<string>
+
+Specify the text used to separate header rows [default: same as rowsep]
+
+=item C<--hrowend=>I<string>
+
+Specify the text placed at the end of each header row [default: same as rowend]
+
+=item C<--tablebegin=>I<string>
+
+Specify the text placed at the beginning of each table [default: S<"C<>">]
+
+=item C<--tablesep=>I<string>
+
+Specify the text used to separate tables [default: S<"C<\\n>">]
+
+=item C<--tableend=>I<string>
+
+Specify the text placed at the end of each table [default: S<"C<>">]
+
+=item C<--quote=>I<string>
+
+Specify the text used to begin quoted text [default: S<"C<">">]
+
+=item C<--unquote=>I<string>
+
+Specify the text used to end quoted text [default: same as quote]
+
+=item C<--excel>
+
+Output strings in a format readable by Microsoft Excel
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=item C<--format=tsv>
+
+Output each table in tab-separated-value format
+
+=over 4
+
+=item C<--noheaders>
+
+Do not output column headers
+
+=item C<--colbegin=>I<string>
+
+Specify the text placed at the beginning of each data column [default: S<"C<>">]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C<\\t>">]
+
+=item C<--colend=>I<string>
+
+Specify the text placed at the end of each data column [default: S<"C<>">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text placed at the beginning of each data row [default: S<"C<>">]
+
+=item C<--rowsep=>I<string>
+
+Specify the text used to separate data rows [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text placed at the end of each data row [default: S<"C<\\n>">]
+
+=item C<--hcolbegin=>I<string>
+
+Specify the text placed at the beginning of each header column [default: same as colbegin]
+
+=item C<--hcolsep=>I<string>
+
+Specify the text used to separate header columns [default: same as colsep]
+
+=item C<--hcolend=>I<string>
+
+Specify the text placed at the end of each header column [default: same as colend]
+
+=item C<--hrowbegin=>I<string>
+
+Specify the text placed at the beginning of each header row [default: same as rowbegin]
+
+=item C<--hrowsep=>I<string>
+
+Specify the text used to separate header rows [default: same as rowsep]
+
+=item C<--hrowend=>I<string>
+
+Specify the text placed at the end of each header row [default: same as rowend]
+
+=item C<--tablebegin=>I<string>
+
+Specify the text placed at the beginning of each table [default: S<"C<>">]
+
+=item C<--tablesep=>I<string>
+
+Specify the text used to separate tables [default: S<"C<\\n>">]
+
+=item C<--tableend=>I<string>
+
+Specify the text placed at the end of each table [default: S<"C<>">]
+
+=item C<--quote=>I<string>
+
+Specify the text used to begin quoted text [default: S<"C<">">]
+
+=item C<--unquote=>I<string>
+
+Specify the text used to end quoted text [default: same as quote]
+
+=item C<--excel>
+
+Output strings in a format readable by Microsoft Excel
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=item C<--format=html>
+
+Output each table in HTML table format
+
+=over 4
+
+=item C<--noheaders>
+
+Do not output column headers
+
+=item C<--colbegin=>I<string>
+
+Specify the text placed at the beginning of each data column [default: S<"C<E<lt>tdE<gt>>">]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C< >">]
+
+=item C<--colend=>I<string>
+
+Specify the text placed at the end of each data column [default: S<"C<E<lt>/tdE<gt>>">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text placed at the beginning of each data row [default: S<"C<E<lt>trE<gt>>">]
+
+=item C<--rowsep=>I<string>
+
+Specify the text used to separate data rows [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text placed at the end of each data row [default: S<"C<E<lt>/trE<gt>\\n>">]
+
+=item C<--hcolbegin=>I<string>
+
+Specify the text placed at the beginning of each header column [default: S<"C<E<lt>thE<gt>>">]
+
+=item C<--hcolsep=>I<string>
+
+Specify the text used to separate header columns [default: same as colsep]
+
+=item C<--hcolend=>I<string>
+
+Specify the text placed at the end of each header column [default: S<"C<E<lt>/thE<gt>>">]
+
+=item C<--hrowbegin=>I<string>
+
+Specify the text placed at the beginning of each header row [default: same as rowbegin]
+
+=item C<--hrowsep=>I<string>
+
+Specify the text used to separate header rows [default: same as rowsep]
+
+=item C<--hrowend=>I<string>
+
+Specify the text placed at the end of each header row [default: same as rowend]
+
+=item C<--tablebegin=>I<string>
+
+Specify the text placed at the beginning of each table [default: S<"C<E<lt>tableE<gt>\\n>">]
+
+=item C<--tablesep=>I<string>
+
+Specify the text used to separate tables [default: S<"C<>">]
+
+=item C<--tableend=>I<string>
+
+Specify the text placed at the end of each table [default: S<"C<E<lt>/tableE<gt>\\n>">]
+
+=item C<--quote=>I<string>
+
+Specify the text used to begin quoted text [default: S<"C<>">]
+
+=item C<--unquote=>I<string>
+
+Specify the text used to end quoted text [default: same as quote]
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=item C<--format=gnuplot>
+
+Output each table as a gnuplot data file
+
+=over 4
+
+=item C<--noheaders>
+
+Do not output column headers
+
+=item C<--colbegin=>I<string>
+
+Specify the text placed at the beginning of each data column [default: S<"C<>">]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C< >">]
+
+=item C<--colend=>I<string>
+
+Specify the text placed at the end of each data column [default: S<"C<>">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text placed at the beginning of each data row [default: S<"C<>">]
+
+=item C<--rowsep=>I<string>
+
+Specify the text used to separate data rows [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text placed at the end of each data row [default: S<"C<\\n>">]
+
+=item C<--hcolbegin=>I<string>
+
+Specify the text placed at the beginning of each header column [default: same as colbegin]
+
+=item C<--hcolsep=>I<string>
+
+Specify the text used to separate header columns [default: same as colsep]
+
+=item C<--hcolend=>I<string>
+
+Specify the text placed at the end of each header column [default: same as colend]
+
+=item C<--hrowbegin=>I<string>
+
+Specify the text placed at the beginning of each header row [default: S<"C<# >">
+
+=item C<--hrowsep=>I<string>
+
+Specify the text used to separate header rows [default: same as rowsep]
+
+=item C<--hrowend=>I<string>
+
+Specify the text placed at the end of each header row [default: same as rowend]
+
+=item C<--tablebegin=>I<string>
+
+Specify the text placed at the beginning of each table [default: S<"C<>">]
+
+=item C<--tablesep=>I<string>
+
+Specify the text used to separate tables [default: S<"C<\\n\\n>">]
+
+=item C<--tableend=>I<string>
+
+Specify the text placed at the end of each table [default: S<"C<>">]
+
+=item C<--quote=>I<string>
+
+Specify the text used to begin quoted text [default: S<"C<">">]
+
+=item C<--unquote=>I<string>
+
+Specify the text used to end quoted text [default: same as quote]
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=item C<--format=octave>
+
+Output each table as an Octave text-format data file
+
+=over 4
+
+=item C<--noheaders>
+
+Do not output column headers
+
+=item C<--colbegin=>I<string>
+
+Specify the text placed at the beginning of each data column [default: S<"C<>">]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C<>">]
+
+=item C<--colend=>I<string>
+
+Specify the text placed at the end of each data column [default: S<"C<\\n>">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text placed at the beginning of each data row [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text placed at the end of each data row [default: S<"C<>">]
+
+=item C<--hcolbegin=>I<string>
+
+Specify the text placed at the beginning of each header column [default: S<"C<>">]
+
+=item C<--hcolsep=>I<string>
+
+Specify the text used to separate header columns [default: S<"C<_>">]
+
+=item C<--hcolend=>I<string>
+
+Specify the text placed at the end of each header column [default: S<"C<>">]
+
+=item C<--hrowbegin=>I<string>
+
+Specify the text placed at the beginning of each header row [default: S<"C<# >">]
+
+=item C<--hrowsep=>I<string>
+
+Specify the text used to separate header rows [default: S<"C<>">]
+
+=item C<--hrowend=>I<string>
+
+Specify the text placed at the end of each header row [default: S<"C<\\n>">]
+
+=item C<--tablebegin=>I<string>
+
+Specify the text placed at the beginning of each table [default: S<"C<>">]
+
+=item C<--tablesep=>I<string>
+
+Specify the text used to separate tables [default: S<"C<\\n>">]
+
+=item C<--tableend=>I<string>
+
+Specify the text placed at the end of each table [default: S<"C<>">]
+
+=item C<--quote=>I<string>
+
+Specify the text used to begin quoted text [default: S<"C<>">]
+
+=item C<--unquote=>I<string>
+
+Specify the text used to end quoted text [default: same as quote]
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=item C<--format=custom>
+
+Output each table in a completely user-specified format
+
+=over 4
+
+=item C<--noheaders>
+
+Do not output column headers
+
+=item C<--colbegin=>I<string>
+
+Specify the text placed at the beginning of each data column [default: S<"C<>">]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C<>">]
+
+=item C<--colend=>I<string>
+
+Specify the text placed at the end of each data column [default: S<"C<>">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text placed at the beginning of each data row [default: S<"C<>">]
+
+=item C<--rowsep=>I<string>
+
+Specify the text used to separate data rows [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text placed at the end of each data row [default: S<"C<>">]
+
+=item C<--hcolbegin=>I<string>
+
+Specify the text placed at the beginning of each header column [default: same as colbegin]
+
+=item C<--hcolsep=>I<string>
+
+Specify the text used to separate header columns [default: same as colsep]
+
+=item C<--hcolend=>I<string>
+
+Specify the text placed at the end of each header column [default: same as colend]
+
+=item C<--hrowbegin=>I<string>
+
+Specify the text placed at the beginning of each header row [default: same as rowbegin]
+
+=item C<--hrowsep=>I<string>
+
+Specify the text used to separate header rows [default: same as rowsep]
+
+=item C<--hrowend=>I<string>
+
+Specify the text placed at the end of each header row [default: same as rowend]
+
+=item C<--tablebegin=>I<string>
+
+Specify the text placed at the beginning of each table [default: S<"C<>">]
+
+=item C<--tablesep=>I<string>
+
+Specify the text used to separate tables [default: S<"C<>">]
+
+=item C<--tableend=>I<string>
+
+Specify the text placed at the end of each table [default: S<"C<>">]
+
+=item C<--quote=>I<string>
+
+Specify the text used to begin quoted text [default: S<"C<>">]
+
+=item C<--unquote=>I<string>
+
+Specify the text used to end quoted text [default: same as quote]
+
+=item C<--excel>
+
+Output strings in a format readable by Microsoft Excel
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=item C<--format=latex>
+
+Output each table as a LaTeX tabular environment
+
+=over 4
+
+=item C<--dcolumn>
+
+Use the dcolumn package to align numbers on the decimal point
+
+=item C<--booktabs>
+
+Use the booktabs package for a more professionally typeset look
+
+=item C<--longtable>
+
+Use the longtable package to enable multi-page tables
+
+=item C<--merge=>I<function>
+
+Specify how to merge data from multiple files [default: S<"C<mean>">]
+
+=item C<--showfnames=>I<option>
+
+Add an extra header row showing the filename the data came from [default: S<"C<none>">]
+
+=back
+
+=back
+
+=item C<--extract=params>
+
+Extract the program's run-time parameters and environment variables
+
+=over 4
+
+=item C<--format=text> [default]
+
+Output the parameters in plain-text format
+
+=over 4
+
+=item C<--include=>I<filename>
+
+Read from a file the list of keys to output
+
+=item C<--exclude=>I<regexp>
+
+Ignore any keys whose name matches a regular expression
+
+=item C<--sort>
+
+Sort the list of parameters alphabetically by key
+
+=item C<--noenv>
+
+Exclude environment variables
+
+=item C<--noparams>
+
+Exclude run-time parameters
+
+=item C<--envformat=>I<template>
+
+Format environment variable names using the given template [default: S<"C<%s (environment variable)>">]
+
+=item C<--columns=>I<number>
+
+Output the parameters as a 1-, 2-, or 3-column table [default: 1]
+
+=item C<--colsep=>I<string>
+
+Specify the text used to separate data columns [default: S<"C<: >">]
+
+=item C<--rowbegin=>I<string>
+
+Specify the text that's output at the start of each data row [default: S<"C<>">]
+
+=item C<--rowend=>I<string>
+
+Specify the text that's output at the end of each data row [default: S<"C<\\n>">]
+
+=back
+
+=item C<--format=dumpkeys>
+
+Output a list of the keys only (i.e., no values)
+
+=over 4
+
+=item C<--include=>I<filename>
+
+Read the list of parameters to output from a given file
+
+=item C<--exclude=>I<regexp>
+
+Ignore any keys whose name matches a regular expression
+
+=item C<--envformat=>I<template>
+
+Format environment variable names using the given template [default: S<"C<%s (environment variable)>">]
+
+=item C<--sort>
+
+Sort the list of parameters alphabetically by key
+
+=item C<--noenv>
+
+Exclude environment variables
+
+=item C<--noparams>
+
+Exclude run-time parameters
+
+=back
+
+=item C<--format=latex>
+
+Output the parameters as a LaTeX tabular environment
+
+=over 4
+
+=item C<--include=>I<filename>
+
+Read from a file the list of keys to output
+
+=item C<--exclude=>I<regexp>
+
+Ignore any keys whose name matches a regular expression
+
+=item C<--envformat=>I<template>
+
+Format environment variable names using the given template [default: S<"C<%s (environment variable)>">]
+
+=item C<--sort>
+
+Sort the list of parameters alphabetically by key
+
+=item C<--booktabs>
+
+Use the booktabs package for a more professionally typeset look
+
+=item C<--tabularx>
+
+Use the tabularx package to enable line wraps within the value column
+
+=item C<--longtable>
+
+Use the longtable package to enable multi-page tables
+
+=item C<--noenv>
+
+Exclude environment variables
+
+=item C<--noparams>
+
+Exclude run-time parameters
+
+=back
+
+=back
+
+=item C<--extract=env>
+
+Extract the environment in which the program was run
+
+=over 4
+
+=item C<--format=sh> [default]
+
+Use Bourne shell syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=item C<--format=bash>
+
+Use Bourne Again shell syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=item C<--format=ksh>
+
+Use Korn shell syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=item C<--format=csh>
+
+Use C shell syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=item C<--format=zsh>
+
+Use Z shell syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=item C<--format=tcsh>
+
+Use tcsh syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=item C<--format=ash>
+
+Use ash syntax for setting environment variables
+
+=over 4
+
+=item C<--newlines>
+
+Separate commands with newlines instead of semicolons
+
+=item C<--unset>
+
+Unset all other environment variables
+
+=item C<--chdir>
+
+Switch to the program's original working directory
+
+=back
+
+=back
+
+=item C<--extract=source>
+
+Extract coNCePTuaL source code
+
+=over 4
+
+=item C<--format=text> [default]
+
+Output the source code in plain-text format
+
+=over 4
+
+=item C<--linebegin=>I<string>
+
+Specify the text placed at the beginning of each line [default: S<"C<>">]
+
+=item C<--lineend=>I<string>
+
+Specify the text placed at the end of each line [default: S<"C<\\n>">]
+
+=item C<--kwbegin=>I<string>
+
+Specify the text placed before each keyword [default: S<"C<>">]
+
+=item C<--kwend=>I<string>
+
+Specify the text placed after each keyword [default: S<"C<>">]
+
+=item C<--strbegin=>I<string>
+
+Specify the text placed before each string [default: S<"C<>">]
+
+=item C<--strend=>I<string>
+
+Specify the text placed after each string [default: S<"C<>">]
+
+=item C<--combegin=>I<string>
+
+Specify the text placed before each comment [default: S<"C<>">]
+
+=item C<--comend=>I<string>
+
+Specify the text placed after each comment [default: S<"C<>">]
+
+=item C<--indent=>I<number>
+
+Indent each line by a given number of spaces
+
+=item C<--wrap=>I<number>
+
+Wrap the source code into a paragraph with a given character width
+
+=back
+
+=back
+
+=item C<--extract=warnings>
+
+Extract a list of warnings the program issued during initialization
+
+=over 4
+
+=item C<--format=text> [default]
+
+Output warnings in plain-text format
+
+=over 4
+
+=item C<--listbegin=>I<string>
+
+Specify text to appear at the beginning of the list [default: S<"C<>">]
+
+=item C<--listend=>I<string>
+
+Specify text to appear at the end of the list [default: S<"C<>">]
+
+=item C<--itembegin=>I<string>
+
+Specify text to appear before each warning [default: S<"C<* >">]
+
+=item C<--itemend=>I<string>
+
+Specify text to appear after each warning [default: S<"C<\\n>">]
+
+=back
+
+=item C<--format=html>
+
+Output warnings as an HTML list
+
+=over 4
+
+=item C<--listbegin=>I<string>
+
+Specify text to appear at the beginning of the list [default: S<"C<E<lt>ulE<gt>\\n>">]
+
+=item C<--listend=>I<string>
+
+Specify text to appear at the end of the list [default: S<"C<E<lt>/ulE<gt>\\n>">]
+
+=item C<--itembegin=>I<string>
+
+Specify text to appear before each warning [default: S<"C<  E<lt>liE<gt>>">]
+
+=item C<--itemend=>I<string>
+
+Specify text to appear after each warning [default: S<"C<E<lt>/liE<gt>\\n>">]
+
+=back
+
+=item C<--format=latex>
+
+Output warnings as a LaTeX list
+
+=over 4
+
+=item C<--listbegin=>I<string>
+
+Specify text to appear at the beginning of the list [default: S<"C<\begin{itemize}\\n>">]
+
+=item C<--listend=>I<string>
+
+Specify text to appear at the end of the list [default: S<"C<\end{itemize}\\n>">]
+
+=item C<--itembegin=>I<string>
+
+Specify text to appear before each warning [default: S<"C<  \item >">]
+
+=item C<--itemend=>I<string>
+
+Specify text to appear after each warning [default: S<"C<\\n>">]
+
+=back
+
+=back
+
+=back
+
+Z<>Z<>Z<>
+
+The following represent additional clarification for some of the above:
+
+=over 4
+
+=item *
+
+If C<--indent> is specified without an argument, the argument defaults
+to C<2>.
+
+=item *
+
+If C<--wrap> is specified without an argument, the argument
+defaults to C<72>.
+
+=item *
+
+The following are examples of the different arguments to the
+C<--columns> option:
+
+=over 2
+
+=item C<--columns=1> (default)
+
+  coNCePTuaL version: 1.0
+  coNCePTuaL backend: c_mpi
+  Average timer overhead [gettimeofday()]: <1 microsecond
+  Log creation time: Thu Mar 27 19:22:48 2003
+  Log completion time: Thu Mar 27 19:22:48 2003
+
+=item C<--columns=2>
+
+  coNCePTuaL version:                      1.0
+  coNCePTuaL backend:                      c_mpi
+  Average timer overhead [gettimeofday()]: <1 microsecond
+  Log creation time:                       Thu Mar 27 19:22:48 2003
+  Log completion time:                     Thu Mar 27 19:22:48 2003
+
+=item C<--columns=3>
+
+  coNCePTuaL version                     : 1.0
+  coNCePTuaL backend                     : c_mpi
+  Average timer overhead [gettimeofday()]: <1 microsecond
+  Log creation time                      : Thu Mar 27 19:22:48 2003
+  Log completion time                    : Thu Mar 27 19:22:48 2003
+
+=back
+
+=item *
+
+C<--dumpkeys> produces suitable input for the C<--include> option.
+
+=item *
+
+C<--exclude> can be specified repeatedly on the command line.
+
+=item *
+
+C<--merge> takes one of C<mean> (arithmetic mean), C<hmean> (harmonic
+mean), C<min> (minimum), C<max> (maximum), C<median> (median), C<sum>
+(sum), C<all> (all values from each column), or C<concat> (horizontal
+concatenation of all data), and applies the function to corresponding
+data values across all of the input files.  C<--merge> can also accept
+a comma-separated list of the above functions, one per data column.
+This enables a different merge operation to be used for each column.
+For example, C<--merge=min,min,mean> will take the minimum value
+across all files of each element in the first and second columns and
+the arithmetic mean across all files of each element in the third
+column.  If the number of comma-separated values differs from the
+number of columns and C<--force-merge> is specified,
+B<ncptl-logextract> will cycle over the given values until all columns
+are accounted for.  The C<concat> merge type applies to all columns
+and therefore cannot be combined with any other merge type.  The
+difference between C<--merge=all> and C<--merge=concat> is that the
+former merges three files each with columns I<A> and I<B> as {I<A>,
+I<A>, I<A>, I<B>, I<B>, I<B>} while the latter merges the same files
+as {I<A>, I<B>, I<A>, I<B>, I<A>, I<B>}.
+
+=item *
+
+C<--showfnames> prepends to each data table in the input file an extra
+header line indicating the log file the data was extracted from.  This
+option makes sense only when data is being extracted and primarily
+when C<--merge=all> is specified.  C<--showfnames> takes one of
+C<none>, C<all>, or C<first>.  The default is C<none>, which doesn't
+add an extra header row.  C<all> repeats the filename in each column
+of the extra header row.  C<first> outputs the filename in only the
+first column, leaving the remaining columns with an empty string.  The
+following examples show how a sample data table is formatted with
+C<--showfnames> set in turn to each of C<none>, C<all>, and C<first>:
+
+=over 4
+
+=item *
+
+Set to C<none> (the default):
+
+    "Size","Value"
+    1,2
+    2,4
+    3,6
+
+=item *
+
+Set to C<all> (filename repeated in each column of the first row):
+
+    "mydata.log","mydata.log"
+    "Size","Value"
+    1,2
+    2,4
+    3,6
+
+=item *
+
+Set to C<first> (filename shown only in the first column of the first row):
+
+    "mydata.log",""
+    "Size","Value"
+    1,2
+    2,4
+    3,6
+
+=back
+
+=item *
+
+If C<--format=params> is used with both C<--longtable> and
+C<--tabularx>, the generated table will be formatted for use with the
+C<ltxtable> LaTeX package.  See the C<ltxtable> documentation for more
+information.
+
+=back
+
+
+=head1 NOTES
+
+If no filenames are given, B<ncptl-logextract> will read from the
+standard input device.  If multiple log files are specified,
+coNCePTuaL will merge the data values and take all other information
+from the first file specified.  Note, however, that all of the log
+files must have been produced by the same coNCePTuaL program and that
+that program must have been run in the same environment.  In other
+words, only the data values may change across log files; everything
+else must be invariant.  See the description of C<--merge> in
+L</"ADDITIONAL OPTIONS"> for more information about merging data
+values from multiple log files.
+
+B<ncptl-logextract> treats certain files specially:
+
+=over 4
+
+=item *
+
+If B<ncptl-logextract> is given a filename ending in F<.gz>, F<.bz2>,
+or F<.Z> it automatically decompresses the file to a temporary
+location using B<gunzip>, B<bunzip2>, or B<uncompress>, as
+appropriate, then recursively processes the decompressed file.
+
+=item *
+
+If B<ncptl-logextract> is given a filename ending in F<.tar> or
+F<.zip> it automatically extracts the file's contents to a temporary
+directory using B<tar> or B<unzip>, as appropriate, then recursively
+processes the temporary directory.
+
+=item *
+
+If B<ncptl-logextract> is given the name of a directory it processes
+all of the plain files found (recursively) beneath that directory.
+
+=item *
+
+If an input file is a merged coNCePTuaL log file S<(i.e., produced> by
+B<ncptl-logmerge>), B<ncptl-logextract> automatically invokes
+B<ncptl-logunmerge> to split the file into its constituent, ordinary
+log files then recursively processes those.
+
+=back
+
+B<ncptl-logmerge> treats filenames ending in F<.tgz> as if they ended
+in F<.tar.gz> and filenames ending in F<.taz> as if they ended in
+F<.tar.Z>.
+
+If the argument provided to any B<ncptl-logextract> option begins with
+an S<at sign> ("C<@>"), the value is treated as a filename and is
+replaced by the file's contents.  To specify an non-filename argument
+that begins with an S<at sign>, merely prepend an additional "C<@>":
+
+=over 4
+
+=item C<--this=that>
+
+The option C<this> is given the value "C<that>".
+
+=item C<--this=@that>
+
+The option C<this> is set to the contents of the file called F<that>.
+
+=item C<--this=@@that>
+
+The option C<this> is given the value "C<@that>".
+
+=back
+
+
+
+=head1 EXAMPLES
+
+For the following examples, we assume that F<results.log> is the name
+of a log file produced by a coNCePTuaL program.
+
+Extract the data in CSV format and write it to F<results.csv>:
+
+    ncptl-logextract --extract=data results.log --output=results.csv
+
+Note that C<--extract=data> is the default and therefore optional:
+
+    ncptl-logextract results.log --output=results.csv
+
+B<ncptl-logextract> can combine data from multiple log files (using an
+arithmetic mean by default):
+
+    ncptl-logextract results-*.log --output=results.csv
+
+Put the data from all of the log files side-by-side and produce a CSV
+file that Microsoft Excel can read directly:
+
+    ncptl-logextract results-*.log --output=results.csv --merge=all \
+       --showfnames=first --excel
+
+Output the data from F<result.log> in tab-separated-value format:
+
+    ncptl-logextract --format=tsv results.log
+
+Output the data in space-separated-value format:
+
+    ncptl-logextract --colsep=" " results.log
+
+Use B<gnuplot> to draw a PostScript graph of the data:
+
+    ncptl-logextract results.log --format=gnuplot \
+       --before=@params.gp | gnuplot > results.eps
+
+In the above, the F<params.gp> file might contain B<gnuplot> commands
+such as the following:
+
+    set terminal postscript eps enhanced color "Times-Roman" 30
+    set output
+    set logscale xy
+    set data style linespoints
+    set pointsize 3
+    plot "-" title "Latency"
+
+
+(There should be an extra blank line at the end of the file because
+B<ncptl-logextract> strips off a trailing newline character whenever
+it reads a file using "C<@>".)
+
+Produce a complete HTML file of the data (noting that C<--format=html>
+produces only tables, not complete documents):
+
+    ncptl-logextract --format=html
+       --before='<html>\n<head>\n<title>Data</title>\n</head>\n<body>\n' \
+       --after='</body>\n</html>\n' results.log
+
+Output the data as a LaTeX C<tabular>, relying on both the (standard)
+C<dcolumn> and (non-standard) C<booktabs> packages for more attractive
+formatting:
+
+    ncptl-logextract --format=latex --dcolumn --booktabs \
+      --output=results.tex results.log
+
+Output the run-time parameters in the form "I<key> C<--E<gt>>
+I<value>" with all of the arrows aligned:
+
+    ncptl-logextract results.log --extract=params --columns=3 --colsep=" --> "
+
+Output the run-time parameters as an HTML description list:
+
+    ncptl-logextract results.log --extract=params --before='<dl>' \
+      --rowbegin='<dt>' --colsep='</dt><dd>' --rowend='</dd>\n' \
+      --after='</dl>\n'
+
+Restore the exact execution environment that was used to produce
+F<results.log>, including the current working directory (assuming that
+B<bash> is the current command shell):
+
+    eval `ncptl-logextract --extract=env --format=bash \
+      --unset --chdir results.log`
+
+Set all of the environment variables that were used to produce
+F<results.log>, overwriting--but not removing--whatever environment
+variables are currently set (assuming that B<tcsh> is the current
+command shell):
+
+    eval `ncptl-logextract --extract=env --format=tcsh results.log`
+
+Extract the source code that produced F<results.log>:
+
+    ncptl-logextract --extract=source results.log
+
+Do the same, but indent the code by four spaces then re-wrap it into a
+60-column paragraph:
+
+    ncptl-logextract --extract=source --indent=4 --wrap=60 results.log
+
+Here are a variety of ways to express the same thing:
+
+    ncptl-logextract -e source --indent=4 --wrap=60 results.log
+
+    ncptl-logextract -e source --indent=4 results.log --wrap=60
+
+    cat results.log | ncptl-logextract --wrap=60 --indent=4 -e source
+
+Output the source code wrapped to 72 columns, with no indentation, and
+formatted within an HTML preformatted-text block:
+
+    ncptl-logextract --extract=source --wrap --before="<PRE>\n" \
+      after="</PRE>\n" results.log
+
+List all of the warning messages which occur in F<results.log>:
+
+    ncptl-logextract --extract=warnings results.log
+
+
+=head1 SEE ALSO
+
+ncptl-logmerge(1), ncptl-logunmerge(1), the coNCePTuaL User's Guide
+
+
+=head1 AUTHOR
+
+Scott Pakin, I<pakin@lanl.gov>

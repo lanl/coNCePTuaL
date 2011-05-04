@@ -1,0 +1,113 @@
+#! /bin/sh
+
+#######################################
+# Validate the coNCePTuaL interpreter #
+# By Scott Pakin <pakin@lanl.gov>     #
+#######################################
+
+# ----------------------------------------------------------------------
+# Copyright (C) 2009, Los Alamos National Security, LLC
+# All rights reserved.
+# 
+# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# was produced under U.S. Government contract DE-AC52-06NA25396
+# for Los Alamos National Laboratory (LANL), which is operated by
+# Los Alamos National Security, LLC (LANS) for the U.S. Department
+# of Energy. The U.S. Government has rights to use, reproduce,
+# and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+# MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+# FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+# derivative works, such modified software should be clearly marked,
+# so as not to confuse it with the version available from LANL.
+# 
+# Additionally, redistribution and use in source and binary forms,
+# with or without modification, are permitted provided that the
+# following conditions are met:
+# 
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+# 
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer
+#     in the documentation and/or other materials provided with the
+#     distribution.
+# 
+#   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+#     National Laboratory, the U.S. Government, nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+# OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# ----------------------------------------------------------------------
+
+# Enable debugging if requested.
+if [ "$DEBUG" ] ; then
+  echo "        Testing compiling and execution with the interpret backend ..."
+  set -x
+fi
+
+# Ensure that we're being run from the tests directory.
+if [ ! -f backend_interpret ] ; then
+  exit 1
+fi
+
+# Ensure that __init__.py exists in the build directory.
+if [ ! -f @top_builddir@/__init__.py ] ; then
+  cp @top_srcdir@/__init__.py @top_builddir@/__init__.py
+fi
+
+# Different versions of Python seem to treat the PYTHONPATH variable
+# differently.  We therefore locally install ncptl.py for the duration
+# of this test to prevent Python from failing to find pyncptl.  For
+# example, if Python runs ../../ncptl.py it will find ../../pyncptl.py
+# and then neglect to look for _pyncptl in lib/python, even though
+# that's in the PYTHONPATH.
+PYTHONPATH=`pwd`/lib:@top_builddir@:@top_srcdir@:$PYTHONPATH
+export PYTHONPATH
+LD_LIBRARY_PATH=@top_builddir@/.libs:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+if [ "$DEBUG" ] ; then
+  @PYTHON@ @top_srcdir@/makehelper.py install @top_builddir@ --install-platlib=lib
+else
+  @PYTHON@ @top_srcdir@/makehelper.py install @top_builddir@ --install-platlib=lib > /dev/null 2>&1
+fi
+cp @top_srcdir@/ncptl.py .
+
+# Run the regression test through the coNCePTuaL interpreter.
+TEMPFILE=backend-interpret-tmp.$$
+if [ "$DEBUG" ] ; then
+  status=PASSED
+  @PYTHON@ ncptl.py --backend=interpret @srcdir@/regresstest.ncptl --tasks=4 -L "" > $TEMPFILE
+  exitcode=$?
+  set +x
+  cat $TEMPFILE
+  if [ $exitcode -ne 0 -o `grep -c FAIL $TEMPFILE` -ne 0 -o `grep -c PASS $TEMPFILE` -eq 0 ] ; then
+    status=FAILED
+    exitcode=1
+  fi
+  echo "                TEST $status."
+else
+  exitcode=1
+  @PYTHON@ ncptl.py --backend=interpret @srcdir@/regresstest.ncptl --quiet --tasks=4 -L "" 2>/dev/null > $TEMPFILE
+  exitcode=$?
+  if [ $exitcode -ne 0 -o `grep -c FAIL $TEMPFILE` -ne 0 -o `grep -c PASS $TEMPFILE` -eq 0 ] ; then
+    exitcode=1
+  fi
+fi
+
+# Clean up our mess unless we failed the test.  In that case we may
+# need the temporary files to see what went wrong.
+if [ "$exitcode" -ne 1 ] ; then
+  rm -rf $TEMPFILE build lib ncptl.py*
+fi
+exit $exitcode

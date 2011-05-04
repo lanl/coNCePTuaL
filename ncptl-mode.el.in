@@ -1,0 +1,220 @@
+;;; ncptl-mode.el --- Major mode for editing coNCePTuaL programs
+
+;; Author:     Scott Pakin <pakin@lanl.gov>
+;; Maintainer: Scott Pakin <pakin@lanl.gov>
+;; Created:    August 2003
+;; Version:    2.0
+;; Keywords:   languages coNCePTuaL ncptl
+
+;;; Copyright and license:
+
+;; Copyright (C) 2009, Los Alamos National Security, LLC
+;; All rights reserved.
+;; 
+;; Copyright (2009).  Los Alamos National Security, LLC.  This software
+;; was produced under U.S. Government contract DE-AC52-06NA25396
+;; for Los Alamos National Laboratory (LANL), which is operated by
+;; Los Alamos National Security, LLC (LANS) for the U.S. Department
+;; of Energy. The U.S. Government has rights to use, reproduce,
+;; and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+;; MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+;; FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+;; derivative works, such modified software should be clearly marked,
+;; so as not to confuse it with the version available from LANL.
+;; 
+;; Additionally, redistribution and use in source and binary forms,
+;; with or without modification, are permitted provided that the
+;; following conditions are met:
+;; 
+;;   * Redistributions of source code must retain the above copyright
+;;     notice, this list of conditions and the following disclaimer.
+;; 
+;;   * Redistributions in binary form must reproduce the above copyright
+;;     notice, this list of conditions and the following disclaimer
+;;     in the documentation and/or other materials provided with the
+;;     distribution.
+;; 
+;;   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+;;     National Laboratory, the U.S. Government, nor the names of its
+;;     contributors may be used to endorse or promote products derived
+;;     from this software without specific prior written permission.
+;; 
+;; THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+;; EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+;; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+;; PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+;; LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+;; OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+;; OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+;; BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+;; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+;; OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+;; EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+;;; Commentary:
+
+;; This is a major mode for editing coNCePTuaL programs.  It is an
+;; early draft (not to mention my first Emacs major mode) and
+;; therefore doesn't do very much yet.  It's also not very thoroughly
+;; tested; I tried a few trivial things in GNU Emacs and they seemed
+;; to work.
+;;
+;; To automatically load ncptl-mode whenever you load a .ncptl file,
+;; add like the following to your .emacs file:
+;;
+;;    (autoload 'ncptl-mode "ncptl-mode"
+;;      "Major mode for editing coNCePTuaL programs." t)
+;;    (add-to-list 'auto-mode-alist '("\\.ncptl$" . ncptl-mode))
+
+
+;;; History:
+
+;; coNCePTuaL mode for GNU Emacs was written by Scott Pakin in August
+;; 2003 and revised in February 2006.
+
+;;; Code:
+
+;; Syntax highlighting
+
+(defvar ncptl-mode-syntax-table
+  (let ((st (make-syntax-table (standard-syntax-table))))
+    (modify-syntax-entry ?#  "<"  st)
+    (modify-syntax-entry ?\n ">"  st)
+    (modify-syntax-entry ?\\ "\\" st)
+    (modify-syntax-entry ?_  "w"  st)
+    (modify-syntax-entry ?[  "."  st)
+    (modify-syntax-entry ?]  "."  st)
+    st)
+  "Syntax table in use in `ncptl-mode' buffers.")
+
+(defvar ncptl-mode-abbrev-table nil
+  "Abbrev table in use in `ncptl-mode' buffers.")
+(unless ncptl-mode-abbrev-table
+  (define-abbrev-table 'ncptl-mode-abbrev-table ()))
+
+(defconst ncptl-all-keywords
+  '(MAKE SHOULD HAVE REPLACED THIS LINE)
+  "List of all keywords recognized by coNCePTuaL.  See also `font-lock-keywords'.")
+
+(defvar ncptl-font-lock-keywords
+  (list
+   (cons (concat "\\b\\("
+                 (regexp-opt ncptl-all-keywords)
+                 "\\)\\b") 1))
+  "Keywords to highlight for coNCePTuaL.  See variable `font-lock-keywords'.")
+
+(put 'ncptl-mode 'font-lock-defaults '(ncptl-font-lock-keywords))
+
+
+;; Code indentation
+
+(defcustom ncptl-indent 2
+  "*Size of coNCePTuaL indentation."
+  :type 'integer
+  :group 'ncptl)
+
+(defun ncptl-indent-line ()
+  "Indent the current line of coNCePTuaL code."
+  (interactive "*")
+  (beginning-of-line)
+  (if (bobp)
+      (indent-line-to 0)
+    (let* ((find-indent-delta) ; Suppress the byte-compiler's "reference to free variable" warning.
+	   (find-indent-delta
+            #'(lambda (indent-delta)
+                "Return the sum of `indent-delta' plus the number of open curlies in the current line (starting from the point) minus the number of close curlies"
+                (or
+                 (if (eolp) indent-delta)
+                 (if (looking-at "#") indent-delta)
+                 (if (looking-at "{")
+                     (progn
+                       (forward-char)
+                       (funcall find-indent-delta (1+ indent-delta))))
+                 (if (looking-at "}")
+                     (progn
+                       (forward-char)
+                       (funcall find-indent-delta (1- indent-delta))))
+                 (if (looking-at "\"")
+                     (progn
+                       (forward-char)
+                       (while (not (or (eolp) (looking-at "\"")))
+                         (if (and (not (eolp)) (looking-at "\\\\"))
+                             (forward-char))
+                         (forward-char))
+                       (if (eolp)
+                           indent-delta
+                         (progn
+                           (forward-char)
+                           (funcall find-indent-delta indent-delta)))))
+                 (progn
+                   (forward-char)
+                   (funcall find-indent-delta indent-delta)))))
+           (backward-line-to-non-empty
+            #'(lambda ()
+                "Move back to the beginning of the previous non-empty line"
+                (beginning-of-line)
+                (forward-line -1)
+                (while (and (looking-at "^[:space:]*$")
+                            (not (bobp)))
+                  (forward-line -1))))
+           (previous-indentation
+            (save-excursion
+              (funcall backward-line-to-non-empty)
+              (current-indentation)))
+           (previous-indent-delta
+            (save-excursion
+              (funcall backward-line-to-non-empty)
+              (* ncptl-indent (funcall find-indent-delta 0))))
+           (current-indent-delta
+            (* ncptl-indent (funcall find-indent-delta 0)))
+           (new-indentation
+            (+ previous-indentation
+               previous-indent-delta
+               (if (< previous-indent-delta 0) ncptl-indent 0)
+               (if (< current-indent-delta 0) current-indent-delta 0))))
+      (indent-line-to
+       (if (< new-indentation 0) 0 new-indentation)))))
+
+
+;; Keyboard mapping
+
+(defvar ncptl-mode-map
+  (let ((ncptl-mode-map (make-sparse-keymap)))
+    (define-key ncptl-mode-map "\C-j" 'newline-and-indent)
+    ncptl-mode-map)
+  "Keymap for the coNCePTuaL major mode.")
+
+
+;; Initialization
+
+(defvar ncptl-mode-hook nil
+  "Hook called by `ncptl-mode'.")
+
+(defun ncptl-mode ()
+  "Major mode for editing coNCePTuaL files.
+Currently, `ncptl-mode' does little more than support syntax highlighting."
+  (interactive)
+  (kill-all-local-variables)
+  (make-local-variable 'font-lock-defaults)
+  (make-local-variable 'comment-start-skip)
+  (make-local-variable 'comment-start)
+  (make-local-variable 'comment-end)
+  (make-local-variable 'indent-line-function)
+  (setq major-mode           'ncptl-mode
+        mode-name            "coNCePTuaL"
+        font-lock-defaults   '(ncptl-font-lock-keywords nil t)
+        indent-line-function 'ncptl-indent-line
+        local-abbrev-table   ncptl-mode-abbrev-table
+        comment-start-skip   "#+ *"
+        comment-start        "#"
+        comment-end          "")
+  (set-syntax-table ncptl-mode-syntax-table)
+  (use-local-map ncptl-mode-map)
+  (if ncptl-mode-hook
+      (run-hooks 'ncptl-mode-hook)))
+
+(add-to-list 'auto-mode-alist '("\\.ncptl\\'" . ncptl-mode))
+
+(provide 'ncptl-mode)
+
+;;; ncptl-mode.el ends here

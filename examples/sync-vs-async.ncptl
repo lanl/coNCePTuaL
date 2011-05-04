@@ -1,0 +1,37 @@
+# Compare synchronous and asynchronous bandwidth
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+# Parse the command line.
+msgsize is "Message size (bytes)" and comes from "--bytes" or "-b" with default 1M.
+reps is "Repetitions to perform" and comes from "--reps" or "-r" with default 100.
+
+Assert that "this program requires at least two processors" with num_tasks>=2.
+
+# Send asynchronously to each peer.
+For each num_targets in {1, ..., num_tasks-1} {
+  task 0 outputs "Sending asynchronously to " and num_targets and " target(s) ..." then
+  for reps repetitions {
+    task 0 resets its counters then
+    task 0 asynchronously sends a msgsize byte message to task t such that t>0 /\ t<=num_targets then
+    all tasks await completion then
+    all tasks synchronize then
+    task 0 logs the num_targets as "#recipients" and
+                the median of (1E6/1M)*(msgsize*2/elapsed_usecs) as "Asynchronous bandwidth (MB/s)"
+  } then
+  task 0 computes aggregates
+}
+
+# Send synchronously to each peer.
+For each num_targets in {1, ..., num_tasks-1} {
+  task 0 outputs "Sending synchronously to " and num_targets and " target(s) ..." then
+  for reps repetitions {
+    task 0 resets its counters then
+    task 0 sends a msgsize byte message to task t such that t>0 /\ t<=num_targets then
+    all tasks synchronize then
+    task 0 logs the num_targets as "#recipients" and
+                the median of (1E6/1M)*(msgsize*2/elapsed_usecs) as "Synchronous bandwidth (MB/s)"
+  } then
+  task 0 computes aggregates
+}

@@ -1,0 +1,29 @@
+# Measure the effect of the number of preposted receives on ping-pong latency
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+# Parse the command line.
+maxposts is "Max. # of preposted receives" and comes from "--maxposts" or "-p" with default 128.
+reps is "Repetitions to perform" and comes from "--reps" or "-r" with default 100.
+
+Assert that "this program requires at least three nodes" with num_tasks>=3.
+
+# Perform a ping-pong test with increasing numbers of receives waiting
+# in the receive queue.
+For each qsize in {0, ..., maxposts} {
+  task 0 outputs "Queue size = " and qsize then
+  tasks t such that t<2 asynchronously receive qsize 1 word messages from task 2 then
+  all tasks synchronize then
+  for reps repetitions plus 2 warmup repetitions and a synchronization {
+    task 0 resets its counters then
+    task 0 sends a 1 word message to task 1 then
+    task 1 sends a 1 word message to task 0 then
+    task 0 logs the qsize as "Queue size" and
+                the mean of elapsed_usecs/2 as "1/2 RTT"
+  } then
+  task 0 computes aggregates then
+  all tasks synchronize then
+  task 2 sends qsize 1 word messages to unsuspecting task t such that t<2 then
+  all tasks await completion
+}

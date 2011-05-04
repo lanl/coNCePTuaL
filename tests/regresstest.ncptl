@@ -1,0 +1,293 @@
+#################################################
+# coNCePTuaL program to test for broken grammar #
+# By Paul Beinfest <beinfest@lanl.gov>          #
+# Updated by Scott Pakin <pakin@lanl.gov>       #
+#################################################
+
+# ----------------------------------------------------------------------
+# Copyright (C) 2009, Los Alamos National Security, LLC
+# All rights reserved.
+# 
+# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# was produced under U.S. Government contract DE-AC52-06NA25396
+# for Los Alamos National Laboratory (LANL), which is operated by
+# Los Alamos National Security, LLC (LANS) for the U.S. Department
+# of Energy. The U.S. Government has rights to use, reproduce,
+# and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+# MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+# FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+# derivative works, such modified software should be clearly marked,
+# so as not to confuse it with the version available from LANL.
+# 
+# Additionally, redistribution and use in source and binary forms,
+# with or without modification, are permitted provided that the
+# following conditions are met:
+# 
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+# 
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer
+#     in the documentation and/or other materials provided with the
+#     distribution.
+# 
+#   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+#     National Laboratory, the U.S. Government, nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+# OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# ----------------------------------------------------------------------
+
+Require language version "1.2".
+
+reps is "Number of times to repeat a loop" and comes from "--reps" or "-r" with default 1.
+
+Assert that "Regression test requires a least two tasks" with num_tasks>1.
+
+
+#Trivial output
+Task 0 outputs "PASS".
+
+#Output mix of strings and exprs
+Task 0 outputs "Mix of \"Strings\" and <expr>: " and  "FOO " and log10(10000) and " BAR" and "... " and "PASS".
+Task 0 outputs "Mix of \"Strings\" and <expr>: " and "CPU count = " and the value of "CPU count" and
+" and Number of tasks = " and sqrt(num_tasks*num_tasks) and "... " and "PASS"
+
+
+#test multipliers (5 tests)
+If 1K=1024 then task 0 outputs "Multipliers: kilo... " and "PASS" otherwise task 0 outputs "Multipliers: kilo... " and "FAIL".
+If 1M=1048576 then task 0 outputs "Multipliers: mega... " and "PASS" otherwise task 0 outputs "Multipliers: mega... " and "FAIL".
+If 1G=1073741824 then task 0 outputs "Multipliers: giga... " and "PASS" otherwise task 0 outputs "Multipliers: giga... " and "FAIL".
+If 1T=1099511627776 then task 0 outputs "Multipliers: tera... " and "PASS" otherwise task 0 outputs "Multipliers: tera... " and "FAIL".
+If 1E3=1000 then task 0 outputs "Multipliers: exponent... " and "PASS" otherwise task 0 outputs "Multipliers: exponent... " and "FAIL".
+
+#test arithmetic expressions (10 tests)
+#unary
+If not +42=-43 then task 0 outputs "Arithmetic Expr.: unary... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: unary... " and "FAIL".
+#power
+If 2**4=16 then task 0 outputs "Arithmetic Expr.: power... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: power... " and "FAIL".
+#multiplicative
+If 2*3/2=24 mod 7 then task 0 outputs "Arithmetic Expr.: mult(1)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: mult(1)... " and "FAIL".
+If 8 << 2=32 then task 0 outputs "Arithmetic Expr.: mult(2)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: mult(2)... " and "FAIL".
+If 8 >> 2=2 then task 0 outputs "Arithmetic Expr.: mult(3)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: mult(3)... " and "FAIL".
+If 3&5=1 then task 0 outputs "Arithmetic Expr.: mult(4)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: mult(4)... " and "FAIL".
+#additive
+If 3|5=7 then task 0 outputs "Arithmetic Expr.: add(1)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: add(1)... " and "FAIL".
+If 3 xor 5=6 then task 0 outputs "Arithmetic Expr.: add(2)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: add(2)... " and "FAIL".
+If 2+5-3=10-(2+4) then task 0 outputs "Arithmetic Expr.: add(3)... " and "PASS" otherwise task 0 outputs "Arithmetic Expr.: add(3)... " and "FAIL".
+#conditional
+If (1 if 2<3 otherwise 0)=(0 if 2>3 otherwise 1) then task 0 outputs "Arithmetic Expr.: cond... " and "PASS"
+otherwise task 0 outputs "Arithmetic Expr.: cond... " and "FAIL".
+
+#test "integer context" (2 tests)
+If 23/6*6=18 then task 0 outputs "Integer Context(1)... " and "PASS" otherwise task 0 outputs "Integer Context(1)... " and "FAIL".
+If real(7/3 + 1/2)=3 then task 0 outputs "Integer Context(2)... " and "PASS" otherwise task 0 outputs "Integer Context(2)... " and "FAIL".
+
+#test built-in functions (42 tests)
+#integer functions
+If abs(57)=abs(-57) then task 0 outputs "Built-in Funcs: ABS... " and "PASS" otherwise task 0 outputs "Built-in Funcs: ABS... " and "FAIL".
+If bits(867)=10 then task 0 outputs "Built-in Funcs: BITS... " and "PASS" otherwise task 0 outputs "Built-in Funcs: BITS... " and "FAIL."
+If cbrt(27)=3 then task 0 outputs "Built-in Funcs: CBRT... " and "PASS" otherwise task 0 outputs "Built-in Funcs: CBRT... " and "FAIL".
+If factor10(5999)=5000 then task 0 outputs "Built-in Funcs: FACTOR10... " and "PASS" otherwise task 0 outputs "Built-in Funcs: FACTOR10... " and "FAIL".
+If log10(1979)=3 then task 0 outputs "Built-in Funcs: LOG10... " and "PASS" otherwise task 0 outputs "Built-in Funcs: LOG10... " and "FAIL".
+If min(4, 5, 7, 2, 3, 9, 10, 6)=2 then task 0 outputs "Built-in Funcs: MIN... " and "PASS" otherwise task 0 outputs "Built-in Funcs: min... " and "FAIL".
+If max(4, 5, 7, 2, 3, 9, 10, 6)=10 then task 0 outputs "Built-in Funcs: MAX... " and "PASS" otherwise task 0 outputs "Built-in Funcs: max... " and "FAIL".
+If root(5, 32)=2 then task 0 outputs "Built-in Funcs: ROOT... " and "PASS" otherwise task 0 outputs "Built-in Funcs: ROOT... " and "FAIL".
+If sqrt(81)=9 then task 0 outputs "Built-in Funcs: SQRT... " and "PASS" otherwise task 0 outputs "Built-in Funcs: SQRT... " and "FAIL".
+#n-ary tree functions
+If tree_parent(3)=1 then task 0 outputs "N-ary tree funcs(1)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(1)... " and "FAIL".
+If tree_parent(14)=6 then task 0 outputs "N-ary tree funcs(2)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(2)... " and "FAIL".
+If tree_child(5, 0)=11 then task 0 outputs "N-ary tree funcs(3)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(3)... " and "FAIL".
+If tree_child(5, 1)=12 then task 0 outputs "N-ary tree funcs(4)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(4)... " and "FAIL".
+If tree_parent(0, 3)=-1 then task 0 outputs "N-ary tree funcs(5)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(5)... " and "FAIL".
+If tree_parent(8, 3)=2 then task 0 outputs "N-ary tree funcs(6)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(6)... " and "FAIL".
+If tree_child(3, 1, 3)=11 then task 0 outputs "N-ary tree funcs(7)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(7)... " and "FAIL".
+If tree_child(1, 0, 4)=5 then task 0 outputs "N-ary tree funcs(8)... " and "PASS" otherwise task 0 outputs "N-ary tree funcs(8)... " and "FAIL".
+#k-nomial tree functions
+If knomial_parent(0, 2, 8)=-1 then task 0 outputs "K-nomial tree funcs(1)... " and "PASS" otherwise task 0 outputs "K-nomial tree funcs(1)... " and "FAIL".
+If knomial_parent(6, 2, 8)=2 then task 0 outputs "K-nomial tree funcs(2)... " and "PASS" otherwise task 0 outputs "K-nomial tree funcs(2)... " and "FAIL".
+If knomial_children(1, 2, 8)=2 then task 0 outputs "K-nomial tree funcs(3)... " and "PASS" otherwise task 0 outputs "K-nomial tree funcs(3)... " and "FAIL".
+If knomial_children(4, 2, 8)=0 then task 0 outputs "K-nomial tree funcs(4)... " and "PASS" otherwise task 0 outputs "K-nomial tree funcs(4)... " and "FAIL".
+If knomial_child(2, 1, 3, 27)=8 then task 0 outputs "K-nomial tree funcs(5)... " and "PASS" otherwise task 0 outputs "K-nomial tree funcs(5)... " and "FAIL".
+If knomial_child(2, 4, 3, 27)=-1 then task 0 outputs "K-nomial tree funcs(6)... " and "PASS" otherwise task 0 outputs "K-nomial tree funcs(6)... " and "FAIL".
+#mesh functions
+If mesh_neighbor(0, 8, 5)=5 then task 0 outputs "Mesh funcs(1)... " and "PASS" otherwise task 0 outputs "Mesh funcs(1)... " and "FAIL".
+If mesh_neighbor(4, 8, 5)=-1 then task 0 outputs "Mesh funcs(2)... " and "PASS" otherwise task 0 outputs "Mesh funcs(2)... " and "FAIL".
+If mesh_neighbor(0, 4, 3, 4, 3)=15 then task 0 outputs "Mesh funcs(3)... " and "PASS" otherwise task 0 outputs "Mesh funcs(3)... " and "FAIL".
+If mesh_neighbor(0, 4, 2, 4, 1, 2, 1)=22 then task 0 outputs "Mesh funcs(4)... " and "PASS" otherwise task 0 outputs "Mesh funcs(4)... " and "FAIL".
+If mesh_coordinate(14, 0, 4, 4)=2 then task 0 outputs "Mesh funcs(5)... " and "PASS" otherwise task 0 outputs "Mesh funcs(5)... " and "FAIL".
+If mesh_coordinate(14, 1, 4, 4)=3 then task 0 outputs "Mesh funcs(6)... " and "PASS" otherwise task 0 outputs "Mesh funcs(6)... " and "FAIL".
+If mesh_coordinate(26, 0, 4, 4, 2)=2 then task 0 outputs "Mesh funcs(7)... " and "PASS" otherwise task 0 outputs "Mesh funcs(7)... " and "FAIL".
+If mesh_coordinate(26, 2, 4, 4, 2)=1 then task 0 outputs "Mesh funcs(8)... " and "PASS" otherwise task 0 outputs "Mesh funcs(8)... " and "FAIL".
+#torus functions
+If torus_neighbor(0, 8, 5)=5 then task 0 outputs "Torus funcs(1)... " and "PASS" otherwise task 0 outputs "Torus funcs(1)... " and "FAIL".
+If torus_neighbor(4, 8, 5)=1 then task 0 outputs "Torus funcs(2)... " and "PASS" otherwise task 0 outputs "Torus funcs(2)... " and "FAIL".
+If torus_neighbor(0, 4, 3, 4, -3)=7 then task 0 outputs "Torus funcs(3)... " and "PASS" otherwise task 0 outputs "Torus funcs(3)... " and "FAIL".
+If torus_neighbor(0, 4, 2, 4, 1, 2, 1)=22 then task 0 outputs "Torus funcs(4)... " and "PASS" otherwise task 0 outputs "Torus funcs(4)... " and "FAIL".
+If torus_coordinate(14, 0, 4, 4)=2 then task 0 outputs "Torus funcs(5)... " and "PASS" otherwise task 0 outputs "Torus funcs(5)... " and "FAIL".
+If torus_coordinate(14, 1, 4, 4)=3 then task 0 outputs "Torus funcs(6)... " and "PASS" otherwise task 0 outputs "Torus funcs(6)... " and "FAIL".
+If torus_coordinate(26, 0, 4, 4, 2)=2 then task 0 outputs "Torus funcs(7)... " and "PASS" otherwise task 0 outputs "Torus funcs(7)... " and "FAIL".
+If torus_coordinate(-26, 2, 4, 4, 2)=-1 then task 0 outputs "Torus funcs(8)... " and "PASS" otherwise task 0 outputs "Torus funcs(8)... " and "FAIL".
+#random-number functions
+Task 0 outputs "Random funcs: uniform " and random_uniform(0, 100) and "... " and "PASS".
+Task 0 outputs "Random funcs: Gaussian " and random_gaussian(50, 10) and "... " and "PASS".
+Task 0 outputs "Random funcs: Poisson " and random_poisson(25) and "... " and "PASS".
+
+#test random tasks
+Let x be a random task less than 2 but not 1 while task x sends a 0 bit message to task 1 then task 0 outputs "Random task(1)... " and "PASS".
+Let x be a random task greater than 0 but not 1 while task x sends a 0 bit message to task 1 then task 0 outputs "Random task(2)... " and "PASS".
+Let x be a random task other than 1 while task x sends a 0 bit message to task 1 then task 0 outputs "Random task(3)... " and "PASS".
+Let x be a random task in [0, 2] but not 1 while task x sends a 0 bit message to task 1 then task 0 outputs "Random task(4)... " and "PASS".
+
+#test relational expressions (12 tests)
+If 12 is even then task 0 outputs "Relational Expr.: IS EVEN... " and "PASS" otherwise task 0 outputs "Relational Expr.: IS EVEN... " and "FAIL".
+If 13 is odd then task 0 outputs "Relational Expr.: IS ODD... " and "PASS" otherwise task 0 outputs "Relational Expr.: IS ODD... " and "FAIL".
+If 2*4<3*3 then task 0 outputs "Relational Expr.: <... " and "PASS" otherwise task 0 outputs "Relational Expr.: <... " and "FAIL".
+If 10>2**3 then task 0 outputs "Relational Expr.: >... " and "PASS" otherwise task 0 outputs "Relational Expr.: >... " and "FAIL".
+If 72<=8*9 then task 0 outputs "Relational Expr.: <=... " and "PASS" otherwise task 0 outputs "Relational Expr.: <=... " and "FAIL".
+If 100>=8**2 then task 0 outputs "Relational Expr.: >=... " and "PASS" otherwise task 0 outputs "Relational Expr.: >=... " and "FAIL".
+If 3+8<>6-3 then task 0 outputs "Relational Expr.: <>... " and "PASS" otherwise task 0 outputs "Relational Expr.: <>... " and "FAIL".
+If 4 divides 144 then task 0 outputs "Relational Expr.: DIVIDES... " and "PASS" otherwise task 0 outputs "Relational Expr.: DIVIDES... " and "FAIL".
+If 7 is in {2, ..., 27} then task 0 outputs "Relational Expr.: IS IN... " and "PASS" otherwise task 0 outputs "Relational Expr.: IS IN... " and "FAIL".
+If 7 is not in {9, ..., 34} then task 0 outputs "Relational Expr.: IS NOT IN... " and "PASS" otherwise task 0 outputs "Relational Expr.: IS NOT IN... " and "FAIL".
+If 6 is even /\ 2<=cbrt(16) then task 0 outputs "Relational Expr.: /\\... " and "PASS" otherwise task 0 outputs "Relational Expr.: /\\... " and "FAIL".
+If 8 is odd \/ 2 divides 256 \/ 5/0=1 then task 0 outputs "Relational Expr.: \\/... " and "PASS" otherwise task 0 outputs "Relational Expr.: \\/... " and "FAIL".
+
+#test task descriptions
+All tasks output "Task descriptions(1)... " and "PASS".
+Let me be 0 while all tasks me output "Task descriptions(2)... " and "PASS".
+Task 99 mod 3 outputs "Task descriptions(3)... " and "PASS".
+Task zero such that zero=0 outputs "Task descriptions(4)... " and "PASS".
+Task 0 sends a 0 byte message to all other tasks then task 0 outputs "Task descriptions(5)... " and "PASS".
+All tasks i output "Task descriptions(6)..." and "PASS"
+
+#test communication statements
+#sending
+Task 0 sends 5 2**8 bit 4 byte aligned messages to task 1 who receives it asynchronously
+then all tasks await completion then task 0 outputs "Communication stmnts(1)... " and "PASS".
+#receiving
+Task 0 sends 4 0 byte messages to unsuspecting task 1 then
+task 1 asynchronously receives 4 unique 0 byte messages with data touching from task 0
+then task 0 outputs "Communication stmnts(2)... " and "PASS".
+All tasks synchronize then task 0 outputs "Communication stmnts(3)... " and "PASS".
+#multicasting
+Task 0 multicasts 4 2 byte messages to tasks rec such that rec>=0
+then task 0 outputs "Communication stmnts(4)... " and "PASS".
+#reducing (added by SDP)
+All tasks reduce 4 unique doublewords to task num_tasks-1 who receives the
+results as 4 32-byte aligned doublewords into buffer 2
+then task 0 outputs "Communication stmnts(5)... " and "PASS".
+Tasks rtasks such that 3 divides rtasks reduce 8 integers
+then task 0 outputs "Communication stmnts(6)... " and "PASS".
+Tasks otasks such that otasks is odd reduce a doubleword to tasks ev3 such
+that ev3 is even \/ ev3 < 3
+then task 0 outputs "Communication stmnts(7)... " and "PASS".
+
+#test other statements
+All tasks reset their counters then task 0 outputs "Reset counters... " and "PASS".
+Task 0 sleeps for 10 milliseconds then task 0 outputs "Sleep... " and "PASS".
+Task 0 computes for 10 microseconds then task 0 outputs "Compute... " and "PASS".
+Task 0 touches 50 words of an 800 byte memory region then task 0 outputs "Touch memory(1)... " and "PASS".
+Task 0 touches a 1 megabyte memory region 4 times with stride 4 quadwords then
+task 0 outputs "Touch memory(2)... " and "PASS".
+all tasks touch all message buffers then
+for each sz in {0, ..., 4}
+        task 0 asynchronously  sends an sz kilobyte message to task 1 then
+All tasks await completion then task 0 outputs "Priming message buffers(1)... " and "PASS".
+Task 0 touches message buffer num_tasks then task 0 outputs "Priming message buffers(2)... " and "PASS".
+Task 0 touches the current message buffer then task 0 outputs "Priming message buffers(3)... " and "PASS".
+Task 0 is assigned to a random processor then task 0 outputs "Reorder task IDs(1)... " and "PASS".
+Task 0 is assigned to processor 0 then task 0 outputs "Reorder task IDs(2)... " and "PASS".
+
+#test complex statements
+#1
+For 1 repetition plus 3 warmup repetitions task 0 multicasts a 0 byte message to all other tasks then
+task 0 outputs "Complex stmnts(1)... " and "PASS".
+#2
+For each i in {0}, {1, 2, 4, ..., 32} task 0 sends a i bit message to task 1 then
+task 0 outputs "Complex stmnts(2)... " and "PASS".
+#3
+For 10 microseconds task 0 sends a 100 kilobyte message to task 1 then
+task 0 outputs "Complex stmnts(3)... " and "PASS".
+#4&5
+Let this be 0 while {{let this be 1 while task this outputs "Complex stmnts(4)... " and "PASS"}
+then task this outputs "Complex stmnts(5)... " and "PASS"}
+#6
+For each i in {1, ..., 10}
+        if i=10 then let foo be 0 while {if foo<1 then task foo outputs "Complex stmnts(6)... " and "PASS" otherwise {let bar be 1 while
+        task bar outputs "Complex stmnts(6)... " and "FAIL"}} otherwise
+        for i+2 repetitions plus i warmup repetitions and a synchronization{
+                all tasks reset their counters then
+                task 0 sends a 0 byte message to task 1 then
+                task 1 sends a 0 byte message to task 0 then
+                for 1 millisecond task 0/i sends a 0 byte message to all other tasks
+                }
+#7
+Let what be 0 while {let what be 1 while {if what>0 then {let what be 0 while {if what<1 then {let what be 1 while
+{if what<>LOG10(what) then {let what be 0 while task what outputs "Complex stmnts(7)... " and "PASS"}
+otherwise task what outputs "Complex stmnts(7)... " and "FAIL"}} otherwise
+task what outputs "Complex stmnts(7)... " and "FAIL"}} otherwise task what outputs "Complex stmnts(7)... " and "FAIL"}}
+#8
+Task 0 sends 10 2 byte message to task 1 then
+task 0 asynchronously sends 10 unique 2 byte -1 byte misaligned messages with verification to unsuspecting task 1 then
+task 1 receives 10 2 byte halfword aligned messages with data touching into buffer num_tasks/2 from task 0 then
+task 0 outputs "Complex stmnts(8)... " and "PASS".
+#9 (added by SDP)
+For 1 repetition plus 0 warmup repetitions {
+  {} then
+  { {} } then
+  { {} then {} } then
+  { {} then {} then {} }
+} then
+task 0 outputs "Complex stmnts(9)... " and "PASS".  
+
+#Logs
+For reps repetitions {
+        Task 0 resets its counters then
+        task 0 asynchronously sends a 1 byte message to task 1 then
+        all tasks await completion then
+        task 0 logs bit_errors as "Bit errors" then task 0 outputs "Log bit_errors... " and "PASS" then
+        task 0 logs each bytes_received as "Bytes received" then task 0 outputs "Log each bytes_received... " and "PASS" then
+        task 0 logs the num_tasks as "Number of tasks" then task 0 outputs "Log num_tasks... " and "PASS" then
+        task 0 logs the arithmetic mean of bytes_sent as "Mean of bytes sent" then task 0 outputs "Log mean of bytes_sent... " and "PASS" then
+        task 0 logs the harmonic mean of elapsed_usecs as "Harmonic mean of elapsed time (usec)" then task 0 outputs "Log harmonic mean of elapsed_usecs... " and "PASS" then
+        task 0 logs the geometric mean of msgs_sent as "Geometric mean of messages sent" then task 0 outputs "Log geometric mean of msgs_sent... " and "PASS" then
+        task 0 logs the median of msgs_received as "Median of messages received" then task 0 outputs "Log median of msgs_received... " and "PASS" then
+        task 0 logs the standard deviation of bit_errors as "Standard deviation of bit errors" then task 0 outputs "Log stand. dev. of bit_errors... " and "PASS" then
+        task 0 logs the variance of bit_errors as "Variance of bit errors" then task 0 outputs "Log variance of bit_errors... " and "PASS" then
+        task 0 logs the sum of msgs_sent as "Sum of sent messages" then task 0 outputs "Log sum of msgs_sent... " and "PASS" then
+        task 0 logs the minimum of elapsed_usecs as "Minimun of elapsed time (usecs)" then task 0 outputs "Log minimum of elapsed_usecs... " and "PASS" then
+        task 0 logs the maximum of elapsed_usecs as "Maximum of elapsed time (usecs)" then task 0 outputs "Log maximum of elapsed_usecs... " and "PASS" then
+        task 0 logs the final of bit_errors as "Last bit error measurement" then task 0 outputs "Log final of bit_errors... " and "PASS" then
+        task 0 logs total_bytes as "Total bytes" then task 0 outputs "Log total_bytes... " and "PASS" then
+        task 0 logs total_msgs as "Total messages" then task 0 outputs "Log total_msgs... " and "PASS" then
+        task 0 logs a histogram of elapsed_usecs as "Elapsed time (usecs)" then task 0 outputs "Log histogram of elapsed_usecs... " and "PASS"
+}then
+task 0 computes aggregates then task 0 outputs "Compute aggregates... " and "PASS".
+
+#Test size units
+Task 0 sends a 1 bit message to task 1 then task 0 outputs "Size units: bit... PASS".
+Task 0 sends a byte sized message to task 1 then task 0 outputs "Size units: byte... PASS".
+Task 0 sends a halfword sized message to task 1 then task 0 outputs "Size units: halfword... PASS".
+Task 0 sends a word sized message to task 1 then task 0 outputs "Size units: word... PASS".
+Task 0 sends a integer sized message to task 1 then task 0 outputs "Size units: integer... PASS".
+Task 0 sends a doubleword sized message to task 1 then task 0 outputs "Size units: doubleword... PASS".
+Task 0 sends a quadword sized message to task 1 then task 0 outputs "Size units: quadword... PASS".
+Task 0 sends a page sized message to task 1 then task 0 outputs "Size units: page... PASS".
+Task 0 sends a 1 kilobyte message to task 1 then task 0 outputs "Size units: kilobyte... PASS".
+Task 0 sends a 1 megabyte message to task 1 then task 0 outputs "Size units: megabyte... PASS".
+#Task 0 sends a 1 gigabyte message to task 1 then task 0 outputs "Size units: gigabyte... PASS".
+
+#"-" as whitespace
+Task 0 sends a 0-byte word-aligned message to task 1 then task 0 outputs "\"-\" as whitespase... " and "PASS"

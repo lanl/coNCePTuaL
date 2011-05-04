@@ -1,0 +1,13 @@
+            nonsensitive
+
+comment start "#"
+
+number = '\<[+-]?[[:digit:]]+([Ee][[:digit:]]+|[KMGTkmgt])?\>'
+
+cbracket = "{|}"
+
+environment string delim "\"" "\"" begin
+  specialchar = '\\.'
+end
+
+include "symbols.lang"

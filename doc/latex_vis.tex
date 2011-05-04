@@ -1,0 +1,167 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% LaTeX + PSTricks code to display graphically a program's
+% dynamic communication pattern
+%
+% Compile latex_vis.tex into latex_vis.eps using the following commands:
+%
+%    latex latex_vis.tex
+%    dvips -E latex_vis.dvi -o latex_vis.eps
+%
+% You can then safely remove the latex_vis.tex, latex_vis.aux,
+% latex_vis.log, and latex_vis.dvi files.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Platform parameters
+% -------------------
+% coNCePTuaL version: 0.5.3c
+% coNCePTuaL backend: latex_vis (LaTeX-based communication visualization)
+% Executable name: /usr/bin/python
+% Working directory: /users/pakin/src/coNCePTuaL
+% Command line: python ./ncptl.py --keep-ints --output=latex_vis.eps --backend=latex_vis --program=Task\ 0\ sends\ a\ 1\ megabyte\ message\ to\ task\ 1\ then\ all\ tasks\ synchronize\ then\ task\ 1\ sends\ a\ 3\ kilobyte\ message\ to\ task\ 0. --tasks=3
+% Number of tasks: 3
+% Processor (0<=P<tasks): 0
+% Host name: antero
+% Operating system: Linux 2.4.20-28.7 #1 Thu Dec 18 11:31:59 EST 2003
+% CPU vendor: GenuineIntel
+% CPU architecture: i686
+% CPU model: Intel(R) Xeon(TM) CPU 1500MHz
+% CPU count: 1
+% CPU frequency: 1495484000 Hz (1.5 GHz)
+% Cycle-counter frequency: (assumed to be the same as the CPU frequency)
+% OS page size: 4096 bytes
+% Physical memory: 2114449408 bytes (2.0 GB)
+% Library compiler+linker: /users/pakin/bin/gcc
+% Library compiler options: -g -O2 -Wall -W
+% Library linker options: -lm -lpopt
+% Library compiler mode: ILP32
+% Microsecond timer type: inline assembly code
+% WARNING: Timer was not initialized; performance results are meaningless.
+% Number of tasks to use: 1
+% Perform an implicit synchronization after a multicast (0=no; 1=yes): 0
+% Seed for the random-number generator: -2114019428
+% Display task numbers in binary rather than decimal (0=decimal; 1=binary): 0
+% Associate source-code line numbers with each event annotation (0=no; 1=yes): 0
+% Annotation level (0=no annotations; 1=annotate communication events; 2=annotate all events; "<event>..."=annotate only the specified events): 0
+% Events requiring nonzero time to complete (0=only communication events; 1=every event): 0
+% Number of minutes after which to kill the job (-1=never): -1
+% List of signals that should not be trapped: 14
+% Source program: <command line>
+% Python version: 1.5.2 (#1, Jan 31 2003, 10:58:35)  [GCC 2.96 20000731 (Red Hat Linux 7.3 2
+% Events annotated: [none]
+% Events not annotated: NEWSTMT RECEIVE SEND SYNC
+% Log creator: Scott Pakin
+% Log creation time: Mon Feb  7 20:31:54 2005
+%
+% Environment variables
+% ---------------------
+% BZIP2: -9
+% CCACHE_DIR: /tmp/pakin-ccache
+% COLORTERM:
+% CVS_RSH: /usr/bin/ssh
+% DISPLAY: :0
+% EDITOR: /usr/bin/emacs
+% GROUP: CCS-3
+% GS_LIB: /users/pakin/.kde/share/fonts
+% GTK_RC_FILES: /etc/gtk/gtkrc:/users/pakin/.gtkrc:/users/pakin/.gtkrc-kde
+% GZIP: --best
+% HOME: /users/pakin
+% HOST: antero
+% HOSTNAME: antero
+% HOSTTYPE: i386-linux
+% INPUTRC: /etc/inputrc
+% KDE_MULTIHEAD: false
+% KONSOLE_DCOP: DCOPRef(konsole-1346,konsole)
+% KONSOLE_DCOP_SESSION: DCOPRef(konsole-1346,session-1)
+% LAMHELPFILE: /etc/lam/lam-helpfile
+% LANG: en_US
+% LD_LIBRARY_PATH: /users/pakin/lib:/tmp/ncptl/lib
+% LESSOPEN: |/usr/bin/lesspipe.sh %s
+% LOGNAME: pakin
+% LPDEST: c19pr508
+% LS_COLORS: no=00:fi=00:di=01;34:ln=01;36:pi=40;33:so=01;35:bd=40;33;01:cd=40;33;01:or=01;05;37;41:mi=01;05;37;41:ex=01;32:*.cmd=01;32:*.exe=01;32:*.com=01;32:*.btm=01;32:*.bat=01;32:*.sh=01;32:*.csh=01;32:*.tar=01;31:*.tgz=01;31:*.arj=01;31:*.taz=01;31:*.lzh=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.gz=01;31:*.bz2=01;31:*.bz=01;31:*.tz=01;31:*.rpm=01;31:*.cpio=01;31:*.jpg=01;35:*.gif=01;35:*.bmp=01;35:*.xbm=01;35:*.xpm=01;35:*.png=01;35:*.tif=01;35:
+% MACHTYPE: i386
+% MAIL: /var/mail/pakin
+% MANPATH: /users/pakin/man:/usr/local/man:/usr/man:/usr/X11R6/man:/usr/share/man:/usr/local/j2sdk1.4.1/man
+% OSTYPE: linux
+% PATH: /users/pakin/bin:/usr/local/openssh/bin:/usr/local/bin:/usr/kerberos/bin:/usr/X11R6/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/j2sdk1.4.1/bin:/usr/local/jython-2.1:.
+% PRINTER: c19pr508
+% PWD: /users/pakin/src/coNCePTuaL
+% PYTHONPATH: /tmp/ncptl/lib/python1.5/site-packages/conceptual
+% QTDIR: /usr/lib/qt3-gcc2.96
+% QT_XFT: true
+% SESSION_MANAGER: local/antero:/tmp/.ICE-unix/1316
+% SHELL: /bin/tcsh
+% SHLVL: 4
+% SSH_AGENT_PID: 1241
+% SSH_ASKPASS: /usr/libexec/openssh/gnome-ssh-askpass
+% SSH_AUTH_SOCK: /tmp/ssh-CTub1240/agent.1240
+% TERM: xterm
+% TEXDOCVIEW_pdf: ( acroread %s ) &
+% USER: pakin
+% VENDOR: intel
+% _: /usr/bin/kdeinit
+%
+% coNCePTuaL source code
+% ----------------------
+%     Task 0 sends a 1 megabyte message to task 1 then all tasks synchronize then task 1 sends a 3 kilobyte message to task 0.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Initialize LaTeX and PSTricks.
+\documentclass{minimal}
+\usepackage{mathptmx}
+\usepackage{pst-eps}
+\usepackage{pst-node}
+
+% Configure PSTricks.
+\SpecialCoor
+\psset{%
+  colsep=30bp,
+  rowsep=30bp,
+  arrows=->,
+  arrowscale=3,
+  arrowinset=0.2,
+  mnode=circle%
+}
+
+% Force all nodes to be the same size, regardless of content.
+\newcommand*{\task}[1]{\makebox[15bp]{#1}}
+
+% Define a set of parameters for drawing barrier lines.
+\newcommand*{\barrierparams}{[%
+  linecolor=green,
+  arrows=-,
+  linewidth=4bp,
+  offset=26bp,
+  nodesep=-26bp]%
+}
+
+% The picture begins here.
+\begin{document}
+\thispagestyle{empty}
+\begin{TeXtoEPS}
+
+% Draw every task at every time.
+\hspace*{40bp}    % Reserve space for the timeline arrow.
+\begin{psmatrix}
+\task{0} & \task{1} & \task{2} \\
+\task{0} & \task{1} & \task{2} \\
+\task{0} & \task{1} & \task{2} \\
+\task{0} & \task{1} & \task{2}
+\end{psmatrix}
+
+% Draw all of the communication operations.
+\psset{linecolor=blue}
+\ncline{1,1}{2,2}
+\expandafter\ncline\barrierparams{3,1}{3,3}
+\ncline{3,2}{4,1}
+
+% Draw a timeline.
+\ncline[linecolor=black,offset=-40bp,nodesep=-20bp,linewidth=2bp,arrowscale=2]{1,1}{4,1}
+\lput*{90}{Time}
+
+% Finish up.
+\end{TeXtoEPS}
+\end{document}

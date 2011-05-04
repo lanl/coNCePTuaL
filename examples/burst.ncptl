@@ -1,0 +1,37 @@
+# Measure the impact of burst size on throughput measurements
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+maxbytes is "Maximum number of bytes per message" and comes from "--maxbytes"
+  or "-m" with default 1M.
+maxburst is "Maximum number of messages to send at once" and comes from
+  "--maxburst" or "-b" with default 128.
+reps is "Number of repetitions of each message size and burst" and comes from
+  "--reps" or "-r" with default 11.
+
+For each burst_size in {1, 2, 4, ..., maxburst}
+  for each num_bytes in {1, 2, 4, ..., maxbytes} {
+    # Task 0 reports on the benchmark's progress.
+    task 0 outputs "count: " and burst_size and ";  bytes: " and num_bytes then
+
+    # Send some warm-up messages.
+    for reps repetitions {
+      task 0 asynchronously sends burst_size num_bytes byte messages to task 1 then
+      all tasks await completion then
+      task 1 sends a 0 byte message to task 0
+    } then
+    all tasks synchronize then
+
+    # Repeat the same test a given number of times.
+    for reps repetitions {
+      task 0 resets its counters then
+      task 0 asynchronously sends burst_size num_bytes byte messages to task 1 then
+      all tasks await completion then
+      task 1 sends a 0 byte message to task 0 then
+      task 0 logs the burst_size as "#msgs" and
+                  the num_bytes as "Bytes" and
+                  the median of (1E6*total_bytes)/(1M*elapsed_usecs) as "MB/s"
+    } then
+    task 0 computes aggregates
+  }

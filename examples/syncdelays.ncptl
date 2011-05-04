@@ -1,0 +1,50 @@
+# Exercise from http://www-unix.mcs.anl.gov/mpi/tutorial/mpiexmpl/src3/3way/C/main.html:
+#
+#     In this example, 2 processes are communicating with a third. Process 0
+#     is sending a long message to process 1 and process 2 is sending a
+#     relatively short message to process 1 and then to process 0. Arrange
+#     the code so that process 1 has already posted an MPI_Irecv for the
+#     message from process 2 before receiving the message from process 0,
+#     but also ensure that process 1 receives the long message from process
+#     0 before receiving the message from process 2.
+#     
+#     This seemingly complex communication pattern mimics a pattern that can
+#     occur in an application due to timing variations on each processor. If
+#     the message sent by process 2 to process 1 is short but long enough to
+#     require a rendezvous protocol, there can be a sigificant delay before
+#     the short message from process 2 is received by process 1, even though
+#     the receive for that message is already available. Explore the
+#     possibilities by considering various lengths of messages.
+#
+# coNCePTuaL solution by Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+bigsize is "Size of big message (doubles)" and comes from "--bigsize" or "-b" with default 10000.
+litsize is "Size of small message (doubles)" and comes from "--litsize" or "-n" with default 1.
+
+Assert that "this program must be run with at least 3 processes" with num_tasks>=3.
+
+All tasks touch all message buffers then
+all tasks synchronize then
+
+# "Arrange the code so that process 1 has already posted an MPI_Irecv
+# for the message from process 2 before receiving the message from
+# process 0,"
+task 1 asynchronously receives a litsize doubleword message from task 2 then
+
+# "Process 0 is sending a long message to process 1"
+task 0 sends a bigsize doubleword message to task 1 then
+
+# "also ensure that process 1 receives the long message from process 0
+# before receiving the message from process 2."
+task 1 awaits completion then
+
+# "process 2 is sending a relatively short message to process 1 and
+# then to process 0."
+task 2 resets its counters then
+task 2 sends a litsize doubleword message to unsuspecting task 1 then
+task 2 logs litsize as "Litsize" and elapsed_usecs as "Time for first send" then
+task 2 resets its counters then
+task 2 sends a litsize doubleword message to task 0 then
+task 2 logs elapsed_usecs as "Time for second send".

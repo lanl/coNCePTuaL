@@ -1,0 +1,20 @@
+
++----------------------------------------------------------------+
+| File  Edit  Options  Advanced                                  | Menu bar
++----------------------------------------------------------------+
+| [Add Row] [Delete] [Loop] [Measure] [Compute] [Communicate]    | Command
+| [Wait] [Extend] [Synchronize] [Reduce] [Multicast] [Normalize] | bar
++----------------------------------------------------------------+
+|                                                                | Program
+| (0) (1) (2) (3) (4) (5) (6) (7)                                | panel
+|                                                                |
+| ===============================                                |
+|                                                                |
++----------------------------------------------------------------+
+| To enable:                                                     | Dialog
+|  -Delete: select one or more components.                       | panel
+|  -Loop: select one or more task rows or blocks.                |
+|  -Measure: select one or more task rows or blocks.             |
+|  -Compute: select one or more tasks.                           |
+|  -Communicate: select tasks in two task rows.                  |
++----------------------------------------------------------------+

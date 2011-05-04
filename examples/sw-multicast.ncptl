@@ -1,0 +1,59 @@
+# Test the performance of multicasting over various software trees
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+# Parse the command line.
+msgsize is "Message size (bytes)" and comes from "--size" or "-s" with default 1M.
+reps is "Repetitions to perform" and comes from "--reps" or "-r" with default 100.
+maxarity is "Max. arity of the various trees" and comes from "--maxarity" or "-a" with default 8.
+wups is "Warmup repetitions" and comes from "--warmups" or "-w" with default 3.
+
+Assert that "this program requires at least two processors" with num_tasks>=2.
+
+# Propagate messages from task 0 to all of the other tasks in an n-ary tree.
+For each arity in {2, ..., maxarity} {
+  task 0 outputs arity and "-ary tree" then
+  all tasks synchronize then
+  for reps repetitions plus wups warmup repetitions {
+    task 0 resets its counters then
+    for each src in {0, ..., (num_tasks-1)/arity}
+      for each dstnum in {0, ..., arity-1}
+        task src asynchronously sends a msgsize-byte message to task dst such that dst=tree_child(src, dstnum, arity) who receives it synchronously then
+    all tasks await completion then
+    task num_tasks-1 sends a 0-byte message to task 0 then
+    task 0 logs the maximum of (msgsize/elapsed_usecs)*(1E6/1M) as "Incoming bandwidth (MB/s)" and
+                the arity as "n-ary arity"
+  } then
+  task 0 computes aggregates
+}
+Task 0 outputs "".
+
+# Propagate messages from task 0 to all of the other tasks in a k-nomial tree.
+For each arity in {2, ..., maxarity} {
+  task 0 outputs arity and "-nomial tree" then
+  all tasks synchronize then
+  for reps repetitions plus wups warmup repetitions {
+    task 0 resets its counters then
+    for each src in {0, ..., num_tasks-1}
+      for each dstnum in {0, ..., knomial_children(src, arity, num_tasks)}
+        task src asynchronously sends a msgsize-byte message to task knomial_child(src, dstnum, arity) who receives it synchronously then
+    all tasks await completion then
+    task num_tasks-1 sends a 0-byte message to task 0 then
+    task 0 logs the maximum of (msgsize/elapsed_usecs)*(1E6/1M) as "Incoming bandwidth (MB/s)" and
+                the arity as "k-nomial arity"
+  } then
+  task 0 computes aggregates
+}
+Task 0 outputs "".
+
+# Propagate messages from task 0 to all of the other tasks using the internal multicast mechanism.
+Task 0 outputs "multicast primitive" then
+all tasks synchronize then
+for reps repetitions plus wups warmup repetitions {
+  task 0 resets its counters then
+  task 0 multicasts a msgsize-byte message to all other tasks then
+  task num_tasks-1 sends a 0-byte message to task 0 then
+  task 0 logs the maximum of (msgsize/elapsed_usecs)*(1E6/1M) as "Incoming bandwidth (MB/s)"
+} then
+task 0 computes aggregates.

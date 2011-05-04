@@ -1,0 +1,27 @@
+# Test all possible combinations of sender and receiver misalignment.
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.2".
+
+# Parse the command line.
+reps is "Number of repetitions" and comes from "--reps" or "-r" with default 100.
+maxoffset is "Maximum offset in bytes from a page boundary" and comes from "--maxofs" or "-o" with default 16K.
+msgsize is "Message size in bytes" and comes from "--size" or "-s" with default 1M.
+
+# Ensure that we have a peer with whom to communicate.
+Assert that "the latency test requires at least two tasks" with num_tasks>=2.
+
+# Ping-pong using every combination of sender and receiver misalignments.
+For each sendalign in {0, 4, 8, ..., maxoffset}
+  for each recvalign in {0, 4, 8, ..., maxoffset} {
+    task 0 outputs "Sender is offset by " and sendalign and "; receiver is offset by " and recvalign then
+    all tasks synchronize then
+    task 0 resets its counters then
+    for reps repetitions plus 1 warmup repetition {
+      task 0 sends a msgsize byte sendalign byte misaligned message to task 1 who receives it as a recvalign byte misaligned message then
+      task 1 sends a msgsize byte sendalign byte misaligned message to task 0 who receives it as a recvalign byte misaligned message
+    }
+    then task 0 logs sendalign as "Sender misalignment (B)" and
+                     recvalign as "Receiver misalignment (B)" and
+                     (msgsize*reps*2)/elapsed_usecs as "Bandwidth (B/us)"
+}

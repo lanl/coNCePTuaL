@@ -1,0 +1,203 @@
+@menu
+* ncptl-logunmerge manual page::   The result of running ``ncptl-logunmerge --man''
+@end menu
+
+@c Copyright (C) 2009, Los Alamos National Security, LLC
+@c All rights reserved.
+@c 
+@c Copyright (2009).  Los Alamos National Security, LLC.  This software
+@c was produced under U.S. Government contract DE-AC52-06NA25396
+@c for Los Alamos National Laboratory (LANL), which is operated by
+@c Los Alamos National Security, LLC (LANS) for the U.S. Department
+@c of Energy. The U.S. Government has rights to use, reproduce,
+@c and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+@c MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+@c FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+@c derivative works, such modified software should be clearly marked,
+@c so as not to confuse it with the version available from LANL.
+@c 
+@c Additionally, redistribution and use in source and binary forms,
+@c with or without modification, are permitted provided that the
+@c following conditions are met:
+@c 
+@c   * Redistributions of source code must retain the above copyright
+@c     notice, this list of conditions and the following disclaimer.
+@c 
+@c   * Redistributions in binary form must reproduce the above copyright
+@c     notice, this list of conditions and the following disclaimer
+@c     in the documentation and/or other materials provided with the
+@c     distribution.
+@c 
+@c   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+@c     National Laboratory, the U.S. Government, nor the names of its
+@c     contributors may be used to endorse or promote products derived
+@c     from this software without specific prior written permission.
+@c 
+@c THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+@c EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+@c IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+@c PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+@c LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+@c OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+@c OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+@c BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+@c WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+@c OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+@c EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+@node ncptl-logunmerge manual page,  , ncptl-logunmerge, ncptl-logunmerge
+@subsubheading NAME
+
+
+ncptl-logunmerge - Recover individual @ncptl{} log files from ncptl-logmerge output
+
+@subsubheading SYNOPSIS
+
+
+ncptl-logunmerge
+@copt{usage} | @copt{help} | @copt{man}
+
+@sp 1
+@noindent
+ncptl-logunmerge
+[@copt{logfile}=@var{template}]
+[@copt{procs}=@var{process_list}]
+[@copt{quiet}]
+[@copt{memcache}=@var{megabytes}]
+@var{filename}
+
+@subsubheading DESCRIPTION
+
+
+@file{ncptl-logmerge} merges a set of @ncptl{} log files into a more
+convenient, single file.  @file{ncptl-logunmerge} performs the inverse
+operation, splitting a merged file into separate @ncptl{} log files.
+Specifically, unadorned comment lines such as the following are
+written to all log files:
+
+@example
+    # Executable name: /home/me/mybenchmark
+@end example
+
+Comment lines which specify processor ranges are written to the
+appropriate log files.  For example, the following line---with the
+leading @code{#[35,43,89]} stripped---is written only to the log files
+corresponding to @w{processes 35,} 43, @w{and 89:}
+
+@example
+    #[35,43,89]# Minimum sleep time: 9.68 +/- 0.556776
+      microseconds (ideal: 1 +/- 0)
+@end example
+
+Non-comment lines (i.e., measurement data) such as the following are
+written only to @w{process 0's} log file:
+
+@example
+    "Contention factor","Msg. size (B)","1/2 RTT (us)","MB/s"
+    "(all data)","(all data)","(all data)","(all data)"
+    0,1048576,1368.0295,730.978389
+    0,524288,691.9115,722.6357706
+@end example
+
+@subsubheading OPTIONS
+
+
+@file{ncptl-logunmerge} accepts the following command-line options:
+
+@table @asis
+@item @copts{u}, @copt{usage}
+Output the Synopsis section then exit the program.
+
+@item @copts{h}, @copt{help}
+Output the Synopsis section and the Options section then exit the program.
+
+@item @copts{m}, @copt{man}
+Output a complete Unix man (``manual'') page for @file{ncptl-logunmerge}
+then exit the program.
+
+@item @copts{L} @var{template}, @copt{logfile}=@var{template}
+Specify a template for the names of the generated log files.  The
+template must contain the literal string @code{%p} which will be replaced
+by the appropriate processor number.  The template may contain the
+literal string @code{%r} (run number) which will be replaced by the
+smallest integer which produces a filename that does not already
+exist.  In addition, @code{printf()}-style field widths can be used with
+@code{%p} and @code{%r}.  For example, @code{%04p} outputs the processor number as
+a four-digit number padded on the left with zeroes.
+
+If @copt{logfile} is not specified, @file{ncptl-logunmerge} takes
+the default template from the merged log file's @code{Log-file template}
+line, discards the directory component of the filename, and uses the
+result as the log-file template.
+
+@item @copts{p} @var{process_list}, @copt{procs}=@var{process_list}
+Identify a subset of log files to extract from the merged log file.
+By default, @file{ncptl-logunmerge} extracts all of the constituent log
+files.  @var{process_list} is a comma-separated list of process number or
+process ranges.
+
+@item @copts{q}, @copt{quiet}
+Suppress progress output.  Normally, @file{ncptl-logunmerge} outputs
+status information regarding its operation.  The @copt{quiet} option
+instruct @file{ncptl-logunmerge} to output only warning and error
+messages.
+
+@item @copts{M} @var{megabytes}, @copt{memcache}=@var{megabytes}
+Specify the size of the in-memory file cache.  By default the program
+keeps up to @w{8 MB} of extracted file data resident in memory to
+improve performance.  The @copt{memcache} option enables more or less
+data to be cached in memory.  For example, @coptargs{memcache, 512} specifies
+that @w{512 MB} of memory should be reserved for the file cache.
+
+@end table
+In addition to the preceding options @file{ncptl-logunmerge} requires the
+name of a merged @ncptl{} log file.  If not provided,
+@file{ncptl-logunmerge} reads the contents of the merged @ncptl{} log
+file from standard input.
+
+@subsubheading DIAGNOSTICS
+
+
+@table @asis
+@item @code{The input file does not look like a merged coNCePTuaL log file}
+Only the output from @file{ncptl-logmerge} is valid input to
+@file{ncptl-logunmerge}.
+
+@item @code{Unable to find a unique number of tasks in the input file}
+@file{ncptl-logunmerge} determines the number of files to generate from
+the @code{Number of tasks} prologue comment.  If that comment does not
+appear or takes on different values, @file{ncptl-logunmerge} rejects the
+input file.
+
+@end table
+@subsubheading EXAMPLES
+
+
+Extract a set of @ncptl{} log files from a merged log file and name
+the extracted files @file{happy-0.log}, @file{happy-1.log}, @file{happy-2.log},
+etc.:
+
+@example
+    ncptl-logunmerge --logfile=happy-%p.log mybenchmark-all.log
+@end example
+
+Extract only @file{mybenchmark-0.log}, @file{mybenchmark-50.log},
+@file{mybenchmark-51.log}, @file{mybenchmark-52.log}, and
+@file{mybenchmark-100.log} from @file{mybenchmark-all.log} (assuming that
+@file{mybenchmark-all.log} contains the line @code{# Log-file template:
+mybenchmark-%p.log}):
+
+@example
+    ncptl-logunmerge --procs=0,50-52,100 mybenchmark-all.log
+@end example
+
+@subsubheading SEE ALSO
+
+
+ncptl-logmerge(1), ncptl-logextract(1), printf(3),
+the @ncptl{} User's Guide
+
+@subsubheading AUTHOR
+
+
+Scott Pakin, @email{pakin@@lanl.gov}

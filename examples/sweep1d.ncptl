@@ -1,0 +1,26 @@
+# Mimic Sweep3D's communication pattern in a 1-D setting
+#
+# Benchmark by Darren J. Kerbyson and Adolfy Hoisie
+# coNCePTuaL implementation by Scott Pakin
+
+Require language version "1.2".
+
+reps is "Number of repetitions" and comes from "--reps" or "-r" with default 100.
+maxcomptime is "Max. computation time in microseconds" and comes from "--compute" or "-c" with default 100.
+msgsize is "Message size in bytes" and comes from "--msgsize" or "-m" with default 1200.
+
+Assert that "this program requires at least two nodes" with num_tasks>=2.
+
+For each comptime in {0, ..., maxcomptime} {
+  all tasks synchronize then
+  task 0 resets its counters then
+  for reps repetitions {
+    all tasks compute for comptime microseconds then
+    task 0 sends a msgsize byte message to task 1
+  } then
+  for reps repetitions {
+    all tasks compute for comptime microseconds then
+    task 1 sends a msgsize byte message to task 0
+  } then
+  task 0 logs comptime as "Comp. time" and elapsed_usecs/(2*reps) - comptime as "Latency (us)"
+}

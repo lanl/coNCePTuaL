@@ -1,0 +1,629 @@
+#! /usr/bin/env perl
+
+########################################################################
+#
+# Merge comments from multiple coNCePTuaL log files
+#
+# By Scott Pakin <pakin@lanl.gov>
+#
+# ----------------------------------------------------------------------
+#
+# Copyright (C) 2009, Los Alamos National Security, LLC
+# All rights reserved.
+# 
+# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# was produced under U.S. Government contract DE-AC52-06NA25396
+# for Los Alamos National Laboratory (LANL), which is operated by
+# Los Alamos National Security, LLC (LANS) for the U.S. Department
+# of Energy. The U.S. Government has rights to use, reproduce,
+# and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+# MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
+# FOR THE USE OF THIS SOFTWARE. If software is modified to produce
+# derivative works, such modified software should be clearly marked,
+# so as not to confuse it with the version available from LANL.
+# 
+# Additionally, redistribution and use in source and binary forms,
+# with or without modification, are permitted provided that the
+# following conditions are met:
+# 
+#   * Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+# 
+#   * Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer
+#     in the documentation and/or other materials provided with the
+#     distribution.
+# 
+#   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+#     National Laboratory, the U.S. Government, nor the names of its
+#     contributors may be used to endorse or promote products derived
+#     from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+# OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+########################################################################
+
+use POSIX;
+use File::Basename;
+use File::Spec;
+use Getopt::Long;
+use Pod::Usage;
+use warnings;
+use strict;
+
+###########################################################################
+
+# Define some global variables needed to parse the command line.
+my $want_docs = 0;         # 0=no documentation; 1=usage; 2=help; 3=man page
+my $outfilename = "-";     # Name of the output file
+my $simplification = 0;    # 0=output a merged file; 1=comments only; 2=interesting comments only
+
+# Define some other global variables.
+my ($progname, undef, undef) = fileparse $0, '\..*';    # Base executable name
+my @inputfiles;     # Names of input files
+my @inputdata;      # Array of lines of log-file input
+my @lineno;         # Current line number for each input file
+my @outputdata;     # Output file lines
+my @procnum;        # Map from an input file number to a processor number
+my $unique_rounded; # Number of unique rounded processor numbers
+
+###########################################################################
+
+# Expand one filename into one or more filenames.  If the given
+# argument represents a directory, return a list of files it contains.
+# If the given argument begins with "@", treat the rest of the
+# argument as a filename and return its contents.  Otherwise, return
+# the argument unmodified.
+sub file_of_files ($)
+{
+    my $name = $_[0];     # File to process
+    my @filelist;         # List of filenames to return
+
+    # Acquire a list of filenames.
+    if (-d $name) {
+        # Replace directories with their non-directory contents.
+        opendir (DIR, $name) || die "${progname}: $! ($name)\n";
+        @filelist = map {-d $_ ? () : File::Spec->catfile($name, $_)} readdir DIR;
+        closedir DIR;
+    }
+    elsif (substr($name, 0, 1) eq "@") {
+        # Specially process names beginning with "@".
+        my $atfile = substr($name, 1);
+
+        # If the argument starts with "@@", replace those with a
+        # single "@" and return the argument.
+        return $atfile if substr($atfile, 0, 1) eq "@";
+
+        # If the argument starts with a single "@", treat the rest of
+        # the argument as a filename and return its contents as a list
+        # of filenames.
+        my $retval;
+        open (ATFILE, "<$atfile") || die "${progname}: unable to open $atfile\n";
+        {
+            local $/ = undef;
+            $retval = <ATFILE>;
+        }
+        close ATFILE;
+        my @filelist = split " ", $retval;
+        die "${progname}: no filenames found in $atfile\n" if $#filelist==-1;
+        return @filelist;
+    }
+    else {
+        # Return the argument as is.
+        @filelist = ($name);
+    }
+
+    # Complain if any of the filenames is in fact a directory.
+    my @filesonly;
+    foreach my $file (@filelist) {
+        if (-d $file) {
+            warn "${progname}: warning: ignoring directory $file\n";
+        }
+        else {
+            push @filesonly, $file;
+        }
+    }
+
+    # Return the resulting file list.
+    return @filesonly;
+}
+
+
+# Given a list of numbers sorted in ascending order, return a string
+# of comma-separated ranges.
+sub collapse_ranges (@)
+{
+    return scalar @_ if $simplification>=4;
+    my @sorted_nums = @_;
+    my $rangestr = $sorted_nums[0];
+    my $rangelen = 0;
+    foreach my $ofs (1 .. $#sorted_nums) {
+        if ($sorted_nums[$ofs] == $sorted_nums[$ofs-1]+1) {
+            # Continue the previous range.
+            $rangelen++;
+        }
+        else {
+            # We skipped a number.
+            if ($rangelen == 1) {
+                # Complete the previous degenerate range.
+                $rangestr .= ",$sorted_nums[$ofs-1],$sorted_nums[$ofs]";
+                $rangelen = 0;
+            }
+            elsif ($rangelen) {
+                # Complete the previous ordinary range.
+                $rangestr .= "-$sorted_nums[$ofs-1],$sorted_nums[$ofs]";
+                $rangelen = 0;
+            }
+            else {
+                # We didn't have a previous range.
+                $rangestr .= ",$sorted_nums[$ofs]";
+            }
+        }
+    }
+
+    # Handle the final range.
+    if ($rangelen == 1) {
+        $rangestr .= ",$sorted_nums[$#sorted_nums]";
+    }
+    elsif ($rangelen) {
+        $rangestr .= "-$sorted_nums[$#sorted_nums]";
+    }
+    return $rangestr;
+}
+
+
+# Given a map from lines of text to a list of file numbers which
+# contain it, merge the lines based on the specified simplification
+# level.
+#
+# NOTE: This function utilizes a number of global variables.
+sub merge_lines (\%)
+{
+    my %lines_seen = %{$_[0]};
+
+    # Determine if we have any mismatches.
+    my @variations = keys %lines_seen;
+    if (!$#variations && $#{$lines_seen{$variations[0]}} == $#inputdata) {
+        # No mismatches -- output a single copy unless the user
+        # wants to simplify away non-mismatched lines.
+        push @outputdata, $variations[0] if !$simplification;
+    }
+    else {
+        # Abort if the input files were generated from different
+        # executions.
+        die "${progname}: Not all log files came from the same run of the same program\n" if grep /Unique execution identifier/o, keys %lines_seen;
+
+        # At least two variations -- determine based on the
+        # simplification level and the number of variations if we
+        # need to output the line.
+        my $show_variations = 1;    # Assume we need to output the line.
+
+        $show_variations=0 if $simplification>=2 && $#variations==$#inputdata;
+        $show_variations=0 if $simplification>=3 && $#variations==$unique_rounded-1;
+        if ($show_variations) {
+            # Sort the file numbers in question by corresponding
+            # processor number.
+            while (my ($fline, $fnums) = each %lines_seen) {
+                $lines_seen{$fline} = [sort {$procnum[$a] <=> $procnum[$b]} @{$fnums}];
+            }
+
+            # Output the variations sorted by first by decreasing
+            # order of tally then by increasing processor number.
+            foreach my $variant (sort {@{$lines_seen{$b}} <=> @{$lines_seen{$a}}
+                                       || $lines_seen{$a}->[0] <=> $lines_seen{$b}->[0]}
+                                 @variations) {
+                my $procstring = collapse_ranges map {$procnum[$_]} @{$lines_seen{$variant}};
+                push @outputdata, "#[$procstring]$variant";
+            }
+        }
+    }
+}
+
+
+# Compare the contents of all the files.  Stop upon reaching a
+# synchronization line (a row consisting only of "#" characters),
+# which is then returned.
+#
+# ASSUMPTION 1: All files have the same keys in the same order but the
+#               values may vary.
+# ASSUMPTION 2: Some files may contain more WARNING lines than others.
+# NOTE: This function utilizes a number of global variables.
+sub compare_lines ()
+{
+    while ($lineno[0] <= $#{$inputdata[0]}) {
+        my %lines_seen;          # Map from an input line to a list of file numbers
+        my $warnings_seen = 0;   # 1=some file contains a WARNING line
+        my $separators_seen = 0; # Number of files observing a separator line
+
+        # Determine if any file contains a WARNING line.
+        foreach my $fnum (0 .. $#inputdata) {
+            my $fline = $inputdata[$fnum]->[$lineno[$fnum]];
+            if (substr ($fline, 0, 11) eq "# WARNING: ") {
+                $warnings_seen = 1;
+                last;
+            }
+        }
+
+        # Compare the current line across all files.
+        foreach my $fnum (0 .. $#inputdata) {
+            # Acquire the current line from the current file.
+            my $fline = $inputdata[$fnum]->[$lineno[$fnum]];
+
+            # If any line contains a synchronizer, tally but ignore it.
+            $separators_seen++, next if $fline =~ /^\#+$/o;
+
+            # If any line contains a warning, ignore all other lines.
+            next if $warnings_seen && substr ($fline, 0, 11) ne "# WARNING: ";
+
+            # Process the current line of the current file.
+            $lineno[$fnum]++;
+            if ($simplification >= 3) {
+                # Given a sufficiently high simplification level,
+                # round all numbers which appear in the line.
+                $fline =~ s/(([-+]?\d+(\.\d+)?) |   # Optional fraction
+                             ([-+]?(\d+)?\.\d+))    # Optional integer
+                            (?!\.)/roundnum($&)/gex;
+            }
+            no warnings;
+            push @{$lines_seen{$fline}}, $fnum;
+        }
+
+        # Merge the lines as specified.
+        merge_lines %lines_seen;
+
+        # Exit the loop when we exhaust the current set of comments.
+        last if $separators_seen == 1+$#inputdata;
+    }
+
+    # Consume the synchronization lines.
+    foreach my $fnum (0 .. $#inputdata) {
+        $lineno[$fnum]++;
+    }
+    
+    # Return the synchronization line.
+    return $inputdata[0]->[$lineno[0]-1];
+}
+
+
+# Round a floating-point number to two significant digits.
+sub roundnum ($) {
+    my $num = $_[0];
+    return 0 if $num == 0.0;
+    my $twosigdigs = sub {
+        my $num = $_[0];
+        my $floorlog10 = floor (log10($num));
+        my $pow10 = pow (10.0, $floorlog10);
+        my $factor = floor($num*10.0/$pow10 + 0.5) / 10.0;
+        return $factor*$pow10;
+    };
+    return $num>0 ? $twosigdigs->($num) : -$twosigdigs->(-$num);
+}
+
+###########################################################################
+
+# Parse the command line.
+Getopt::Long::Configure ("noignore_case", "bundling");
+GetOptions ("u|usage"      => sub {$want_docs=1},
+            "h|help"       => sub {$want_docs=2},
+            "m|man"        => sub {$want_docs=3},
+            "texinfo-man"  => sub {eval "use Pod2NCPTLTexi";
+                                   die "${progname}: $@\n" if $@;
+                                   new TexinfoParser()->parse_from_file($0);
+                                   exit 0},
+            "s|simplify+"  => \$simplification,
+            "o|output=s"   => \$outfilename) || pod2usage(2);
+pod2usage(-verbose => $want_docs-1,
+          -exitval => 1) if $want_docs;
+pod2usage(-message => "${progname}: Input files were not specified",
+          -exitval => 1) if $#ARGV==-1;
+
+# Read each input file in turn.
+@inputfiles = map {file_of_files($_)} @ARGV;
+die "${progname}: no valid filenames were found in \"@ARGV\"\n" if $#inputfiles==-1;
+foreach my $fname (@inputfiles) {
+    local $/ = undef;
+    open (INFILE, "<$fname") || die "${progname}: $! ($fname)\n";
+    my $filecontents = <INFILE>;
+    die "${progname}: file $fname contains no data\n" if $filecontents =~ /^\s*$/;
+    push @inputdata, $filecontents;
+    close INFILE;
+}
+
+# If we're simplifying by rounding all numbers which appear in the
+# input, determine the number of unique values we get by rounding
+# 0..$#inputdata.
+if ($simplification >= 3) {
+    my %roundedvals;
+    foreach (0 .. $#inputdata) {
+        $roundedvals{roundnum $_}++;
+    }
+    $unique_rounded = scalar keys %roundedvals;
+}
+
+# Map each input file to its processor number and replace "coNCePTuaL
+# log file" with "Merged coNCePTuaL log file".
+foreach my $fnum (0 .. $#inputdata) {
+    # Replace the coNCePTuaL title comment.
+    if (!($inputdata[$fnum] =~ s/^\# coNCePTuaL log file/\# Merged coNCePTuaL log file/m)) {
+        die "${progname}: $inputfiles[$fnum] does not look like an unmerged coNCePTuaL log file\n";
+    }
+    $inputdata[$fnum] =~ s/^\# ={19}/"# " . "=" x 26/gem;
+
+    # Find the processor number.
+    if ($inputdata[$fnum] =~ /^\# Processor \(0<=P<tasks\): (\d+)/m) {
+        push @procnum, $1;
+    }
+    else {
+        die "${progname}: No processor number found in $inputfiles[$fnum]\n";
+    }
+
+    # Split the result into lines for more convenient comparisons across files.
+    $inputdata[$fnum] = [split "\n", $inputdata[$fnum]];
+}
+
+# Walk the files line by line until we exhaust (1) the initial row of
+# octothorps, (2) the system-related prologue comments, (3) the list
+# of environment variables, (4) the coNCePTuaL source code, (5) the
+# separator between the prologue and the raw data, (6) the raw data,
+# and (7) the epilogue comments.
+@lineno = (0) x @inputdata;
+foreach (1 .. 7) {
+    my $sync_line = compare_lines();
+    push @outputdata, $sync_line if !$simplification;
+}
+
+# Output the merged file.
+open (OUTFILE, ">$outfilename") || die "${progname}: $! ($outfilename)\n";
+print OUTFILE join ("\n", @outputdata), "\n";
+close OUTFILE;
+exit 0;
+
+###########################################################################
+
+__END__
+
+=head1 NAME
+
+ncptl-logmerge - Merge coNCePTuaL log files
+
+
+=head1 SYNOPSIS
+
+ncptl-logmerge
+B<--usage> | B<--help> | B<--man>
+
+=for texinfo
+@sp 1
+@noindent
+
+ncptl-logmerge
+[B<--output>=I<filename>]
+[B<--simplify>]
+I<filename>...
+
+
+=head1 DESCRIPTION
+
+A coNCePTuaL program produces one log file per process.  For large
+numbers of processes the result can be unwieldy.  B<ncptl-logmerge>
+combines a large set of log files into a single, merged file which can
+later be expanded back into its constituent log files.  There are a
+number of restrictions on the input to B<ncptl-logmerge>; see
+L</"RESTRICTIONS"> for details.
+
+The merged output file does not modify lines which are identical in
+all of the input files.  Lines which do differ across input files are
+prefixed with the processors and processor ranges in which they
+appeared.
+
+As an example, the following text was extracted from a set of 186
+coNCePTuaL log files (from a 186-processor run):
+
+    # Microsecond timer type: PAPI_get_real_usec()
+    # Average microsecond timer overhead: <1 microsecond
+    #[0-4,6-12,14-16,18-52,54-78,80-94,96-101,103-121,123-140,142-169,
+      171-185]# Microsecond timer increment: 1 +/- 0 microseconds
+      (ideal: 1 +/- 0)
+    #[5]# Microsecond timer increment: 1.00229 +/- 0.15854
+      microseconds (ideal: 1 +/- 0)
+    #[13]# Microsecond timer increment: 1.00228 +/- 0.158442
+      microseconds (ideal: 1 +/- 0)
+    #[17,79]# Microsecond timer increment: 1.00228 +/- 0.158392
+      microseconds (ideal: 1 +/- 0)
+    #[53]# Microsecond timer increment: 1.00228 +/- 0.158409
+      microseconds (ideal: 1 +/- 0)
+    #[102]# Microsecond timer increment: 1.00228 +/- 0.158458
+      microseconds (ideal: 1 +/- 0)
+    #[95,122]# Microsecond timer increment: 1.00228 +/- 0.158474
+      microseconds (ideal: 1 +/- 0)
+    #[141]# Microsecond timer increment: 1.00228 +/- 0.158491
+      microseconds (ideal: 1 +/- 0)
+    #[170]# Microsecond timer increment: 1.00228 +/- 0.158524
+      microseconds (ideal: 1 +/- 0)
+
+All of the input files contained the same C<Microsecond timer type>
+and C<Average microsecond timer overhead> lines.  However, the
+measured C<Microsecond timer increment> varied across input files.
+While many of the processors observed an increment of C<1 +/- 0>,
+S<processor 5> was alone in observing C<1.00229 +/- 0.15854>;
+S<processor 13> was alone in observing C<1.00228 +/- 0.158442>; and,
+both S<processor 17> and S<processor 79> observed C<1.00228 +/-
+0.158392> as the timer increment.
+
+B<ncptl-logmerge> can also be instructed to output only the lines
+which differ across files.  Common lines are not output.  This feature
+is useful for discovering misconfigured nodes in a large computer
+system.  For example, on one computer system on which coNCePTuaL was
+run, five processors were running at a higher clock rate than the
+remainder which naturally affected performance.  B<ncptl-logmerge> can
+be used to help identify such outliers.
+
+
+=head1 OPTIONS
+
+B<ncptl-logmerge> accepts the following command-line options:
+
+=over 6
+
+=item B<-u>, B<--usage>
+
+Output L<"SYNOPSIS"> then exit the program.
+
+=item B<-h>, B<--help>
+
+Output L<"SYNOPSIS"> and L<"OPTIONS"> then exit the program.
+
+=item B<-m>, B<--man>
+
+Output a complete Unix man ("manual") page for B<ncptl-logmerge> then
+exit the program.
+
+=item B<-o> I<filename>, B<--output>=I<filename>
+
+B<ncptl-logmerge> normally writes to the standard output device.  The
+C<--output> option redirects B<ncptl-logmerge>'s output to a file.
+
+=item B<-s>, B<--simplify>
+
+Simplify the output by including only lines which differ across input
+files.  No data is output, only prologue and epilogue comments.
+C<--simplify> can be specified up to four times on the command line:
+
+=over 12
+
+=item once
+
+Omit all comments and all lines which are identical across all input
+files.
+
+=item twice
+
+Lines which differ across I<all> output files (e.g., C<Processor
+(0E<lt>=PE<lt>tasks)>) are also omitted.
+
+=item three times
+
+The amount of output is further reduced by rounding to two significant
+digits all numbers appearing in all input files.  Doing so makes
+C<1.10644 +/- 0.593714> match C<1.12511 +/- 0.58829>, for example.
+(Both are converted to C<1.1 +/- 0.59>.)
+
+=item four times
+
+Lists of processors are replaced by the list size.  For example,
+C<#[22,67,86,430]> becomes C<#[4]>.
+
+=back
+
+Note that C<--simplify> is intended as a diagnostic tool; files output
+using C<--simplify> cannot be un-merged to recover the original input
+files.
+
+=back
+
+In addition to the preceding options B<ncptl-logmerge> requires a list
+of log files to merge.  If a directory is specified, all of the files
+immediately under that directory are used.  (Note that
+B<ncptl-logmerge> does not descend into subdirectories, however.)
+Files containing lists of filenames can be specified with a leading
+S<at sign> ("C<@>").  For example, C<@filelist.txt> means to read a
+list of filenames from C<@filelist.txt>.  Filenames beginning with an
+S<at sign> can be specified by doubling the S<at sign> on the command
+line.
+
+
+=head1 DIAGNOSTICS
+
+=over 6
+
+=item I<filename> C<does not look like an unmerged coNCePTuaL log file>
+
+B<ncptl-logmerge> accepts as input only log files produced directly by
+a coNCePTuaL program.  It is not a general-purpose file combiner nor
+does it accept its own output as input.  Unrecognized input files
+cause B<ncptl-logmerge> to abort with the preceding error message.
+
+=item C<No processor number found in> I<filename>
+
+B<ncptl-logmerge> needs to map filenames to processor numbers to
+indicate which processors produced which lines of output.  If an input
+file does not contain a C<Processor (0E<lt>=PE<lt>tasks)> comment,
+B<ncptl-logmerge> aborts with the preceding error message.
+
+=back
+
+
+=head1 EXAMPLES
+
+Merge a set of coNCePTuaL log files:
+
+    ncptl-logmerge mybenchmark-[0-9]*.log > mybenchmark-all.log
+
+The following command is equivalent to the preceding one:
+
+    ncptl-logmerge mybenchmark-[0-9]*.log --output=mybenchmark-all.log
+
+Show only "interesting" differences among the input files:
+
+    ncptl-logmerge --simplify --simplify mybenchmark-[0-9]*.log
+
+For convenience, one can abbreviate C<--simplify> C<--simplify>
+C<--simplify> C<--simplify> to S<C<-s> C<-s> C<-s> C<-s>> or even
+C<-ssss>:
+
+    ncptl-logmerge -ssss mybenchmark-[0-9]*.log
+
+
+=head1 RESTRICTIONS
+
+The log files passed to B<ncptl-logmerge> are subject to the following
+restrictions:
+
+=over 4
+
+=item *
+
+All files must be produced by the same run of the same coNCePTuaL
+program.
+
+=item *
+
+None of the files can have been previously merged by B<ncptl-logmerge>
+(i.e., B<ncptl-logmerge> can't read its own output).
+
+=item *
+
+Only the first filename passed to B<ncptl-logmerge> is allowed to
+contain data.  Data from all other files is discarded with a warning
+message.
+
+=back
+
+
+=head1 BUGS
+
+B<ncptl-logmerge> is not a particularly robust script.  Specifically,
+it is confused when input files contain different numbers of comment
+lines.  For example, if one input file includes more environment
+variables than another or issued a warning about a timer where another
+input file didn't, B<ncptl-logmerge> will erroneously report all
+subsequent lines as being mismatched across input files.
+
+
+=head1 SEE ALSO
+
+ncptl-logunmerge(1), ncptl-logextract(1), the coNCePTuaL User's Guide
+
+=head1 AUTHOR
+
+Scott Pakin, I<pakin@lanl.gov>
