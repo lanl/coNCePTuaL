@@ -1,11 +1,9 @@
- #-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # ply: yacc.py
 #
 # Author(s): David M. Beazley (dave@dabeaz.com)
 #
 # Copyright (C) 2001-2006, David M. Beazley
-#
-# $Header: /users/pakin/src/CVSROOT/coNCePTuaL/yacc.py,v 3.3 2006-09-29 00:26:54 pakin Exp $
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -52,9 +50,7 @@
 # own risk!
 # ----------------------------------------------------------------------------
 
-__version__ = "2.0"
-
-import types
+__version__ = "2.2"
 
 #-----------------------------------------------------------------------------
 #                     === User configurable parameters ===
@@ -67,7 +63,7 @@ yaccdebug   = 1                # Debugging mode.  If set, yacc generates a
 
 debug_file  = 'parser.out'     # Default name of the debugging file
 tab_module  = 'parsetab'       # Default name of the table module
-default_lr  = 'SLR'            # Default LR table generation method
+default_lr  = 'LALR'           # Default LR table generation method
 
 error_count = 3                # Number of symbols that must be shifted to leave recovery mode
 
@@ -90,6 +86,8 @@ class YaccError(Exception):   pass
 #        .value      = Symbol value
 #        .lineno     = Starting line number
 #        .endlineno  = Ending line number (optional, set automatically)
+#        .lexpos     = Starting lex position
+#        .endlexpos  = Ending lex position (optional, set automatically)
 
 class YaccSymbol:
     def __str__(self):    return self.type
@@ -101,16 +99,19 @@ class YaccSymbol:
 # The lineno() method returns the line number of a given
 # item (or 0 if not defined).   The linespan() method returns
 # a tuple of (startline,endline) representing the range of lines
-# for a symbol.
+# for a symbol.  The lexspan() method returns a tuple (lexpos,endlexpos)
+# representing the range of positional information for a symbol.
 
 class YaccProduction:
-    def __init__(self,s):
+    def __init__(self,s,stack=None):
         self.slice = s
         self.pbstack = []
+        self.stack = stack
 
     def __getitem__(self,n):
         if type(n) == types.IntType:
-             return self.slice[n].value
+             if n >= 0: return self.slice[n].value
+             else: return self.stack[n].value
         else:
              return [s.value for s in self.slice[n.start:n.stop:n.step]]
 
@@ -127,6 +128,14 @@ class YaccProduction:
         startline = getattr(self.slice[n],"lineno",0)
         endline = getattr(self.slice[n],"endlineno",startline)
         return startline,endline
+
+    def lexpos(self,n):
+        return getattr(self.slice[n],"lexpos",0)
+
+    def lexspan(self,n):
+        startpos = getattr(self.slice[n],"lexpos",0)
+        endpos = getattr(self.slice[n],"endlexpos",startpos)
+        return startpos,endpos
 
     def pushback(self,n):
         if n <= 0:
@@ -165,7 +174,7 @@ class Parser:
         del self.statestack[:]
         del self.symstack[:]
         sym = YaccSymbol()
-        sym.type = '$'
+        sym.type = '$end'
         self.symstack.append(sym)
         self.statestack.append(0)
         
@@ -181,7 +190,8 @@ class Parser:
 
         # If no lexer was given, we will try to use the lex module
         if not lexer:
-            import lex as lexer
+            import lex
+            lexer = lex.lexer
 
         pslice.lexer = lexer
         
@@ -197,12 +207,13 @@ class Parser:
         symstack   = [ ]                # Stack of grammar symbols
         self.symstack = symstack
 
+        pslice.stack = symstack         # Put in the production
         errtoken   = None               # Err token
 
-        # The start state is assumed to be (0,$)
+        # The start state is assumed to be (0,$end)
         statestack.append(0)
         sym = YaccSymbol()
-        sym.type = '$'
+        sym.type = '$end'
         symstack.append(sym)
         
         while 1:
@@ -218,7 +229,7 @@ class Parser:
                     lookahead = lookaheadstack.pop()
                 if not lookahead:
                     lookahead = YaccSymbol()
-                    lookahead.type = '$'
+                    lookahead.type = '$end'
             if debug:
                 errorlead = ("%s . %s" % (" ".join([xx.type for xx in symstack][1:]), str(lookahead))).lstrip()
 
@@ -232,7 +243,7 @@ class Parser:
             if t is not None:
                 if t > 0:
                     # shift a symbol on the stack
-                    if ltype == '$':
+                    if ltype == '$end':
                         # Error, end of input
                         sys.stderr.write("yacc: Parse error. EOF\n")
                         return
@@ -267,6 +278,8 @@ class Parser:
                         try:
                             sym.lineno = targ[1].lineno
                             sym.endlineno = getattr(targ[-1],"endlineno",targ[-1].lineno)
+                            sym.lexpos = targ[1].lexpos
+                            sym.endlexpos = getattr(targ[-1],"endlexpos",targ[-1].lexpos)
                         except AttributeError:
                             sym.lineno = 0
                         del symstack[-plen:]
@@ -311,7 +324,7 @@ class Parser:
                 if not self.errorcount:
                     self.errorcount = error_count
                     errtoken = lookahead
-                    if errtoken.type == '$':
+                    if errtoken.type == '$end':
                         errtoken = None               # End of file!
                     if self.errorfunc:
                         global errok,token,restart
@@ -347,7 +360,7 @@ class Parser:
                 # entire parse has been rolled back and we're completely hosed.   The token is
                 # discarded and we just keep going.
 
-                if len(statestack) <= 1 and lookahead.type != '$':
+                if len(statestack) <= 1 and lookahead.type != '$end':
                     lookahead = None
                     errtoken = None
                     # Nuke the pushback stack
@@ -358,7 +371,7 @@ class Parser:
                 # at the end of the file. nuke the top entry and generate an error token
 
                 # Start nuking entries on the stack
-                if lookahead.type == '$':
+                if lookahead.type == '$end':
                     # Whoa. We're really hosed here. Bail out
                     return 
 
@@ -580,11 +593,8 @@ class Production:
 class MiniProduction:
     pass
 
-# Utility function
-def is_identifier(s):
-    for c in s:
-        if not (c.isalnum() or c == '_'): return 0
-    return 1
+# regex matching identifiers
+_is_identifier = re.compile(r'^[a-zA-Z0-9_-]+$')
 
 # -----------------------------------------------------------------------------
 # add_production()
@@ -612,12 +622,25 @@ def add_production(f,file,line,prodname,syms):
         sys.stderr.write("%s:%d: Illegal rule name '%s'. error is a reserved word.\n" % (file,line,prodname))
         return -1
                 
-    if not is_identifier(prodname):
+    if not _is_identifier.match(prodname):
         sys.stderr.write("%s:%d: Illegal rule name '%s'\n" % (file,line,prodname))
         return -1
 
-    for s in syms:
-        if not is_identifier(s) and s != '%prec':
+    for x in range(len(syms)):
+        s = syms[x]
+        if s[0] in "'\"":
+             try:
+                 c = eval(s)
+                 if (len(c) > 1):
+                      sys.stderr.write("%s:%d: Literal token %s in rule '%s' may only be a single character\n" % (file,line,s, prodname)) 
+                      return -1
+                 if not Terminals.has_key(c):
+                      Terminals[c] = []
+                 syms[x] = c
+                 continue
+             except SyntaxError:
+                 pass
+        if not _is_identifier.match(s) and s != '%prec':
             sys.stderr.write("%s:%d: Illegal name '%s' in rule '%s'\n" % (file,line,s, prodname))
             return -1
 
@@ -747,8 +770,12 @@ def add_function(f):
                     if assign != ':' and assign != '::=':
                         sys.stderr.write("%s:%d: Syntax error. Expected ':'\n" % (file,dline))
                         return -1
+                         
+ 
                 e = add_production(f,file,dline,prodname,syms)
                 error += e
+
+                
             except StandardError:
                 sys.stderr.write("%s:%d: Syntax error in rule '%s'\n" % (file,dline,ps))
                 error -= 1
@@ -804,7 +831,7 @@ def compute_terminates():
     for t in Terminals.keys():
         Terminates[t] = 1
 
-    Terminates['$'] = 1
+    Terminates['$end'] = 1
 
     # Nonterminals:
 
@@ -1045,14 +1072,14 @@ def first(beta):
 # that might follow it.  Dragon book, p. 189.
 
 def compute_follow(start=None):
-    # Add '$' to the follow list of the start symbol
+    # Add '$end' to the follow list of the start symbol
     for k in Nonterminals.keys():
         Follow[k] = [ ]
 
     if not start:
         start = Productions[1].name
         
-    Follow[start] = [ '$' ]
+    Follow[start] = [ '$end' ]
         
     while 1:
         didadd = 0
@@ -1094,7 +1121,7 @@ def compute_first1():
     for t in Terminals.keys():
         First[t] = [t]
 
-    First['$'] = ['$']
+    First['$end'] = ['$end']
     First['#'] = ['#'] # what's this for?
 
     # Nonterminals:
@@ -1196,13 +1223,13 @@ def lr0_goto(I,x):
                 s[id(n)] = s1
             gs.append(n)
             s = s1
-    g = s.get('$',None)
+    g = s.get('$end',None)
     if not g:
         if gs:
             g = lr0_closure(gs)
-            s['$'] = g
+            s['$end'] = g
         else:
-            s['$'] = gs
+            s['$end'] = gs
     _lr_goto_cache[(id(I),x)] = g
     return g
 
@@ -1330,7 +1357,7 @@ def dr_relation(C,trans,nullable):
 
     # This extra bit is to handle the start state
     if state == 0 and N == Productions[0].prod[0]:
-       terms.append('$')
+       terms.append('$end')
  
     return terms
 
@@ -1627,8 +1654,8 @@ def lr_parse_table(method):
                 if p.prod[-1] == ".":
                     if p.name == "S'":
                         # Start symbol. Accept!
-                        action[st,"$"] = 0
-                        actionp[st,"$"] = p
+                        action[st,"$end"] = 0
+                        actionp[st,"$end"] = p
                     else:
                         # We are at the end of a production.  Reduce!
                         if method == 'LALR':
@@ -1658,7 +1685,7 @@ def lr_parse_table(method):
                                         action[st,a] = None
                                     else:
                                         # Hmmm. Guess we'll keep the shift
-                                        if not slevel and not rlevel:
+                                        if not rlevel:
                                             _vfc.write("shift/reduce conflict in state %d resolved as shift.\n" % st)
                                             _vf.write("  ! shift/reduce conflict for %s resolved as shift.\n" % a)
                                             n_srconflict +=1                                    
@@ -1705,7 +1732,7 @@ def lr_parse_table(method):
                                         # We decide to shift here... highest precedence to shift
                                         action[st,a] = j
                                         actionp[st,a] = p
-                                        if not slevel and not rlevel:
+                                        if not rlevel:
                                             n_srconflict += 1
                                             _vfc.write("shift/reduce conflict in state %d resolved as shift.\n" % st)
                                             _vf.write("  ! shift/reduce conflict for %s resolved as shift.\n" % a)
@@ -1884,6 +1911,7 @@ del _lr_goto_items
             else:
                 f.write("  None,\n")
         f.write("]\n")
+        
         f.close()
 
     except IOError,e:
@@ -1932,9 +1960,6 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
     files = { }
     error = 0
 
-    # Add starting symbol to signature
-    if start:
-        Signature.update(start)
 
     # Add parsing method to signature
     Signature.update(method)
@@ -1965,6 +1990,12 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
             f = t.tb_frame
             f = f.f_back           # Walk out to our calling function
             ldict = f.f_globals    # Grab its globals dictionary
+
+    # Add starting symbol to signature
+    if not start:
+        start = ldict.get("start",None)
+    if start:
+        Signature.update(start)
 
     # If running in optimized mode.  We're going to
 
@@ -2144,6 +2175,9 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
 
     global parse
     parse = p.parse
+
+    global parser
+    parser = p
 
     # Clean up all of the globals we created
     if (not optimize):

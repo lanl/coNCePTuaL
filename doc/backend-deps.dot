@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -55,7 +55,7 @@
 digraph backends {
   ranksep = 0.9;
   nodesep = 0.5;
-  size = "5,5";
+  size = "6,6";
   edge [color="blue"];
 
   {rank = same; c_trace; c_profile}
@@ -74,11 +74,14 @@ digraph backends {
   c_udgram -> c_generic;
   c_seq -> c_generic;
 
-  {rank = same; c_generic; interpret; dot_ast}
+  {rank = same; c_generic; interpret; dot_ast; libsea_ast}
 
   stats -> interpret;
   picl -> interpret;
+  paraver -> interpret;
   latex_vis -> interpret;
 
   dot_ast;
+
+  libsea_ast;
 }

@@ -2,10 +2,10 @@
 * ncptl-logmerge manual page::     The result of running ``ncptl-logmerge --man''
 @end menu
 
-@c Copyright (C) 2009, Los Alamos National Security, LLC
+@c Copyright (C) 2011, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2009).  Los Alamos National Security, LLC.  This software
+@c Copyright (2011).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -193,11 +193,11 @@ a @ncptl{} program.  It is not a general-purpose file combiner nor
 does it accept its own output as input.  Unrecognized input files
 cause @file{ncptl-logmerge} to abort with the preceding error message.
 
-@item @code{No processor number found in} @var{filename}
-@file{ncptl-logmerge} needs to map filenames to processor numbers to
-indicate which processors produced which lines of output.  If an input
-file does not contain a @code{Processor (0<=P<tasks)} comment,
-@file{ncptl-logmerge} aborts with the preceding error message.
+@item @code{No process rank found in} @var{filename}
+@file{ncptl-logmerge} needs to map filenames to process ranks to indicate
+which ranks produced which lines of output.  If an input file does not
+contain a @code{Rank (0<=P<tasks)} comment, @file{ncptl-logmerge}
+aborts with the preceding error message.
 
 @end table
 @subsubheading EXAMPLES

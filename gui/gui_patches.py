@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -206,7 +206,7 @@ def ncptl_func_tree_child( task, child, arity ):
 def ncptl_dfunc_tree_child( task, child, arity ):
     return ncptl_func_tree_child( math.floor( task ), math.floor( child), math.floor( arity ) )
 
-def ncptl_func_grid_coord( task, coord, width, height, depth ):
+def ncptl_func_mesh_coord( task, coord, width, height, depth ):
     gridelts = width * height * depth
 
     if gridelts == 0:
@@ -233,11 +233,11 @@ def ncptl_func_grid_coord( task, coord, width, height, depth ):
 
     return -1
 
-def ncptl_dfunc_grid_coord( task, coord, width, height, depth ):
-    return ncptl_func_grid_coord( math.floor( task ), math.floor( coord ), math.floor( width ), math.floor( height ), math.floor( depth ) )
+def ncptl_dfunc_mesh_coord( task, coord, width, height, depth ):
+    return ncptl_func_mesh_coord( math.floor( task ), math.floor( coord ), math.floor( width ), math.floor( height ), math.floor( depth ) )
 
 
-def ncptl_func_grid_neighbor( task, torus, width, height, depth, xdelta, ydelta, zdelta ):
+def ncptl_func_mesh_neighbor( task, torus, width, height, depth, xdelta, ydelta, zdelta ):
     gridelts = width * height * depth
 
     if gridelts == 0:
@@ -266,8 +266,8 @@ def ncptl_func_grid_neighbor( task, torus, width, height, depth, xdelta, ydelta,
             return -1
     return zpos*height*width + ypos*width + xpos
 
-def ncptl_dfunc_grid_neighbor( task, torus, width, height, depth, xdelta, ydelta, zdelta ):
-    return math.floor( ncptl_func_grid_neighbor( math.floor( task ), math.floor( torus ), math.floor( width ), math.floor( height ), math.floor( depth ), math.floor( xdelta ), math.floor( ydelta ), math.floor( zdelta ) ) )
+def ncptl_dfunc_mesh_neighbor( task, torus, width, height, depth, xdelta, ydelta, zdelta ):
+    return math.floor( ncptl_func_mesh_neighbor( math.floor( task ), math.floor( torus ), math.floor( width ), math.floor( height ), math.floor( depth ), math.floor( xdelta ), math.floor( ydelta ), math.floor( zdelta ) ) )
 
 def knomial_numdigits( arity, number ):
     numdigits = 1
@@ -307,14 +307,6 @@ def ncptl_dfunc_knomial_parent( task, arity, numtasks ):
     return ncptl_func_knomial_parent( math.floor( task ), math.floor( arity ), math.floor( numtasks ) )
 
 def ncptl_func_knomial_child( task, child, arity, numtasks, count_only ):
-    numtasks = 27
-
-    print "task is ", task
-    print "child is ", child
-    print "arity is ", arity
-    print "numtasks is ", numtasks
-    print "count_only is ", count_only
-
     children = []
 
     if arity < 2:
@@ -324,33 +316,24 @@ def ncptl_func_knomial_child( task, child, arity, numtasks, count_only ):
         return -1
 
     digit = knomial_numdigits( arity, numtasks - 1 ) - 1
-    print "digit=", digit
-
     while digit >= 0:
-        print "outer loop"
         test = knomial_getdigit( arity, task, digit )
-        print "test=", test
         if knomial_getdigit( arity, task, digit ):
             break
         nonz = arity - 1
-        print "nonz=", nonz
         while nonz >= 1:
-            print "inner loop"
             childID = knomial_setdigit( arity, task, digit, nonz )
             if childID < numtasks:
                 children.append( childID )
             nonz -= 1
         digit -= 1
 
+    num_children = len( children )
     if count_only:
-        return len( children )
-    elif child < len( children ):
-        print "returning ", children[num_children-child-1]
+        return num_children
+    elif child < num_children:
         return children[num_children-child-1]
     else:
-        print "child=", child
-        print "len(children)=", len( children )
-        print "returning -1"
         return -1
 
 def ncptl_dfunc_knomial_child( task, child, arity, numtasks, count_only ):
@@ -385,5 +368,103 @@ def patch_min( list ):
 def ncptl_virtual_to_physical(procmap, vtask):
     return vtask
 
-def ncptl_assign_processor (virtID, physID, procmap, physrank):
+def ncptl_assign_processor(virtID, physID, procmap, physrank):
     pass
+
+def _get_mesh_coordinates(width, height, depth, task):
+    # Abort if we were given unreasonable mesh dimensions.
+    meshelts = width * height * depth
+    if not meshelts:
+        raise Exception, "coordinate calculations can't be performed on a zero-sized mesh/torus"
+    if width<0 or height<0 or depth<0:
+        raise Exception, "meshes/tori may not have negative dimensions"
+
+    # Tasks that are outside of the mesh have no valid coordinates.
+    if task<0 or task>=meshelts:
+        return (-1, -1, -1)
+
+    # Map the task number from Z to Z^3.
+    xpos = task % width
+    ypos = (task % (width*height)) / width
+    zpos = task / (width*height)
+    return (xpos, ypos, zpos)
+
+def ncptl_func_mesh_coord(width, height, depth, task, coord):
+    xpos, ypos, zpos = _get_mesh_coordinates(width, height, depth, task)
+    if coord in [0, 1, 2]:
+        return [xpos, ypos, zpos][coord]
+    else:
+        raise Exception, "mesh/torus coordinate must be 0, 1, or 2 (for x, y, or z, respectively)"
+
+def ncptl_dfunc_mesh_coord(width, height, depth, task, coord):
+    return ncptl_func_mesh_coord(int(width), int(height), int(depth), int(task), int(coord))
+
+def ncptl_func_mesh_neighbor(width, height, depth,
+                             xtorus, ytorus, ztorus,
+                             task,
+                             xdelta, ydelta, zdelta):
+    # Find and validate the mesh coordinates.
+    xpos, ypos, zpos = _get_mesh_coordinates(width, height, depth, task)
+    if xpos == -1:
+        return -1
+
+    # Add deltas to each coordinate in turn.  If we fall off the end
+    # of a row, column, or pile, we wrap around (torus case) or return
+    # an invalid neighbor (mesh case).
+    xpos += xdelta
+    ypos += ydelta
+    zpos += zdelta
+    if xtorus:
+        xpos = ncptl_func_modulo(xpos, width)
+    if ytorus:
+        ypos = ncptl_func_modulo(ypos, height)
+    if ztorus:
+        zpos = ncptl_func_modulo(zpos, depth)
+    if xpos<0 or xpos>=width or ypos<0 or ypos>=height or zpos<0 or zpos>=depth:
+        return -1
+
+    # Map back from Z^3 to Z.
+    return zpos*height*width + ypos*width + xpos
+
+def ncptl_dfunc_mesh_neighbor(width, height, depth,
+                              xtorus, ytorus, ztorus,
+                              task,
+                              xdelta, ydelta, zdelta):
+    return ncptl_func_mesh_neighbor(int(width), int(height), int(depth),
+                                    int(xtorus), int(ytorus), int(ztorus),
+                                    int(task),
+                                    int(xdelta), int(ydelta), int(zdelta))
+
+def ncptl_func_mesh_distance(width, height, depth,
+                             xtorus, ytorus, ztorus,
+                             task1, task2):
+    # Find and validate the mesh coordinates.
+    xpos1, ypos1, zpos1 = _get_mesh_coordinates(width, height, depth, task1)
+    if xpos1 == -1:
+        return -1
+    xpos2, ypos2, zpos2 = _get_mesh_coordinates(width, height, depth, task2)
+    if xpos2 == -1:
+        return -1
+
+    # Compute the distance between each pair of coordinates on a mesh.
+    xdelta = ncptl_func_abs(xpos1 - xpos2)
+    ydelta = ncptl_func_abs(ypos1 - ypos2)
+    zdelta = ncptl_func_abs(zpos1 - zpos2)
+
+    # See if we can take shortcuts across any torus edges.
+    if xtorus and xdelta > width/2:
+        xdelta = width - xdelta
+    if ytorus and ydelta > height/2:
+        ydelta = height - ydelta
+    if ztorus and zdelta > depth/2:
+        zdelta = depth - zdelta
+
+    # Return the Manhattan distance between the two tasks.
+    return xdelta + ydelta + zdelta
+
+def ncptl_dfunc_mesh_distance(width, height, depth,
+                              xtorus, ytorus, ztorus,
+                              task1, task2):
+    return ncptl_func_mesh_distance(int(width), int(height), int(depth),
+                                    int(xtorus), int(ytorus), int(ztorus),
+                                    int(task1), int(task2))

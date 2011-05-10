@@ -6,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -52,7 +52,7 @@
 # ----------------------------------------------------------------------
 
 # Initialize Autoconf.
-AC_INIT([coNCePTuaL], [1.2], [pakin@lanl.gov], [conceptual])
+AC_INIT([coNCePTuaL], [1.3], [pakin@lanl.gov], [conceptual])
 
 # The following files are deleted by "make distclean" but checked
 # early in configure for their existence.  Hence, we create them right
@@ -60,10 +60,11 @@ AC_INIT([coNCePTuaL], [1.2], [pakin@lanl.gov], [conceptual])
 touch substitutions.dat.in
 touch ncptl.pc.in
 # Finish initializing Autoconf.
-AC_PREREQ([2.53])
-AC_REVISION($Revision: 3.205 $)
+AC_PREREQ([2.65])
+AC_REVISION($Revision: 3.222 $)
 AC_CONFIG_SRCDIR([yacc.py])
 AC_COPYRIGHT([PUT_LICENSE_][TEXT_HERE])
+AC_CONFIG_MACRO_DIR([m4])
 AX_SAVE_WARNINGS
 
 # Ensure that Libtool can find a make program.  We've used an
@@ -119,8 +120,23 @@ am__fastdepCXX_FALSE='#'
 if test "${with_tags+set}" != set; then
   with_tags=
 fi
-# Initialize and sanity-check Libtool.
-AC_PROG_LIBTOOL
+# Initialize, generate, and sanity-check Libtool.
+LT_INIT
+while true ; do
+  # This is effectively a GOTO to a label right before the AC_OUTPUT stanza.
+  if test -z "$freshly_brewed_libtool" ; then
+    AM_CONDITIONAL([LOGEXTRACT_WORKS], [false])
+    AM_CONDITIONAL([HAVE_SWIG], [false])
+    AM_CONDITIONAL([JAR_SUPPORTS_E], [false])
+    AM_CONDITIONAL([HAVE_GPERF], [false])
+    AM_CONDITIONAL([HAVE_DOT], [false])
+    AM_CONDITIONAL([HAVE_TEX], [false])
+    AM_CONDITIONAL([HAVE_MSGDIGEST], [false])
+    AM_CONDITIONAL([BUILD_RUN_TIME_LIBRARY], [false])
+    AM_CONDITIONAL([BUILD_PYMODULE], [false])
+    break
+  fi
+
 AC_SUBST([LIBTOOL_DEPS])
 if test `./libtool --features | grep -c 'enable shared'` -ge 1 ; then
   ncptl_run_time_library_is_dynamic=yes
@@ -130,9 +146,9 @@ if test `./libtool --features | grep -c 'enable shared'` -ge 1 ; then
 else
   ncptl_run_time_library_is_dynamic=no
 fi
-AC_SUBST([LIBTOOL_CURRENT],  [5])  dnl  Most recent library interface supported
+AC_SUBST([LIBTOOL_CURRENT],  [6])  dnl  Most recent library interface supported
 AC_SUBST([LIBTOOL_REVISION], [0])  dnl  Interface implementation number
-AC_SUBST([LIBTOOL_AGE],      [3])  dnl  Number of older interfaces supported
+AC_SUBST([LIBTOOL_AGE],      [0])  dnl  Number of older interfaces supported
 
 # Specify the RPM release number.
 AC_SUBST([RELEASE], [1])
@@ -539,10 +555,11 @@ AC_DEFINE_UNQUOTED([DYNAMIC_LINKER],
 ALL_BACKENDS="codegen_c_mpi.py codegen_c_generic.py codegen_c_udgram.py \
               codegen_c_trace.py codegen_c_seq.py codegen_dot_ast.py    \
               codegen_interpret.py codegen_picl.py codegen_latex_vis.py \
-              codegen_c_profile.py codegen_c_stats.py"
+              codegen_c_profile.py codegen_c_stats.py codegen_libsea_ast.py \
+              codegen_paraver.py"
 
-# Assume we can build only the DOT parse-tree backend.
-BACKENDS=codegen_dot_ast.py
+# Assume we can build only the parse-tree backends.
+BACKENDS="codegen_dot_ast.py codegen_libsea_ast.py"
 
 # Flush the configure cache to disk.
 AC_CACHE_SAVE
@@ -626,12 +643,13 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
   AX_FILE_PROC_CMDLINE
 
   # Check for libraries, functions, and headers that we need/want.
+  AC_FUNC_FORK
   for ax_func in log10 floor ceil sqrt trunc ; do
     AX_CHECK_REQUIRES_LIBM([$ax_func],
       [volatile double have_$ax_func = $ax_func(1.0);])
   done
   for ax_func in pow fmod ; do
-    AX_CHECK_REQUIRES_LIBM([$ax_func],
+    AX_CHECK_REQUIRES_LIBM($ax_func,
       [volatile double have_$ax_func = $ax_func(1.0, 2.0);])
   done
   AC_CHECK_FUNCS([setitimer], ,
@@ -641,9 +659,10 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
   AX_SEARCH_LIBS([nanosleep], [rt],
     [AC_CHECK_FUNCS([nanosleep])],
     [AC_MSG_WARN([The SLEEPS FOR construct will produce a run-time error])])
-  AC_CHECK_FUNCS([getpwuid])
+  AC_CHECK_FUNCS([getpwuid strcasestr])
   AC_CHECK_TYPES([ssize_t])
   AX_REQUIRE_ONE_FUNC([vfprintf], , [eval $maybe_break])
+  AX_REQUIRE_ONE_FUNC([vsnprintf], , [eval $maybe_break])
   AC_CHECK_FUNCS([getpagesize sysconf])
   AX_REQUIRE_ONE_FUNC([time], , [eval $maybe_break])
   AX_REQUIRE_ONE_FUNC([sigaction signal], , [eval $maybe_break])
@@ -686,6 +705,8 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
   AX_FUNC_VA_COPY
   AC_CHECK_HEADERS([uuid/uuid.h],
     [AX_CHECK_LIB([uuid], [uuid_unparse])])
+  AC_CHECK_HEADERS([glob.h],
+    [AC_CHECK_FUNCS([glob])])
   # The Cell BE's SPUs lack a getcwd() function.
   AC_CHECK_FUNCS([getcwd])
   AC_CHECK_FUNCS([sched_getaffinity])
@@ -736,6 +757,21 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
   if test "$ax_cv_var__my_pnid" = yes ; then
     AC_DEFINE([HAVE__MY_PNID], ,
       [Define if the Cray XT node ID is available in _my_pnid.])
+  fi
+  cray_xt_nid_file=/proc/cray_xt/nid
+  AC_CACHE_CHECK([if _my_pnid is definable from a file],
+    [ax_cv_file_cray_xt_nid],
+    [if test -e $cray_xt_nid_file ; then
+       ax_cv_file_cray_xt_nid=yes
+     else
+       ax_cv_file_cray_xt_nid=no
+     fi])
+  if test "$ax_cv_file_cray_xt_nid" = yes ; then
+    AC_DEFINE_UNQUOTED([CRAY_XT_NID_FILE],
+      ["$cray_xt_nid_file"],
+      [Define as a special file containing a Cray XT node ID.])
+  fi
+  if test "$ax_cv_var__my_pnid" = yes -o "$ax_cv_file_cray_xt_nid" = yes ; then
     AC_CHECK_HEADERS([rsms/rs_id.h],
       [AX_SEARCH_LIBS([rs_format_phys],
         [rsmsevent],
@@ -747,6 +783,14 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
         [rca],
         [AC_DEFINE([HAVE_RCAMESHCOORD], ,
            [Define if Cray XT mesh coordinates are available.])])
+    fi
+    if test "$ac_cv_header_rca_lib_h" = yes ; then
+      AX_SEARCH_LIBS([rca_get_meshtopology],
+        [rca],
+        [AX_SEARCH_LIBS([rs_phys2str],
+          [rsmsevent],
+          [AC_DEFINE([HAVE_RCAMESHTOPOLOGY], ,
+             [Define if the Cray XT mesh topology is available.])])])
     fi
     AC_CACHE_CHECK([if __cpu_mhz is defined],
       [ax_cv_var___cpu_mhz],
@@ -848,14 +892,14 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
   {
     exit (0);
   }
-	 ],
-	 ,
-	 [ax_cv_prog_ld_interp=yes],
-	 [ax_cv_prog_ld_interp=no])
+         ],
+         ,
+         [ax_cv_prog_ld_interp=yes],
+         [ax_cv_prog_ld_interp=no])
        LDFLAGS="$prev_LDFLAGS"])
     if test "$ax_cv_prog_ld_interp" = yes ; then
       AC_DEFINE([CAN_WRITE_INTERP], ,
-	[Define if the compiler and linker can write explicitly into the target binary's .interp section.])
+        [Define if the compiler and linker can write explicitly into the target binary's .interp section.])
       AC_SUBST([LIBRARY_ENTRY_POINT], [-Wl,-e,ncptl_log_output_dataless_log])
     fi
   fi
@@ -1062,12 +1106,16 @@ printf ("I like the number %" $NICS " -- do you?\n", somenum);
 
 typedef $NCPTL_INT ncptl_int;
 
+/* We assume that there are exactly eight bits per byte and that
+ * we're using two's-complement arithmetic. */
+#define HALF_MAX_NI ((ncptl_int)1 << (sizeof(ncptl_int)*8-2))
+#define MAX_NI      (HALF_MAX_NI - 1 + HALF_MAX_NI)
+
 int
 main (int argc, char *argv[])
 {
   if (argc > 1)
-    printf ("(-%" $NICS "$NCPTL_INT_SUFFIX-1)\n",
-            ((ncptl_int)1 << (8*sizeof(ncptl_int)-1)) - 1);
+    printf ("(-%" $NICS "$NCPTL_INT_SUFFIX-1)\n", MAX_NI);
   return 0;
 }
      ],
@@ -1080,6 +1128,44 @@ main (int argc, char *argv[])
   AC_DEFINE_UNQUOTED([NCPTL_INT_MIN],
     [$ax_cv_type_ncptl_int_min],
     [Define as the minimum (i.e., most negative) value an ncptl_int can accept.])
+
+  # Determine the maximum ncptl_int value.
+  AC_CACHE_CHECK([if we can find the maximum ncptl_int value],
+    [ax_cv_type_ncptl_int_max],
+    [AC_TRY_RUN([
+#if HAVE_INTTYPES_H
+# include <inttypes.h>
+#elif HAVE_STDINT_H
+# include <stdint.h>
+#elif HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
+#include <stdio.h>
+
+typedef $NCPTL_INT ncptl_int;
+
+/* We assume that there are exactly eight bits per byte and that
+ * we're using two's-complement arithmetic. */
+#define HALF_MAX_NI ((ncptl_int)1 << (sizeof(ncptl_int)*8-2))
+#define MAX_NI      (HALF_MAX_NI - 1 + HALF_MAX_NI)
+
+int
+main (int argc, char *argv[])
+{
+  if (argc > 1)
+    printf ("%" $NICS "$NCPTL_INT_SUFFIX\n", MAX_NI);
+  return 0;
+}
+     ],
+     [ax_cv_type_ncptl_int_max=`./conftest$ac_exeext show`],
+     [ax_cv_type_ncptl_int_max=no],
+     [ax_cv_type_ncptl_int_max="INT64_C(9223372036854775807)"])])
+  if test "$ax_cv_type_ncptl_int_max" = no ; then
+    eval $maybe_break
+  fi
+  AC_DEFINE_UNQUOTED([NCPTL_INT_MAX],
+    [$ax_cv_type_ncptl_int_max],
+    [Define as the maximum value an ncptl_int can accept.])
 
   # Find a rounding function.  The Cray C compiler I tested has
   # round() but it appears to be an identity function.  Weird.
@@ -1352,7 +1438,7 @@ elif test "$BUILD_PYMODULE" = no_not_compatible ; then
 fi
 AM_CONDITIONAL([BUILD_PYMODULE], [test "$BUILD_PYMODULE" = yes])
 if test "$BUILD_PYMODULE" = yes ; then
-  BACKENDS="${BACKENDS} codegen_interpret.py codegen_picl.py codegen_latex_vis.py codegen_stats.py"
+  BACKENDS="${BACKENDS} codegen_interpret.py codegen_picl.py codegen_latex_vis.py codegen_stats.py codegen_paraver.py"
 fi
 
 # Warn the user about backends that are useless without the Python
@@ -1361,6 +1447,7 @@ if test "$BUILD_PYMODULE" = no ; then
   AC_MSG_WARN([Not installing the coNCePTuaL interpreter because it depends upon the Python interface to the coNCePTuaL run-time library])
   AC_MSG_WARN([Not installing the statistics backend because it depends upon the coNCePTuaL interpreter])
   AC_MSG_WARN([Not installing the PICL backend because it depends upon the coNCePTuaL interpreter])
+  AC_MSG_WARN([Not installing the Paraver backend because it depends upon the coNCePTuaL interpreter])
   AC_MSG_WARN([Not installing the LaTeX visualization backend because it depends upon the coNCePTuaL interpreter])
 fi
 
@@ -1395,6 +1482,7 @@ fi
 if test -z "$BACKENDS" ; then
   AC_MSG_ERROR([none of the compiler backends can be built])
 fi
+AC_SUBST([ALL_BACKENDS])
 AC_SUBST([BACKENDS])
 
 # Insert the list of backends into the ncptl man page.
@@ -1550,7 +1638,7 @@ for imagebase in mesh1D mesh2D mesh3D tree2 tree3 2nomial 3nomial latex_vis ; do
   JPEGIMAGES="$JPEGIMAGES ${imagebase}.jpg"
   PNGIMAGES="$PNGIMAGES ${imagebase}.png"
 done
-for imagebase in sample-AST backend-deps gui ; do
+for imagebase in sample-AST backend-deps gui walrus ; do
   TEXTIMAGES="$TEXTIMAGES ${imagebase}.txt"
   EPSIMAGES="$EPSIMAGES ${imagebase}.eps"
   PDFIMAGES="$PDFIMAGES ${imagebase}.pdf"
@@ -1581,18 +1669,25 @@ AC_SUBST([CONFIGURE_COMMAND],
   [`echo "$SHELL "$0"$ac_configure_args" | $PYTHON $srcdir/makehelper.py quote`])
 
 # Write to a file a list of all AC_SUBSTed variables.
+m4_pattern_allow([_AC_SUBST_VARS])
+m4_pattern_allow([_AC_SUBST_SED_PROGRAM])
 set > conftest.shvars
-m4_ifdef([_AC_SUBST_VARS],
-  [# Handle newer versions of Autoconf.
+if test "$ac_subst_vars" ; then
+  # Handle very new versions of Autoconf.
+  echo "$ac_subst_vars" > conftest.subst
+else
+  m4_ifdef([_AC_SUBST_VARS],
+    [# Handle somewhat new versions of Autoconf.
 cat <<SUBST_EOF > conftest.subst
 _AC_SUBST_VARS
 SUBST_EOF
-  ],
-  [# Handle older versions of Autoconf.
+    ],
+    [# Handle older versions of Autoconf.
 cat <<SUBST_EOF > conftest.subst
 _AC_SUBST_SED_PROGRAM
 SUBST_EOF
-  ])
+    ])
+fi
 $PYTHON $srcdir/makehelper.py ac_subst conftest.shvars conftest.subst > substitutions.dat.in
 rm -f conftest.shvars conftest.subst
 
@@ -1684,7 +1779,9 @@ AX_AUTO_INCLUDE_HEADERS([c_asm.h nx.h pwd.h windows.h sched.h])dnl
 #ifdef FORCE_MPI_WTIME
 # include <mpi.h>
 #endif
-
+#ifdef HAVE_GLOB
+# include <glob.h>
+#endif
 #endif])
 
 
@@ -1700,6 +1797,11 @@ case $host_cpu in
     ;;
 esac
 AC_SUBST([AP_ARCH])
+
+# This is effectively a label for a GOTO that appeared right after the
+# libtool initialization.
+  break
+done
 
 # Create a customized Makefile and other files.
 AC_CONFIG_COMMANDS([config.status],
@@ -1718,10 +1820,16 @@ AC_CONFIG_FILES([ncptl-logextract],
   [$PYTHON $srcdir/ncptl_keywords.py > ncptl-logextract_keywords])
 AC_OUTPUT
 
-# Output the values of some key configuration variables.
-echo
-$am_make showenv
-echo
+# Re-run the configure script now that libtool has been generated.
+if test -z "$freshly_brewed_libtool" ; then
+  AC_MSG_NOTICE([Forcing libtool generation])
+  exec env freshly_brewed_libtool=yes ./config.status --recheck
+else
+  # Output the values of some key configuration variables.
+  echo
+  $am_make showenv
+  echo
+fi
 
 # Redisplay all of the warning messages we've issued up to this point.
 AX_SHOW_WARNINGS

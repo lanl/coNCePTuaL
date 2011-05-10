@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -288,13 +288,20 @@ def compiler_version():
         abend('"compiler" requires the name of the C compiler')
     c_compiler = sys.argv[2]
 
+    # Create a zero-byte C test file.
+    c_file_name = "conftest.c"
+    c_file = open(c_file_name, "w")
+    c_file.write('/* Temporary file produced by "%s" */\n' % string.join(sys.argv, " "))
+    c_file.write("int someval = 123;\n")
+    c_file.close()
+
     # Try various compiler flags until one of them gives us a version string.
     unknown_str = '"unknown"'
     compiler_version = unknown_str
     for compiler_flag in ("--version", "-version", "-V", "-v", "--help",
                           "-help", "-h"):
         try:
-            cc_output = os.popen('echo "" | %s %s 2>&1' % (c_compiler, compiler_flag), "r")
+            cc_output = os.popen('echo "" | %s %s -c %s 2>&1' % (c_compiler, compiler_flag, c_file_name), "r")
             for oneline in cc_output.readlines():
                 if re.search(r'(unknown|recognized|defined|valid)', oneline, re.IGNORECASE):
                     break
@@ -311,6 +318,7 @@ def compiler_version():
         augmented_version = ""
     else:
         augmented_version = ' " [" %s "]"' % compiler_version
+    os.remove(c_file_name)
 
     # Output a C header file.
     print "/*"
@@ -782,8 +790,10 @@ def configure_command():
          Output the configure command used to build the currently
          installed coNCePTuaL.
     """
+    if len(sys.argv) > 2:
+        sys.path.extend(sys.argv[2:])
     if os.environ.has_key("NCPTL_PATH"):
-        sys.path[:0] = string.split(os.environ["NCPTL_PATH"], ":")
+        sys.path.extend(string.split(os.environ["NCPTL_PATH"], ":"))
     try:
         from ncptl_config import expanded_ncptl_config
     except ImportError, reason:
@@ -1023,7 +1033,7 @@ def patch_ply():
         # because of Java access permissions, not because of I/O
         # errors.
         oneline = string.replace(oneline, "except IOError:", "except:")
-        
+
         sys.stdout.write(oneline)
         oneline = infile.readline()
 
@@ -1068,6 +1078,164 @@ def list_difference():
 
 #----------------------------------------------------------------------
 
+def canonicalize_keywords():
+    "Canonicalize the keywords in a Texinfo index."
+    if len(sys.argv) < 3:
+        abend('"canon-keywords" requires the name of a Texinfo index file')
+
+    # Map from a keyword to all its forms.
+    from ncptl_lexer import NCPTL_Lexer
+    lexer = NCPTL_Lexer()
+    keyword_forms = {}
+    for keyw, canon_keyw in lexer.canonicalize_kw.items():
+        if keyw != canon_keyw:
+            keyword_forms[keyw] = (keyw, canon_keyw)
+            keyword_forms[canon_keyw] = (keyw, canon_keyw)
+
+    # Map each keyword encountered to its list of alternate forms.
+    codeline_re = re.compile(r'\\entry\{([A-Z]+)\}\{(\d+)\}\{\\code \{([A-Z]+)\}\}')
+    indexfile = open(sys.argv[2])
+    try:
+        oneline = indexfile.readline()
+        while oneline:
+            is_codeline = codeline_re.match(oneline)
+            if is_codeline:
+                try:
+                    kw_alt, kw_main = keyword_forms[is_codeline.group(1)]
+                    lineno = is_codeline.group(2)
+                    print "\\entry{%s/%s}{%s}{\\code {%s/%s}}" % (kw_alt, kw_main, lineno, kw_alt, kw_main)
+                    if kw_main[0:len(kw_alt)] != kw_alt:
+                        # ITS/THEIR, IS/ARE, etc. -- index the other way, too.
+                        print "\\entry{%s/%s}{%s}{\\code {%s/%s}}" % (kw_main, kw_alt, lineno, kw_main, kw_alt)
+                except KeyError:
+                    print oneline,
+            else:
+                print oneline,
+            oneline = indexfile.readline()
+    except IOError, (errno, strerror):
+        abend(strerror)
+    indexfile.close()
+
+#----------------------------------------------------------------------
+
+def cache_vars_to_texinfo():
+    "Output a Texinfo table that describes various Autoconf cache variables."
+    if len(sys.argv) < 3:
+        abend('"cache-vars" requires the full filenames for configure.ac and config.log')
+
+    # Process all input files.
+    name2desc = {}       # Map from a variable name to a description
+    last_desc = ""       # The last AC_CACHE_CHECK text seen
+    for infilename in sys.argv[2:]:
+        infile = open(infilename)
+        oneline = infile.readline()
+        while oneline:
+            # Process descriptions in configure.ac.
+            try:
+                last_desc = re.search(r'\bAC_CACHE_CHECK\S+\s*(.*?)\],\s*$', oneline).group(1)
+                last_desc = re.sub(r'"([^\"]+)"', r'@samp{\1}', last_desc)
+                last_desc = re.sub(r'(\$\w+|round|\.interp|-e)', r'@samp{\1}', last_desc)
+                last_desc = re.sub(r"`\?='", r'@samp{?=}', last_desc)
+                last_desc = re.sub(r'^version$', r'swig version number', last_desc)
+                last_desc = re.sub(r'(gperf|swig|ncptl-logextract)', r'@filespec{\1}', last_desc)
+                last_desc = re.sub(r'(?<![\{\$\w])([\$\w]*_\w*)', r'@samp{\1}', last_desc)
+            except AttributeError:
+                pass
+            try:
+                name2desc[re.search(r'\[(ax_cv_\w+)\]', oneline).group(1)] = last_desc
+            except AttributeError:
+                pass
+
+            # Process assignments in config.log.
+            try:
+                varname = re.match(r'(ac_cv_\w+)=', oneline).group(1)
+
+                # Process ac_cv_func_* variables.
+                try:
+                    name2desc[varname] = "the @ocodecf{%s} function is available (@samp{yes} or @samp{no})" % \
+                        re.match(r'ac_cv_func_(\w+)', varname).group(1)
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_header_* variables.
+                try:
+                    headername = re.match(r'ac_cv_header_(\w+_h)', varname).group(1)
+                    headername = re.sub(r'_h$', r'.h', headername)
+                    headername = re.sub(r'_', r'/', headername, 1)
+                    name2desc[varname] = "the @filespec{%s} header file is available (@samp{yes} or @samp{no})" % headername
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_lib_* variables.
+                try:
+                    libname = re.match(r'ac_cv_lib_(\w+)', varname).group(1)
+                    name2desc[varname] = "@filespec{lib%s.a} contains a function called @ocodecf{%s} (@samp{yes} or @samp{no})" % \
+                        re.match(r'([^_]+)_(.+)$', libname).groups()
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_member_* variables.
+                try:
+                    name2desc[varname] = "the @samp{%s} @code{struct} contains a field called @samp{%s} (@samp{yes} or @samp{no})" % \
+                        re.match(r'ac_cv_member_struct_([^_]+)_(.+)$', varname).groups()
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_path_* variables.
+                try:
+                    name2desc[varname] = "the fully qualified filename for @filespec{%s}" % \
+                        str.lower(re.match(r'ac_cv_path_([A-Z0-9]+)$', varname).group(1))
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_prog_* variables.
+                try:
+                    name2desc[varname] = "command line for running @filespec{%s}" % \
+                        str.lower(re.match(r'ac_cv_prog_([A-Z]+)$', varname).group(1))
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_search_* variables.
+                try:
+                    name2desc[varname] = "linker flags/libraries needed to use the @ocodecf{%s} function or @samp{none required}" % \
+                        re.match(r'ac_cv_search_(\w+)$', varname).group(1)
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_sizeof_* variables.
+                try:
+                    datatype = re.match(r'ac_cv_sizeof_(\w+)$', varname).group(1)
+                    datatype = re.sub(r'(unsigned|long)_', r'\1 ', datatype)
+                    name2desc[varname] = "size in bytes of the @samp{%s} datatype" % datatype
+                except AttributeError:
+                    pass
+
+                # Process ac_cv_type_* variables.
+                try:
+                    name2desc[varname] = "the @samp{%s} datatype exists (@samp{yes} or @samp{no})" % \
+                        re.match(r'ac_cv_type_(\w+)$', varname).group(1)
+                except AttributeError:
+                    pass
+            except AttributeError:
+                # No ac_cv_* variable appeared in the current line.
+                pass
+
+            # Proceed with the following input line.
+            oneline = infile.readline()
+
+    # Output a Texinfo table.
+    print "@table @ocode"
+    cachevars = name2desc.keys()
+    cachevars.sort()
+    for cvar in cachevars:
+        if cvar != cachevars[0]:
+            print
+        print "@item %s" % cvar
+        print "%s" % name2desc[cvar]
+    print "@end table"
+
+#----------------------------------------------------------------------
+
 # The program starts here.  Decide what operation to perform based on
 # the first argument provided.
 if __name__ == "__main__":
@@ -1100,7 +1268,9 @@ if __name__ == "__main__":
         "rsymlink"       : relative_symlink,
         "split-parsetab" : split_parse_table,
         "patch-ply"      : patch_ply,
-        "list-diff"      : list_difference}
+        "list-diff"      : list_difference,
+        "canon-keywords" : canonicalize_keywords,
+        "cache-vars"     : cache_vars_to_texinfo}
     try:
         makefunc = functable[sys.argv[1]]
     except KeyError:

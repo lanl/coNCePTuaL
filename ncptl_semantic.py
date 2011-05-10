@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -93,6 +93,7 @@ class NCPTL_Semantic:
         # Ensure that all variables are being used properly.
         _Identify_Definitions(ast)
         _Propagate_Scopes_Down_And_Across(ast)
+        _Check_Receive_Ambiguity(ast)
         _Check_Use_Without_Def(ast)
         _Mark_Defs_Used(ast)
         _Check_Def_Without_Use(ast)
@@ -107,8 +108,14 @@ class NCPTL_Semantic:
         # Ensure that random variables aren't used where they don't belong.
         _Check_Random_Variables(ast)
 
-        # Ensure that the reduce statement isn't being used incorrectly.
+        # Ensure that task expressions and the reduce statement aren't
+        # being used incorrectly.
+        _Check_Task_Expressions(ast)
+        _Check_My_Task(ast)
         _Check_Reduce_Usage(ast)
+
+        # Identify which nodes have constant values across evaluations.
+        _Identify_Constant_Nodes(ast)
 
         # Return the modified AST.
         return ast
@@ -210,7 +217,7 @@ class _Propagate_Line_Numbers_Down(_AST_Traversal):
         lineno0, lineno1 = node.lineno0, node.lineno1
         if lineno0 == 0 or lineno1 == 0 or lineno0 > lineno1:
             errmsg = node.sem["semobj"].errmsg
-            errmsg.error_internal('A node of type "%s" spans invalid line numbers %d to %d' %
+            errmsg.error_fatal('A node of type "%s" spans invalid line numbers %d to %d' %
                                   (node.type, lineno0, lineno1))
 
 ###########################################################################
@@ -277,8 +284,12 @@ class _Identify_Definitions(_AST_Traversal):
                      "param_decl":       1}
 
     def pre_task_expr(self, node):
-        "Tell the variable in ALL TASKS <var> that it's a definition."
-        if node.attr == "task_all" and node.kids != []:
+        '''
+               Tell the variables in "ALL TASKS <var>" and "TASK <group>"
+               that they\'re definitions.
+        '''
+        if node.attr == "let_task" or \
+                (node.attr == "task_all" and node.kids != []):
             ident_node = node.kids[0]
             ident_node.sem["definition"] = {ident_node.attr: ident_node}
 
@@ -347,11 +358,6 @@ class _Propagate_Scopes_Down_And_Across(_AST_Traversal):
             source_task.sem["varscope"] = copy.copy(varscope)
             target_task.sem["source_task"] = source_task
 
-    def pre_receive_stmt(self, node):
-        """Reverse the order of our children to force the source task
-        to be evaluated before the target tasks."""
-        node.kids.reverse()
-
     def pre_let_binding_list(self, node):
         "Tell each let binding from which node to copy its scope."
         node.kids[0].sem["copy_scope_from"] = node
@@ -369,8 +375,23 @@ class _Propagate_Scopes_Down_And_Across(_AST_Traversal):
         node.sem["varscope"] = copy.copy(node.sem["source_task"].sem["varscope"])
 
     def pre_task_expr(self, node):
-        "Inject the variable in ALL TASKS <var> into the current scope."
-        if node.attr == "task_all" and node.kids != []:
+        '''
+               Inject the variables in "ALL TASKS <var>" and "TASKS <group>
+               into the current scope.
+        '''
+        if node.attr == "let_task":
+            # First, ensure that a task group was already declared in
+            # a previous scope.
+            identnode = node.kids[0]
+            if not node.sem["varscope"].has_key("GROUP " + identnode.attr):
+                # We're an undefined task group.  Even --lenient can't
+                # help us here.  (What tasks would the task group
+                # contain?)
+                semobj = node.sem["semobj"]
+                semobj.errmsg.error_fatal("Task group %s must be declared before being used" % identnode.printable,
+                                          identnode.lineno0, identnode.lineno1)
+        if node.attr == "let_task" or \
+                (node.attr == "task_all" and node.kids != []):
             ident_node = node.kids[0]
             node.sem["varscope"][ident_node.attr] = ident_node
 
@@ -390,13 +411,132 @@ class _Propagate_Scopes_Down_And_Across(_AST_Traversal):
             ident_node = node.kids[0]
             ident_node.sem["varscope"][ident_node.attr] = ident_node
 
-    def post_receive_stmt(self, node):
-        """Reverse the order of our children back to their original state."""
-        node.kids.reverse()
-
     def post_let_binding_list(self, node):
         "Update our scope with the values in the final let binding's scope."
         node.sem["varscope"].update(node.kids[-1].kids[0].sem["varscope"])
+
+
+class _Check_Receive_Ambiguity(_AST_Traversal):
+    "Abort if we encounter an ambiguous receive statement."
+
+    def find_idents(self, node):
+        "Return a list of all ident nodes."
+        identlist = []
+        if node.type == "ident":
+            identlist.append(node)
+        for kid in node.kids:
+            identlist.extend(self.find_idents(kid))
+        return identlist
+
+
+    def post_receive_stmt(self, node):
+        """
+        Determine whether variable scopes should propagate from source
+        to target or target to source
+        """
+        # Point to the current source scope and the current target scope.
+        errmsg = node.sem["semobj"].errmsg
+        receive_dir = "S2T"    # Default is source to target.
+        target_task_expr = node.kids[0].kids[0]
+        source_task_expr = node.kids[2].kids[0]
+        target_attr = target_task_expr.attr
+        source_attr = source_task_expr.attr
+        if target_attr == "such_that":
+            target_scope = target_task_expr.kids[0].kids[1].sem["varscope"]
+        elif target_attr == "expr":
+            target_scope = target_task_expr.kids[0].sem["varscope"]
+        elif target_attr == "task_all":
+            if target_task_expr.kids == []:
+                target_scope = target_task_expr.sem["varscope"]
+            else:
+                target_scope = target_task_expr.kids[0].sem["varscope"]
+        elif target_attr == "all_others":
+            target_scope = target_task_expr.sem["varscope"]
+        else:
+            errmsg.error_internal('Unexpected target task type "%s"' % target_attr,
+                                  target_task_expr.lineno0,
+                                  target_task_expr.lineno1)
+        if source_attr == "such_that":
+            source_scope = source_task_expr.kids[0].kids[1].sem["varscope"]
+        elif source_attr == "expr":
+            source_scope = source_task_expr.kids[0].sem["varscope"]
+        elif source_attr == "task_all":
+            if source_task_expr.kids == []:
+                source_scope = source_task_expr.sem["varscope"]
+            else:
+                source_scope = source_task_expr.kids[0].sem["varscope"]
+        elif source_attr == "all_others":
+            source_scope = source_task_expr.sem["varscope"]
+        else:
+            errmsg.error_internal('Unexpected source task type "%s"' % source_attr,
+                                  source_task_expr.lineno0,
+                                  source_task_expr.lineno1)
+
+        # Determine the scope-propagation direction or complain that
+        # it's ambiguous.
+        if target_attr == "all_others" and source_attr == "all_others":
+            # ALL OTHER TASKS can't receive from ALL OTHER TASKS.
+            errmsg.error_fatal("Ambiguous receive statement", node.lineno0, node.lineno1)
+        elif source_attr == "expr" \
+                or source_attr == "all_others" \
+                or (source_attr == "task_all" and source_task_expr.kids == []):
+            # The source declares no new variables.  Hence, it should
+            # be safe to propagate variables from target to source.
+            receive_dir = "T2S"
+        elif target_attr == "expr" \
+                or target_attr == "all_others" \
+                or (target_attr == "task_all" and target_task_expr.kids == []):
+            # The target declares no new variables.  Hence, it should
+            # be safe to propagate variables from source to target.
+            receive_dir = "S2T"
+        else:
+            # This is the tricky case: two expressions that both
+            # declare variables.  Ensure that they don't attribute
+            # different ASTs to the same variable name.
+            for varname, varAST in target_scope.items():
+                try:
+                    if source_scope[varname] != varAST:
+                        errmsg.error_fatal('Variable "%s" is ambiguous here' % varAST.printable,
+                                           varAST.lineno0, varAST.lineno1)
+                except KeyError:
+                    pass
+
+            # If we're here, then the receive statement is
+            # unambiguous.  However, we still have to determine which
+            # such_that expression should be the source_task and which
+            # should be the target_tasks.
+            class ChangedDirection:
+                pass
+            try:
+                source_idents = self.find_idents(source_task_expr)
+                for source_var in source_idents:
+                    if not source_var.sem["varscope"].has_key(source_var.attr) \
+                            and not Variables.variables.has_key(source_var.attr):
+                        # A variable on the right-hand side is not
+                        # defined.  See if it's defined on the left-hand
+                        # side.
+                        target_idents = self.find_idents(target_task_expr)
+                        for target_var in target_idents:
+                            try:
+                                if source_var.attr in target_var.sem["definition"]:
+                                    # The left-hand side defines the
+                                    # variable.  Therefore, variables
+                                    # must propagte from target to
+                                    # source.
+                                    receive_dir = "T2S"
+                                    raise ChangedDirection()
+                            except KeyError:
+                                pass
+            except ChangedDirection:
+                pass
+
+        # Store the correct source/target order and, if necessary,
+        # propagate the target's variable scope to the source.
+        node.sem["receive_dir"] = receive_dir
+        if node.sem["receive_dir"] == "T2S":
+            source_scope.update(target_scope)
+        else:
+            target_scope.update(source_scope)
 
 
 class _Check_Use_Without_Def(_AST_Traversal):
@@ -424,6 +564,20 @@ class _Check_Use_Without_Def(_AST_Traversal):
 
 class _Mark_Defs_Used(_AST_Traversal):
     "Mark every used definition as such."
+
+    def pre_task_expr(self, node):
+        """
+              Mark our child ident and our child ident's definition
+              (in a "LET <ident> BE TASK..." statement) as used.
+        """
+        if node.attr == "let_task":
+            identnode = node.kids[0]
+            identnode.sem["use"] = 1
+            try:
+                defining_node = node.sem["varscope"]["GROUP " + identnode.attr]
+                defining_node.sem["use"] = 1
+            except KeyError:
+                pass
 
     def pre_ident(self, node):
         "Mark our corresponding definition as used."
@@ -458,12 +612,13 @@ class _Check_Let_Bound_Variables(_AST_Traversal):
 
     def post_let_binding(self, node):
         "Ensure that our right-hand side uses no predefined variables."
-        for varname, nodelist in node.kids[1].sem["predefined_usage"].items():
-            if varname != "num_tasks":
-                firstnode = nodelist[0]
-                semobj = node.sem["semobj"]
-                semobj.errmsg.error_fatal('"%s" is not allowed within a let binding' % firstnode.printable,
-                                          firstnode.lineno0, firstnode.lineno1)
+        for kid in node.kids[1:]:
+            for varname, nodelist in kid.sem["predefined_usage"].items():
+                if varname != "num_tasks":
+                    firstnode = nodelist[0]
+                    semobj = node.sem["semobj"]
+                    semobj.errmsg.error_fatal('"%s" is not allowed within a let binding' % firstnode.printable,
+                                              firstnode.lineno0, firstnode.lineno1)
 
     def post_any(self, node):
         "Propagate upwards the list of predefined variables used below."
@@ -659,12 +814,28 @@ class _Check_Message_Attributes(_AST_Traversal):
                                       node.lineno0, node.lineno1)
 
     def pre_message_spec(self, node):
-        "Enforce the mutual incompatibility of UNIQUE and FROM/INTO BUFFER."
+        "Enforce the mutual incompatibility of various attributes."
+        # Enforce the mutual incompatibility of UNIQUE and FROM/INTO BUFFER.
         is_unique = node.kids[1].attr
         buffer_type = node.kids[5].attr
         if is_unique and buffer_type in ["from", "into"]:
             semobj = node.sem["semobj"]
             semobj.errmsg.error_fatal("UNIQUE and %s BUFFER are mutually exclusive" % string.upper(buffer_type),
+                                      node.lineno0, node.lineno1)
+
+        # Enforce the mutual incompatibility of (mis)aligned messages
+        # and offsets into message buffers.  This incompatibility is
+        # not inherent but rather reflects the current coNCePTuaL
+        # syntax: "TASK 0 SENDS A 1-KILOBYTE PAGE-ALIGNED MESSAGE FROM
+        # 8 BYTES INTO BUFFER 5 TO TASK 1" indicates that the
+        # *message* is page-aligned when in fact it's the *buffer*
+        # that's page-aligned.  If the syntax changes, this
+        # prohibition on mixing alignment and offsets will be lifted.
+        alignment = node.kids[3]
+        buffer_ofs = node.kids[5]
+        if alignment.kids != [] and buffer_ofs.kids != []:
+            semobj = node.sem["semobj"]
+            semobj.errmsg.error_fatal("Message alignment and buffer offsets are mutually exclusive",
                                       node.lineno0, node.lineno1)
 
 ###########################################################################
@@ -814,3 +985,143 @@ class _Check_Reduce_Usage(_AST_Traversal):
                                       target_touching_node.printable,
                                       target_touching_node.lineno0,
                                       target_touching_node.lineno1)
+
+
+class _Check_Task_Expressions(_AST_Traversal):
+    "Validate source and target task expressions."
+
+    def pre_source_task(self, node):
+        "Ensure that a source_task uses only such_that, expr, task_all, or let_task"
+        tasknode = node.kids[0]
+        task_type = tasknode.attr
+        if tasknode.attr not in ["such_that", "expr", "task_all", "let_task"]:
+            errmsg = tasknode.sem["semobj"].errmsg
+            errmsg.error_fatal('"%s" is not a valid set of source tasks' % tasknode.printable,
+                               tasknode.lineno0, tasknode.lineno1)
+
+    def pre_target_tasks(self, node):
+        "Ensure that a target_tasks uses only such_that, expr, all_others, or let_task"
+        tasknode = node.kids[0]
+        if tasknode.attr not in ["such_that", "expr", "all_others", "let_task"]:
+            errmsg = tasknode.sem["semobj"].errmsg
+            errmsg.error_fatal('"%s" is not a valid set of target tasks' % tasknode.printable,
+                               tasknode.lineno0, tasknode.lineno1)
+
+    def pre_let_binding(self, node):
+        "Ensure that let-bindings of task groups allow only such_that, expr, task_all, or let_task"
+        identnode = node.kids[0]
+        if identnode.attr[:6] == "GROUP ":
+            tasknode = node.kids[1]
+            if tasknode.attr not in ["such_that", "expr", "task_all", "let_task"]:
+                errmsg = tasknode.sem["semobj"].errmsg
+                errmsg.error_fatal('"%s" is not a valid set of source tasks' % tasknode.printable,
+                                   tasknode.lineno0, tasknode.lineno1)
+
+class _Check_My_Task(_AST_Traversal):
+    "Ensure that MY TASK is being used correctly."
+
+    def pre_if_stmt(self, node):
+        """
+        Indicate that we're in an IF statement, because MY TASK is
+        currently allowed only within IF statements.
+        """
+        node.kids[0].sem["within_if_stmt"] = 1
+
+    def pre_any(self, node):
+        "Tell my children if we're all within an IF statement."
+        if node.type == "if_stmt":
+            # We already handled this case.
+            return
+        try:
+            within_if_stmt = node.sem["within_if_stmt"]
+        except KeyError:
+            within_if_stmt = 0
+        for kid in node.kids:
+            kid.sem["within_if_stmt"] = within_if_stmt
+
+    def pre_my_task(self, node):
+        """
+        Abort if MY TASK is used outside of an IF expression.
+        Complain if MY TASK is used at all.
+        """
+        errmsg = node.sem["semobj"].errmsg
+        if not node.sem["within_if_stmt"]:
+            errmsg.error_fatal('"%s" is allowed only within an IF statement\'s expression' % node.printable,
+                               lineno0=node.lineno0, lineno1=node.lineno1)
+        already_complained_flag = "complained about my_task"
+        if not hasattr(node.sem["semobj"], "already_complained_flag"):
+            errmsg.warning('"%s" can lead to unintuitive behavior and should not generally be used' % node.printable,
+                           lineno0=node.lineno0, lineno1=node.lineno1)
+            node.sem["semobj"].already_complained_flag = 1
+
+###########################################################################
+
+class _Identify_Constant_Nodes(_AST_Traversal):
+    "Designate nodes that don't change their value from evaluation to evaluation."
+
+    def __init__(self, ast):
+        "Categorize the nodes we expect to see."
+        # Define a list of nodes that are always constant.
+        nodelist = ["integer", "string", "an", "data_multiplier",
+                    "time_unit", "opt_async", "unique", "data_type",
+                    "verification", "touching", "no_touching",
+                    "aggregate_func"]
+        ast.sem["semobj"].always_const = dict([(ntype, 1) for ntype in nodelist])
+
+        # Mark each node as either constant or not constant.
+        _AST_Traversal.__init__(self, ast)
+
+    def post_ident(self, node):
+        "Handle identifiers, which are constant if and only if they represent a definition."
+        if node.attr == "num_tasks":
+            # The number of tasks is constant during program execution.
+            node.sem["is_constant"] = 1
+        else:
+            # Definitions are constant; uses are not.
+            node.sem["is_constant"] = int(node.sem.has_key("definition"))
+
+    def post_stride(self, node):
+        "Handle strides, which may or may not be constant."
+        if node.attr == "default":
+            # No stride -- constant
+            node.sem["is_constant"] = 1
+        elif node.attr == "random":
+            # Random stride -- not constant
+            node.sem["is_constant"] = 0
+        elif node.attr == "specified":
+            # Stride specified by an expression -- defer to post_any
+            # (depende on the expression).
+            pass
+        else:
+            self.errmsg.error_internal('Unexpected stride "%s"' % repr(node.attr))
+
+    def post_restricted_ident(self, node):
+        "Handle restricted identifiers, which are constant if their expression is constant."
+        node.sem["is_constant"] = node.kids[1].sem["is_constant"]
+
+    def post_let_binding(self, node):
+        "Handle let bindings, which are constant if all of their expressions are constant."
+        all_const = 1
+        for kid in node.kids[1:]:
+            if kid.sem["is_constant"] == 0:
+                all_const = 0
+                break
+        node.sem["is_constant"] = all_const
+
+    def post_any(self, node):
+        "Handle most nodes by their category."
+        semobj = node.sem["semobj"]
+        if node.sem.has_key("is_constant"):
+            # We've already handled this node.
+            return
+        elif semobj.always_const.has_key(node.type):
+            # We're always constant.
+            node.sem["is_constant"] = 1
+        else:
+            # We're constant if all of our children are constant.
+            all_const = 1
+            for kid in node.kids:
+                if kid.sem["is_constant"] == 0:
+                    all_const = 0
+                    break
+            node.sem["is_constant"] = all_const

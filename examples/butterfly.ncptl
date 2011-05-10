@@ -1,7 +1,7 @@
 # Communicate in a butterfly pattern
 # By Scott Pakin <pakin@lanl.gov>
 
-Require language version "1.2".
+Require language version "1.3".
 
 msgsize is "Number of bytes each task sends" and comes from "--msgsize" or "-m" with default 1K.
 numtrials is "Number of times to repeat the test" and comes from "--trials" or "-t" with default 100.

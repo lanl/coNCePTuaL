@@ -1,4 +1,4 @@
-This is conceptual.info, produced by makeinfo version 4.12 from
+This is conceptual.info, produced by makeinfo version 4.13 from
 conceptual.texi.
 
 INFO-DIR-SECTION Programming
@@ -8,7 +8,7 @@ END-INFO-DIR-ENTRY
 
    This file describes the coNCePTuaL language and tool suite.
 
-   Copyright (C) 2009, Los Alamos National Security, LLC
+   Copyright (C) 2011, Los Alamos National Security, LLC
 
 
 File: conceptual.info,  Node: Top,  Next: Introduction,  Prev: (dir),  Up: (dir)
@@ -23,7 +23,7 @@ network protocol layers.  A few lines of CONCEPTUAL code can produce
 programs that would take significantly more effort to write in a
 conventional programming language.
 
-   This document describes CONCEPTUAL version 1.2.
+   This document describes CONCEPTUAL version 1.3.
 
 * Menu:
 
@@ -38,6 +38,7 @@ conventional programming language.
 * Reserved Words::              Lists of token names not available as varaibles
 * Backend Developer's Reference::  Lists of importance to backend developers
 * Environment Variables::       List of environment variables honored
+* Cache Variables::             List of variables used by the configure script
 * Referenced Applications::     URLs for applications mentioned in this manual
 * License::                     The coNCePTuaL copyright and license agreement
 * Index::                       Index to terms used in this manual
@@ -140,7 +141,7 @@ master.  Such a communication pattern is not independent of the order
 in which messages happen to arrive from the workers.  Similarly,
 CONCEPTUAL cannot use run-time performance data to guide its operations.
 It is therefore not currently possible to express a communication
-benchmark which repeats until the standard error of some performance
+benchmark that repeats until the standard error of some performance
 metric drops below a given threshold.  These limitations may be lifted
 in a future release of the system.
 
@@ -287,10 +288,10 @@ all of the options.  The following are some of the more useful ones:
 `--prefix=DIRECTORY'
      `make install' normally installs CONCEPTUAL into the `/usr/local'
      directory.  The `--prefix' option instructs `configure' to write a `Makefile'
-     with a different installation directory.  For example, `--prefix=/local/encap/conceptual-1.2'
+     with a different installation directory.  For example, `--prefix=/local/encap/conceptual-1.3'
      will cause CONCEPTUAL's files to be installed in
-     `/local/encap/conceptual-1.2/bin',
-     `/local/encap/conceptual-1.2/include', etc.
+     `/local/encap/conceptual-1.3/bin',
+     `/local/encap/conceptual-1.3/include', etc.
 
 `--with-ignored-libs=LIB1,LIB2,...'
      In some circumstances it may be necessary to prevent CONCEPTUAL
@@ -481,7 +482,7 @@ of other actions, as well:
 
 `make ncptl-logextract.html'
      CONCEPTUAL comes with a postprocessor called `ncptl-logextract'
-     which facilitates extracting information from CONCEPTUAL-produced
+     that facilitates extracting information from CONCEPTUAL-produced
      log files.  The complete `ncptl-logextract' documentation is
      presented in *note ncptl-logextract::.  As is readily apparent
      from that documentation, `ncptl-logextract' supports an
@@ -497,7 +498,7 @@ of other actions, as well:
      documentation for the others.
 
 `make empty.log'
-     Create an empty log file called `empty.log' which contains a
+     Create an empty log file called `empty.log' that contains a
      complete prologue and epilogue but no data.  This is convenient for
      validating that the CONCEPTUAL run-time library was built using
      your preferred build options.
@@ -508,10 +509,12 @@ of other actions, as well:
      other terms in the language visually distinct from each other for a
      more aesthetically appealing appearance.  Currently, `make stylesheets'
      produces a LaTeX2e package (`ncptl.sty'), an a2ps style sheet (`ncptl.ssh'),
-     an Emacs major mode (`ncptl-mode.el'/`ncptl-mode.elc'), a Vim
-     syntax file (`ncptl.vim'), and a Source-highlight language
-     definition (`ncptl.lang').  Note that the `Makefile' currently
-     lacks provisions for installing these files so whichever
+     an Emacs major mode (`ncptl-mode.el' and `ncptl-mode.elc'), a Vim
+     syntax file (`ncptl.vim'), a Source-highlight language definition (`ncptl.lang'),
+     and a GeSHi language file (`ncptl.php').  Each of these can be
+     built individually if desired.  (For example, `make ncptl-mode.vim'
+     will create only `ncptl-mode.vim'.)  Note that the `Makefile'
+     currently lacks provisions for installing these files so whichever
      stylesheets are desired will need to be installed manually.
      Stylesheet installation is detailed in *note Installing
      stylesheets::.
@@ -519,13 +522,13 @@ of other actions, as well:
 `make modulefile'
      The Environment Modules package facilitates configuring the
      operating-system shell for a given application.  The modulefile
-     `make modulefile' command creates a `conceptual_1.2' modulefile
+     `make modulefile' command creates a `conceptual_1.3' modulefile
      that checks for conflicts with previously loaded CONCEPTUAL
      modulefiles then sets the `PATH', `MANPATH', and `LD_LIBRARY_PATH'
      environment variables to values appropriate values as determined
      by `configure' (*note configure::).
 
-     Normally, `conceptual_1.2' should be installed in the system's
+     Normally, `conceptual_1.3' should be installed in the system's
      module path (as described by the `MODULEPATH' environment
      variable).  However, users without administrator access can still
      use the CONCEPTUAL modulefile as a convenient mechanism for
@@ -533,13 +536,13 @@ of other actions, as well:
      CONCEPTUAL:
 
           make modulefile
-          module load ./conceptual_1.2
+          module load ./conceptual_1.3
 
      See the `module' man page for more information about modules.
 
 `make dist'
      Package together all of the files needed to rebuild CONCEPTUAL.
-     The resulting file is called `conceptual-1.2.tar.gz' (for this
+     The resulting file is called `conceptual-1.3.tar.gz' (for this
      version of CONCEPTUAL).
 
 `make all'
@@ -556,7 +559,7 @@ of other actions, as well:
      documentation for `M-x find-tag' for more information.
 
 `make gui'
-     Compile the CONCEPTUAL GUI, producing `ncptlGUI-1.2.jar'.  Note
+     Compile the CONCEPTUAL GUI, producing `ncptlGUI-1.3.jar'.  Note
      that compilation requires both a Java compiler (e.g., `javac') and
      the Jython Python-to-Java compiler (`jythonc').  Unfortunately, at
      the time of this writing (January 2009), `jythonc''s future is
@@ -714,6 +717,36 @@ installed manually as per the following instructions:
 
           ncptl = ncptl.lang
 
+`ncptl.php'
+     GeSHi stores all of its language files in a `geshi' subdirectory.
+     Simply put `ncptl.php' there, and it should be ready for use.  A
+     quick way to convert CONCEPTUAL programs to color-coded HTML is to
+     use the command-line version of the PHP interpreter with the
+     following shell script.
+
+          #!/usr/bin/env php
+
+          <html>
+          <head>
+          <title><?php echo basename($argv[1]); ?></title>
+          </head>
+          <body>
+          <?php
+          include("GESHI_DIRECTORY/geshi.php");
+          $ncptl_code = file_get_contents($argv[1]);
+          geshi_highlight($ncptl_code, "ncptl");
+          ?>
+          </body>
+          </html>
+
+     Simply replace GESHI_DIRECTORY with the name of your top-level GeSHi
+     directory and run the script with the name of a CONCEPTUAL file as
+     its sole argument.
+
+     A GeSHi extension for Mediawiki introduces a `<syntaxhighlight>'
+     tag for presenting color-coded program listings on a wiki.  `ncptl.php'
+     makes it easy to use CONCEPTUAL code in this context.
+
 
 
 File: conceptual.info,  Node: SLOCCount,  Next: pkg-config,  Prev: Installing stylesheets,  Up: make install
@@ -769,7 +802,7 @@ File: conceptual.info,  Node: Usage,  Next: Grammar,  Prev: Installation,  Up: T
 3 Usage
 *******
 
-CONCEPTUAL is more than just a language; it is a complete toolset which
+CONCEPTUAL is more than just a language; it is a complete toolset that
 consists of the following components:
 
    * the CONCEPTUAL language (*note Grammar::)
@@ -814,7 +847,7 @@ portable and should run identically on every platform for which a JVM
 exists.  The following is a typical command for launching the CONCEPTUAL
 GUI from the command line:
 
-     java -jar ncptlGUI-1.2.jar
+     java -jar ncptlGUI-1.3.jar
 
    The CONCEPTUAL GUI is split into two main panels. The _program
 panel_ displays the components that make up the program and how they
@@ -1180,7 +1213,7 @@ File: conceptual.info,  Node: Supplied backends,  Next: Running coNCePTuaL progr
 3.3 Supplied backends
 =====================
 
-The CONCEPTUAL 1.2 distribution includes the following compiler
+The CONCEPTUAL 1.3 distribution includes the following compiler
 backends:
 
 `c_seq'
@@ -1218,6 +1251,10 @@ backends:
      Output in the PICL trace format a logical-time trace of a
      CONCEPTUAL program's communication pattern.
 
+`paraver'
+     Output in the Paraver trace format a logical-time trace of a
+     CONCEPTUAL program's communication pattern.
+
 `latex_vis'
      Use LaTeX to produce an Encapsulated PostScript visualization of a
      program's communication pattern.
@@ -1231,13 +1268,13 @@ backends.  The following figure illustrates the current set of
 dependencies:
 
 
-      +--------------------------+
-      |  c_trace and c_profile   |
-      +-------+----------+-------+-------+------+-----------+
-      | c_mpi | c_udgram | c_seq | stats | picl | latex_vis |
-      +-------+----------+-------+-------+------+-----------+---------+
-      |        c_generic         |    interpret             | dot_ast |
-      +--------------------------+--------------------------+---------+
+ +--------------------------+
+ |  c_trace and c_profile   |
+ +-------+----------+-------+-------+------+-----------+
+ | c_mpi | c_udgram | c_seq | stats | picl | latex_vis |
+ +-------+----------+-------+-------+------+-----------+---------+------------+
+ |        c_generic         |    interpret             | dot_ast | libsea_ast |
+ +--------------------------+--------------------------+---------+------------+
 
 Some dependencies are defined as a static characteristic of a backend.
 For example, the `c_mpi' backend is hardwired to derive some of its
@@ -1270,8 +1307,10 @@ backend-independent information.
 * The interpret backend::       Interpret coNCePTuaL programs
 * The stats backend::           Report statistics on a program's execution
 * The picl backend::            Trace a coNCePTuaL program's logical execution
+* The paraver backend::         Trace a coNCePTuaL program's logical execution
 * The latex_vis backend::       Visualize a communication pattern
 * The dot_ast backend::         Graphviz DOT format (show abstract-syntax tree)
+* The libsea_ast backend::      CAIDA LibSea format (show abstract-syntax tree)
 
 
 File: conceptual.info,  Node: The c_seq backend,  Next: The c_mpi backend,  Prev: Supplied backends,  Up: Supplied backends
@@ -1311,7 +1350,7 @@ defaults to the value of `CFLAGS'; the remaining variables are appended
 respectively to `CPPFLAGS', `LDFLAGS', and `LIBS'.
 
    The following is a complete list of MPI functions employed by the `c_mpi'
-backend: `MPI_Allreduce()', `MPI_Barrier()', `MPI_Bcast()', `MPI_Comm_rank()', `MPI_Comm_size()', `MPI_Comm_split()', `MPI_Errhandler_create()', `MPI_Errhandler_set()', `MPI_Finalize()', `MPI_Init()', `MPI_Irecv()', `MPI_Isend()', `MPI_Recv()', `MPI_Reduce()', `MPI_Send()', `MPI_Ssend()', `MPI_Waitall()'.
+backend: `MPI_Allreduce()', `MPI_Alltoallv()', `MPI_Barrier()', `MPI_Bcast()', `MPI_Comm_group()', `MPI_Comm_rank()', `MPI_Comm_size()', `MPI_Comm_split()', `MPI_Errhandler_create()', `MPI_Errhandler_set()', `MPI_Finalize()', `MPI_Group_translate_ranks()', `MPI_Init()', `MPI_Irecv()', `MPI_Isend()', `MPI_Recv()', `MPI_Reduce()', `MPI_Send()', `MPI_Ssend()', `MPI_Waitall()'.
 In addition, if `./configure ' is passed the `--with-mpi-wtime' option
 as described in *note configure::, then _all_ backends that utilize the
 CONCEPTUAL run-time library, including `c_mpi', will use `MPI_Wtime()'
@@ -1321,6 +1360,7 @@ for taking performance measurements.
 
 * Command-line options for c_mpi::  Control over the generated C+MPI code
 * Implementation of reductions::  How c_mpi implements the REDUCE statement
+* Implementation of multicasts::  How c_mpi implements the MULTICAST statement
 
 
 File: conceptual.info,  Node: Command-line options for c_mpi,  Next: Implementation of reductions,  Prev: The c_mpi backend,  Up: The c_mpi backend
@@ -1347,7 +1387,7 @@ processes the following backend-specific command-line options:
      operation that was used.
 
 
-File: conceptual.info,  Node: Implementation of reductions,  Prev: Command-line options for c_mpi,  Up: The c_mpi backend
+File: conceptual.info,  Node: Implementation of reductions,  Next: Implementation of multicasts,  Prev: Command-line options for c_mpi,  Up: The c_mpi backend
 
 Implementation of reductions
 ............................
@@ -1365,6 +1405,38 @@ or `MPI_Allreduce()' be different, the `c_mpi' backend utilizes _two_
 buffers when `UNIQUE' (*note Unique messages::) is specified.  It
 utilizes two _adjacent_ buffers when `FROM BUFFER' or `INTO BUFFER'
 (*note Buffer control::) is specified.
+
+
+File: conceptual.info,  Node: Implementation of multicasts,  Prev: Implementation of reductions,  Up: The c_mpi backend
+
+Implementation of multicasts
+............................
+
+The `MULTICAST' statement (*note Multicasting::) enables any set of
+tasks to transmit data to any other set of tasks.  The `c_mpi' backend
+implements `MULTICAST' using the simpler `MPI_Bcast()' when there is a
+single initiator (determined dynamically at run time) and `MPI_Alltoallv()'
+otherwise.  In all cases, `c_mpi' creates an MPI communicator that
+contains exactly the tasks involved in the multicast (as senders and/or
+receivers).
+
+   MPI requires that all tasks involved in an `MPI_Bcast()' belong to
+the same MPI communicator.  Hence, in the CONCEPTUAL statement
+
+     TASK 4 MULTICASTS A 64 KILOBYTE MESSAGE TO TASKS r SUCH THAT r
+     IS IN {1, 3, 5, 7, 9}
+
+the generated communicator contains tasks 1, 3, 4, 5, 7, and 9, even
+though task 4 transmits but does not receive any data.
+
+   Rather than repeatedly call `MPI_Bcast()', many-to-one and
+many-to-many multicasts such as
+
+     TASKS from_tasks SUCH THAT from_tasks < 8 MULTICAST 3 2-KILOBYTE
+     MESSAGES to TASKS to_tasks SUCH THAT 3 DIVIDES to_tasks
+
+perform a single `MPI_Alltoallv()'.  Two message buffers are used in
+this case, one for all outgoing data and one for all incoming data.
 
 
 File: conceptual.info,  Node: The c_udgram backend,  Next: The c_trace backend,  Prev: The c_mpi backend,  Up: Supplied backends
@@ -1402,6 +1474,26 @@ program.  They also create a number of sockets in the current directory
 named `c_udgram_<TAG>'.  These are automatically deleted if the program
 exits cleanly but will need to be removed manually in the case that the
 program is killed by an non-trappable signal.
+
+* Menu:
+
+* Implementation of collectives::  How c_udgram implements collective operations
+
+
+File: conceptual.info,  Node: Implementation of collectives,  Prev: The c_udgram backend,  Up: The c_udgram backend
+
+Implementation of collectives
+.............................
+
+The `c_udgram' normally uses logarithmic-time algorithms for multicasts
+(*note Multicasting::), reductions (*note Reducing::), and barriers
+(*note Synchronizing::).  One-to-many multicasts disperse data in a
+binary-tree pattern.  Reductions reduce data in a binary-tree pattern
+to the root, which then disperses the data in a binary-tree pattern in
+the many-to-many case.  Barriers synchronize in a butterfly pattern.
+The only non-logarithmic-time algorithm is for many-to-many multicasts,
+which are implemented as one logarithmic-time, one-to-many multicast
+for each sender.
 
 
 File: conceptual.info,  Node: The c_trace backend,  Next: The c_profile backend,  Prev: The c_udgram backend,  Up: Supplied backends
@@ -1509,7 +1601,7 @@ following additional command-line options:
 
       1.  # Determine computational "noise"
       2.
-      3.  Require language version "1.2".
+      3.  Require language version "1.3".
       4.
       5.  accesses is "Number of data accesses to perform" and comes from
       6.    "--accesses" or "-a" with default 500000.
@@ -1619,7 +1711,7 @@ File: conceptual.info,  Node: The c_profile backend,  Next: The interpret backen
 -----------------------------
 
 Profiling communication events can help explain surprising performance
-measurements.  A profiling tool which automatically instruments
+measurements.  A profiling tool that automatically instruments
 CONCEPTUAL programs is simpler than manually adding `LOGS' or `OUTPUTS'
 statements to an existing program.
 
@@ -1642,7 +1734,7 @@ numbers.  In addition, the amount of memory used to store the event
 list is also logged.
 
    For example, the following extract from a log file indicates that the
-process which wrote it spent a total of 6.7s processing 22,000 `RECV'
+process that wrote it spent a total of 6.7s processing 22,000 `RECV'
 events (which includes waiting time) for an average of 303.5us per
 `RECV' event:
 
@@ -1718,11 +1810,13 @@ CONCEPTUAL programs.
 
    The `interpret' backend accepts all of the command-line options
 described in *note Running coNCePTuaL programs::, plus the following
-three options:
+four options:
 
        -H, --hierarchy=<string>     Latency hierarchy as a comma-separated list
                                     of task_factor:latency_delta pairs [default:
                                     "tasks:1"]
+       -K, --kill-reps=<number>     If nonzero, perform FOR...REPETITIONS loop
+                                    bodies exactly once [default: 0]
        -M, --mcastsync=<number>     Perform an implicit synchronization after a
                                     multicast (0=no; 1=yes) [default: 0]
        -T, --tasks=<number>         Number of tasks to use [default: 1]
@@ -1732,6 +1826,12 @@ communication operation.  The `--hierarchy' option can make
 communication with distant tasks observe more latency than
 communication with nearby tasks.  An explanation of the argument to `--hierarchy'
 is presented in *note Task latency hierarchies::.
+
+   To save execution time, the `--kill-reps' option alters the behavior
+of all `FOR'...`REPETITIONS' statements in the program, treating them
+as if they read, `FOR 1 REPETITION'.  That is, it ignores warmup
+repetitions, synchronizations, and the specified number of repetitions,
+always using `1' instead.
 
    A multicast operation (*note Multicasting::) is normally treated as
 multiple point-to-point operations with the same send time.  The `--mcastsync'
@@ -1979,11 +2079,11 @@ program compiled with `stats':
        Processors executing 30 WAIT_ALL events: 0-15
 
    `stats' is derived from `interpret' (*note The interpret backend::)
-and therefore supports the `interpret' backend's `--tasks' and `--mcastsync'
-options as well as the standard options described in *note Running
-coNCePTuaL programs::.  However, because `stats' does not produce log
-files, the `--logfile' option is absent.  `stats' additionally supports
-the following three command-line options:
+and therefore supports the `interpret' backend's options as well as the
+standard options described in *note Running coNCePTuaL programs::.
+However, because `stats' does not produce log files, the `--logfile'
+option is absent.  `stats' additionally supports the following three
+command-line options:
 
        -E, --expand-lists=<number>     0=collapse lists of numbers into ranges;
                                        1=show all numbers [default: 0]
@@ -2032,7 +2132,7 @@ tells `stats' not to output the line with that key.  Similarly, `--exclude="Proc
 eliminates an entire category of information.
 
 
-File: conceptual.info,  Node: The picl backend,  Next: The latex_vis backend,  Prev: The stats backend,  Up: Supplied backends
+File: conceptual.info,  Node: The picl backend,  Next: The paraver backend,  Prev: The stats backend,  Up: Supplied backends
 
 3.3.8 The `picl' backend
 ------------------------
@@ -2045,7 +2145,7 @@ file to a performance-visualization tool such as ParaGraph, which
 renders the trace data using any of a number of graphical views.
 
    Although MPICL is compatible with the `c_mpi' backend (*note The
-c_mpi backend::), CONCEPTUAL provides a `picl' backend which produces PICL
+c_mpi backend::), CONCEPTUAL provides a `picl' backend that produces PICL
 files directly.  The intention is to use the PICL format to represent
 an idealized view of a communication pattern rather than to store a
 time-sensitive execution trace.  For example, timing events recorded by `picl'
@@ -2119,15 +2219,121 @@ by making it easy to show graphically how tasks communicate with each
 other in an arbitrary CONCEPTUAL program.
 
 
-File: conceptual.info,  Node: The latex_vis backend,  Next: The dot_ast backend,  Prev: The picl backend,  Up: Supplied backends
+File: conceptual.info,  Node: The paraver backend,  Next: The latex_vis backend,  Prev: The picl backend,  Up: Supplied backends
 
-3.3.9 The `latex_vis' backend
------------------------------
+3.3.9 The `paraver' backend
+---------------------------
+
+The Paraver trace visualizer accepts a trace file format that records
+an execution trace of a message-passing (or other) application and uses
+that to display application timelines and statistical data.  Normally,
+one uses an application-instrumentation tool such as Extrae to generate Paraver
+traces, and Extrae is, in fact, compatible with programs generated
+using the CONCEPTUAL `c_mpi' backend (*note The c_mpi backend::).
+However, the `paraver' backend produces Paraver files directly.  The
+intention is to use the Paraver format to represent an idealized view
+of a communication pattern rather than to store a time-sensitive
+execution trace.  For example, timing events recorded by `paraver'
+occur at logical times instead of physical times and statements such as `COMPUTES'/`SLEEPS'
+(*note Delaying execution::) and `TOUCHES' (*note Touching memory::)
+take either zero time or unit time, depending upon a command-line
+option.  By providing an idealized view of a communication pattern, `paraver'
+abstracts away timing artifacts so events that one would expect to
+occur simultaneously are written to the trace file as being exactly
+simultaneous.
+
+   As an example, the following is the Paraver output produced by
+passing the `paraver' backend the CONCEPTUAL program, `TASK 0 SENDS A
+32 KILOBYTE MESSAGE TO TASK 1 THEN TASK 1 SENDS A 256 BYTE MESSAGE TO
+TASK 0.':
+
+     #Paraver (06/01/2011 at 11:22):2001_ns:2(1,1):1:2(1:1,1:2),0
+     3:1:1:1:1:0:0:2:1:2:1:1000:1000:32768:0
+     2:1:1:1:1:0:1000000:6
+     2:1:1:1:1:0:1000000:13
+     2:2:1:2:1:0:1000000:6
+     2:2:1:2:1:0:1000000:9
+     1:1:1:1:1:0:1000:4
+     1:2:1:2:1:0:1000:3
+     3:2:1:2:1:1000:1000:1:1:1:1:2000:2000:256:0
+     2:1:1:1:1:1000:1000000:9
+     2:2:1:2:1:1000:1000000:13
+     1:1:1:1:1:1000:2000:3
+     1:2:1:2:1:1000:2000:4
+
+The `paraver' backend also generates an associated configuration file
+that maps program state and event numbers to names and colors.  For
+example, state 4 represents "blocking send" and is colored a neon
+fuchsia in Paraver's graphical interface; event 1000000 represents
+"CONCEPTUAL," and event 1000000, value 13 represents a CONCEPTUAL
+`SEND' event.  See the manual, `Paraver Parallel Program Visualization
+and Analysis Tool: Tracefile Description', for a detailed description
+of the various fields used in the preceding trace file.
+
+   `paraver' is derived from `interpret' (*note The interpret
+backend::) and therefore supports the `interpret' backend's `--tasks'
+and `--mcastsync' options as well as the standard options described in
+*note Running coNCePTuaL programs::.  However, because `paraver' does
+not produce log files, the `--logfile' option is absent.  `paraver'
+additionally supports the following two command-line options:
+
+       -D, --dimemas-events=<number> 0=no Dimemas events; 1=extra events for
+                                     Dimemas simulator [default: 0]
+       -E, --conc-events=<number>    0=exclude names of coNCePTuaL event types;
+                                     1=include them [default: 0]
+       -O, --comp-time=<number>      Time spent in each non-communication event (ns)
+                                     [default: 0]
+       -P, --event-time=<number>     Paraver event time (ns) [default: 1000]
+       -R, --conc-source=<number>    0=exclude references to coNCePTuaL source
+                                     lines; 1=include them [default: 1]
+
+   By default, only CONCEPTUAL communication events are written to the
+trace file.  If `--comp-time' is set to a positive integer then all
+events are written to the trace file, and all non-communication events
+take the specified amount of time.  Because Paraver events are marked
+with physical time (a integral number of nanoseconds) but `paraver'
+uses exclusively logical time, `paraver' needs to associate a
+(fabricated) physical time with each logical time.  The `--event-time'
+option specifies that mapping.  By default, `paraver' pretends that
+each unit of logical time corresponds to 1 microsecond
+(i.e, 1000 nanoseconds) of physical time.  In addition to CONCEPTUAL, Paraver
+also has a notion of an "event."  The `--conc-source' and `--conc-events'
+options tell the `paraver' backend which Paraver events to include in
+the trace file.  If `--conc-source' is `1' (the default), Paraver will
+display text like the following in its Info panel:
+
+     User Event at 529,000 ns  myfile.ncptl source line Unknown value 203
+
+which indicates that the most recently clicked time in the Paraver
+timeline represents logical time 529 and corresponds to line 203 of
+`myfile.ncptl'.  If `--conc-events' is `1', Paraver will display text
+like the following in its Info panel:
+
+     User Event at 529,000 ns  coNCePTuaL event RECEIVE
+
+which indicates that the most recently clicked time in the Paraver
+timeline represents logical time 529 and represents a CONCEPTUAL
+interpreter `RECEIVE' event (*note The interpret backend::).  The Dimemas
+network simulator accepts the same traces as the Paraver visualizer but
+expects to see a number of additional events in the trace file.  If `--dimemas-events'
+is `1', the `paraver' backend will generate those extra events.
+
+   One of the goals of CONCEPTUAL is to facilitate the explanation of
+network performance tests.  The `paraver' backend aids in the
+explanation by making it easy to show graphically how tasks communicate
+with each other in an arbitrary CONCEPTUAL program.
+
+
+File: conceptual.info,  Node: The latex_vis backend,  Next: The dot_ast backend,  Prev: The paraver backend,  Up: Supplied backends
+
+3.3.10 The `latex_vis' backend
+------------------------------
 
 The `latex_vis' backend visualizes a program's communication pattern as
 an Encapsulated PostScript time-space diagram.  The backend thereby
 provides a static counterpart to the animated visualizations made
-possible by the `picl' backend and the ParaGraph tool (*note The picl
+possible by the `picl' and `paraver' backends and the ParaGraph and Paraver
+trace visualizers (*note The picl backend::, and *note The paraver
 backend::).  `latex_vis' outputs LaTeX code with calls to the PSTricks
 package (available from `http://www.tug.org/applications/PSTricks/' but
 shipped with most LaTeX distributions) to draw the figure, then runs `latex'
@@ -2139,7 +2345,7 @@ or whatever the `GS' environment variable is set to) to tighten the
 graphic's bounding box.(1) `latex_vis' requires that LaTeX and PSTricks
 be installed in order to produce its visualizations.  However, it can
 still run with `--no-compile' (*note Compiling coNCePTuaL programs::)
-to produce a `.tex' file which can later be run manually through `latex'.
+to produce a `.tex' file that can later be run manually through `latex'.
 
    As an example, the following is the default `latex_vis' output from
 the CONCEPTUAL program `TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1
@@ -2175,9 +2381,11 @@ performing the expected communication operations.
    `latex_vis' is derived from `interpret' (*note The interpret
 backend::) and therefore supports the `interpret' backend's `--tasks'
 and `--mcastsync' options as well as the standard options described in
-*note Running coNCePTuaL programs::.  However, because `latex_vis' does
-not produce log files, the `--logfile' option is absent.  `latex_vis'
-additionally supports the following five command-line options:
+*note Running coNCePTuaL programs::.  (The `interpret' backend's `--kill-reps'
+option can be handy for reducing the picture's size by showing only a
+single iteration of each loop.)  Because `latex_vis' does not produce
+log files, the `--logfile' option is absent.  `latex_vis' additionally
+supports the following command-line options:
 
        -A, --annotate=<string>         Annotation level (0=no annotations;
                                        1=annotate communication events;
@@ -2206,7 +2414,7 @@ additionally supports the following five command-line options:
 calls these "big points" and defines 1bp = 1/72")
 
    The `--annotate' option places adjacent to appropriate nodes in the
-output diagram a list of textual annotations which indicate the
+output diagram a list of textual annotations that indicate the
 communication operations that were posted or completed and the
 non-communication operations that were executed by the corresponding
 task at the corresponding time.  Some sample annotations are `Post
@@ -2216,7 +2424,7 @@ events are annotated;(2); otherwise, a list of specific events can be
 annotated.  For example, `--annotate=SYNC,MCAST' causes only the `SYNC'
 and `MCAST' events to be annotated.  Compiling a CONCEPTUAL program
 with the `latex_vis' backend and the `--keep-ints' options (*note
-Compiling coNCePTuaL programs::) produces a `.tex' file which contains
+Compiling coNCePTuaL programs::) produces a `.tex' file that contains
 in the prologue comments a list of all events used by a program that
 were and were not annotated.
 
@@ -2241,10 +2449,10 @@ their associated nodes.
 
    The `--source-lines' option, when used with `--annotate', augments
 each event annotation with the corresponding line(s) of source code
-which produced that event.  This feature improves the utility of `latex_vis'
+that produced that event.  This feature improves the utility of `latex_vis'
 as a debugging aid for CONCEPTUAL programs.
 
-   By default, all arrows which indicate message transmissions are drawn
+   By default, all arrows that indicate message transmissions are drawn
 with equally thick line widths.  The `--arrow-width' option lets you
 specify a Python function to map a message size in bytes, m, to a line
 width in PostScript points, with the default being 1 point.  As a
@@ -2297,7 +2505,7 @@ for more information about the PSTricks commands used in the generated
    To facilitate the use of `--filter', the `latex_vis' backend uses a
 helper macro (`\viscolor') to define colors.  `\viscolor' takes an
 argument of the form `NAME=COLOR' and defines a macro `\'NAME`color'
-which expands to COLOR.  To further facilitate the use of `--filter',
+that expands to COLOR.  To further facilitate the use of `--filter',
 the LaTeX code generated by the `latex_vis' backend contains a number of
 strategically placed placeholder comments of the form `% PLACEHOLDER:
 TAG'.  A `--filter' command can thereby insert code into the document
@@ -2319,13 +2527,13 @@ indicate point-to-point messages from blue to chartreuse:
 predefined grayscales are `black', `darkgray', `gray', `lightgray', and
 `white'.)
 
-   Tasks which are active at a given time are drawn using the `\task'
-macro, which takes the task number as an argument.  Tasks which are
-idle at a given time are drawn using the `\idle' macro, which is
-initially defined to be the same as `\task'.  The following "cookbook"
-examples showcase some of the ways that the power of LaTeX and PSTricks
-can be exploited to display idle tasks in a variety of different styles
-(best used with `--annotate=2'):
+   Tasks that are active at a given time are drawn using the `\task'
+macro, which takes the task number as an argument.  Tasks that are idle
+at a given time are drawn using the `\idle' macro, which is initially
+defined to be the same as `\task'.  The following "cookbook" examples
+showcase some of the ways that the power of LaTeX and PSTricks can be
+exploited to display idle tasks in a variety of different styles (best
+used with `--annotate=2'):
 
 omitting idle tasks
      `--filter="s/\\let\\idle=\\task/\\newcommand*{\\idle}[1]{[mnode=R]}/"'
@@ -2352,9 +2560,9 @@ by compiling with `--keep-ints' (*note Compiling coNCePTuaL programs::)
 and editing the generated LaTeX code.
 
 
-File: conceptual.info,  Node: The dot_ast backend,  Prev: The latex_vis backend,  Up: Supplied backends
+File: conceptual.info,  Node: The dot_ast backend,  Next: The libsea_ast backend,  Prev: The latex_vis backend,  Up: Supplied backends
 
-3.3.10 The `dot_ast' backend
+3.3.11 The `dot_ast' backend
 ----------------------------
 
 dot is a format for describing graphs in terms of their edges and
@@ -2503,10 +2711,10 @@ command line:
      option that labels each node with the fragment of code to which it
      corresponds.  The argument to `--node-code' is a number of
      characters at which to truncate the code fragment or `-1' to
-     inhibit truncation.  (The purpose of truncation is to prevent
-     excessively large nodes from disturbing the graph layout.  The
-     `program' node, for example, includes the complete program source
-     code if not truncated.)
+     inhibit truncation.  The purpose of truncation is to prevent
+     excessively large nodes from disturbing the graph layout.  The <PROGRAM>
+     node (*note Complete programs::), for example, includes the
+     complete program source code if not truncated.
 
 `--extra-dot=DOT_CODE'
      The `dot_ast' backend's `--extra-dot' option enables the user to
@@ -2546,6 +2754,77 @@ or another Graphviz tool.
 
    (1) `dot_ast' automatically places a semicolon after the extra dot
 code.
+
+
+File: conceptual.info,  Node: The libsea_ast backend,  Prev: The dot_ast backend,  Up: Supplied backends
+
+3.3.12 The `libsea_ast' backend
+-------------------------------
+
+Like the `dot_ast' backend (*note The dot_ast backend::), the `libsea_ast'
+backend visualizes a CONCEPTUAL parse tree.  This capability is
+primarily useful to backend developers to help prioritize the methods
+that need to be implemented (i.e., implementing first the AST node
+types needed by in a trivial program, then those needed by successively
+more complex programs).
+
+   The `libsea_ast' backend specifies a CONCEPTUAL program's parse tree
+in the LibSea graph file format, which can then be visualized and
+manipulated interactively using the Walrus visualization tool.  The
+primary advantage of `libsea_ast' over `dot_ast' is that `libsea_ast'
+can handle much larger parse trees than `dot_ast'.  For example, the
+following image illustrates the Walrus GUI displaying a 702,985-node
+CONCEPTUAL parse tree:(1)
+
+ [image src="walrus.png" alt="Image of the Walrus GUI displaying a large coNCePTuaL parse tree" text="+--------------------------------------------------------------------+
+|                      Walrus 0.6.3 -- mg.graph                      |
++--------------------------------------------------------------------+
+| File  Rendering   Display  Spanning Tree  Color Scheme  Node Label |
++--------------------------------------------------------------------+
+|                                                                    |
+|                    o\" \" o\" M M ooo o  o                            |
+|                 o\" o\"o\"o\"o\"o M ooo\"o o o                           |
+|                 o\" o\" o\"o \"o\" o  o \"o o                            |
+|                 o\" M \"o \"o\" o\"  o o\" o\"o\" o  o                     |
+|              \" \"o\" o\" o\"o M M \"o o o\"  o\" o                        |
+|             \"\" \"o \"o \"o M \"o\"o\"o\" \" \"\" \"o\" o <-- Tasks t5527 such t|
+|            \" \"o\"  o  \" o M o\" M \"o\" \" \" \" M                        |
+|             \" o o o \" o o M \"o M o\"o\"\"\"o\"\"o\" \"                     |
+|              \" o\"  \" \" \" \"o\"\"o\" M oo\"o\"o M o                       |
+|                \" o o  \"  o \" M \"o\" o <-- All tasks await completion|
+|                \"  o o  o   \"  M o\" M M \"o\"\"o \"                     |
+|                  \" o  o  \"  \"o M M o\"o\"o M o                       |
+|                     \" o o \"  o o\" \" o\"o\" o                         |
+|                        o M \" o \"o\" M M \"o  o                       |
+|                            \" o o M \"o                              |
+|                             o   \" <-- Tasks t8171 such that t8171 =|
+|                                                                    |
++--------------------------------------------------------------------+
+" ]
+A secondary advantage of `libsea_ast' is that Walrus lets a user
+selectively view information.  For example, in the preceding image,
+only <SIMPLE_STMT> nodes (*note Complex statements::) are highlighted;
+the source code for only certain nodes is displayed; and all node type
+and node attribute information is hidden.
+
+   The `libsea_ast' backend accepts the following option from the `ncptl'
+command line:
+
+`--node-code=CHARACTERS'
+     Every node in the generated LibSea graph lists the fragment of
+     CONCEPTUAL code to which it corresponds.  For large CONCEPTUAL
+     programs, these strings can get large.  The <PROGRAM> node (*note
+     Complete programs::), for example, includes the complete program
+     source code.  Because the Walrus visualizer does not currently
+     wrap long lines, most of a long string is never even presented to
+     the user and therefore serves no practical purpose.  The argument
+     to `--node-code' is a number of characters at which to truncate
+     the code fragment or `-1' to inhibit truncation.
+
+   ---------- Footnotes ----------
+
+   (1) The original source program contained over 6000 lines of
+CONCEPTUAL code.
 
 
 File: conceptual.info,  Node: Running coNCePTuaL programs,  Next: Interpreting coNCePTuaL log files,  Prev: Supplied backends,  Up: Usage
@@ -2655,23 +2934,23 @@ and `--seed'.
      (e.g., `bash'), the CONCEPTUAL program sees the entire output with
      embedded newlines as a single argument; in others (e.g., `tcsh'),
      each line of output constitutes a separate command-line argument.
-     Because CONCEPTUAL programs currently ignore arguments which do
-     not begin with `--', the comment written to the log file in the
-     latter case terminates at the first newline.  In virtually all
-     shells, the double quotes around the backquoted command are needed
-     to prevent the shell from splitting arguments at word boundaries.
-     As a consequence, `--comment=`who`' logs only the first word
-     output by the `who' command.
+     Because CONCEPTUAL programs currently ignore arguments that do not
+     begin with `--', the comment written to the log file in the latter
+     case terminates at the first newline.  In virtually all shells,
+     the double quotes around the backquoted command are needed to
+     prevent the shell from splitting arguments at word boundaries.  As
+     a consequence, `--comment=`who`' logs only the first word output
+     by the `who' command.
 
 `--logfile'
      `--logfile' specifies a template for naming log files.  Each task
      maintains a log file based on the template name but with `%p'
      replaced with the processor number, `%r' replaced with the run
      number (the smallest nonnegative integer that produces a filename
-     which does not already exist), and `%%' replaced with a literal
-     "%" character.  The program outputs an error message and aborts if
-     the log-file template does not contain at least one `%p'.  The
-     only exception is that an empty template (i.e., `--logfile=""')
+     that does not already exist), and `%%' replaced with a literal "%"
+     character.  The program outputs an error message and aborts if the
+     log-file template does not contain at least one `%p'.  The only
+     exception is that an empty template (i.e., `--logfile=""')
      inhibits the production of log files entirely.
 
      Like C's `printf()' function, a numeric field width can occur
@@ -2707,20 +2986,20 @@ and `--seed'.
 
    If the `LOGS' statement (*note Writing to a log file::) is used
 anywhere in a CONCEPTUAL program, then _all_ processes write a log
-file.  This is done because CONCEPTUAL log files--even those which
+file.  This is done because CONCEPTUAL log files--even those that
 contain no measurement data--include a wealth of important information
 in prologue comments, as described *note Interpreting coNCePTuaL log
 files::.  As a consequence, a program run with thousands of processes
-produces thousands of log files.  If process 0 is the only process
-which logs actual data, the `ncptl-logmerge' script (*note
-ncptl-logmerge::) can merge these log files into a single, more
-manageable, file.  For situations in which it is unreasonable for every
-process to write a log file (e.g., if the filesystem is unable to
-handle large numbers of simultaneous file creations, the `NCPTL_LOG_ONLY'
-environment variable lets the user limit the set of processes which
-produce log files.  `NCPTL_LOG_ONLY' accepts a comma-separated list of
-dash-separated process ranges such as `0-3,12-16,24,25,32-48'.  Only
-processes included in the list produce log files.
+produces thousands of log files.  If process 0 is the only process that
+logs actual data, the `ncptl-logmerge' script (*note ncptl-logmerge::)
+can merge these log files into a single, more manageable, file.  For
+situations in which it is unreasonable for every process to write a log
+file (e.g., if the filesystem is unable to handle large numbers of
+simultaneous file creations, the `NCPTL_LOG_ONLY' environment variable
+lets the user limit the set of processes that produce log files.  `NCPTL_LOG_ONLY'
+accepts a comma-separated list of dash-separated process ranges such as
+`0-3,12-16,24,25,32-48'.  Only processes included in the list produce
+log files.
 
    ---------- Footnotes ----------
 
@@ -2971,7 +3250,7 @@ include the following:
 
 `Process CPU-time increment'
 `Process CPU usage (user+system)'
-     Log files end with an epilogue section which includes `Process CPU
+     Log files end with an epilogue section that includes `Process CPU
      usage (user+system)', which indicates the subset of total
      wall-clock time for which the program was running (`user') or for
      which the operating system was running on the program's behalf
@@ -2998,8 +3277,8 @@ include the following:
      CONCEPTUAL programs heap-allocate memory for a variety of purposes:
      message buffers, event lists (*note Generated code::), unaggregated
      performance data (*note Computing aggregates::), etc.  Allocated
-     memory which is no longer needed is returned to the heap.  The
-     total amount of allocated memory the program is holding therefore
+     memory that is no longer needed is returned to the heap.  The total
+     amount of allocated memory the program is holding therefore
      increases and decreases over time.  The `Peak memory allocation'
      comment reports the maximum amount of memory the program held at
      any given time.  If this value nears or exceeds the value reported
@@ -3284,6 +3563,10 @@ format-specific options:
          `--excel'
                Output strings in a format readable by Microsoft Excel
 
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
+
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
                "`mean'"]
@@ -3370,6 +3653,10 @@ format-specific options:
          `--excel'
                Output strings in a format readable by Microsoft Excel
 
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
+
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
                "`mean'"]
@@ -3451,6 +3738,10 @@ format-specific options:
          `--unquote='STRING
                Specify the text used to end quoted text [default: same
                as `quote']
+
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
 
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
@@ -3535,6 +3826,10 @@ format-specific options:
                Specify the text used to end quoted text [default: same
                as `quote']
 
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
+
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
                "`mean'"]
@@ -3613,6 +3908,10 @@ format-specific options:
          `--unquote='STRING
                Specify the text used to end quoted text [default: same
                as `quote']
+
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
 
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
@@ -3699,6 +3998,10 @@ format-specific options:
          `--excel'
                Output strings in a format readable by Microsoft Excel
 
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
+
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
                "`mean'"]
@@ -3721,6 +4024,10 @@ format-specific options:
 
          `--longtable'
                Use the longtable package to enable multi-page tables
+
+         `--keep-columns='STRING
+               Enumerate the columns that should be included in the
+               output [default: all columns]
 
          `--merge='FUNCTION
                Specify how to merge data from multiple files [default:
@@ -4071,6 +4378,11 @@ above:
 
    * `--exclude' can be specified repeatedly on the command line.
 
+   * `--keep-columns' accepts a list of comma-separated column ranges.
+     For example, `--keep-columns=1,3-6,8' tells `ncptl-logextract' to
+     ignore all but the first, third through sixth, and eighth columns
+     of data.
+
    * `--merge' takes one of `mean' (arithmetic mean), `hmean' (harmonic
      mean), `min' (minimum), `max' (maximum), `median' (median), `sum'
      (sum), `all' (all values from each column), or `concat' (horizontal
@@ -4090,6 +4402,11 @@ above:
      is that the former merges three files each with columns A and B as
      {A, A, A, B, B, B} while the latter merges the same files as {A,
      B, A, B, A, B}.
+
+     Note that `--merge' is applied AFTER `--keep-columns'.  Hence, if `--keep-columns'
+     specifies that only three columns be kept, `--merge' should list
+     exactly three operations (or a single operation that applies to
+     all three columns).
 
    * `--showfnames' prepends to each data table in the input file an
      extra header line indicating the log file the data was extracted
@@ -4487,10 +4804,10 @@ FILENAME `does not look like an unmerged coNCePTuaL log file'
      input files cause `ncptl-logmerge' to abort with the preceding
      error message.
 
-`No processor number found in' FILENAME
-     `ncptl-logmerge' needs to map filenames to processor numbers to
-     indicate which processors produced which lines of output.  If an
-     input file does not contain a `Processor (0<=P<tasks)' comment,
+`No process rank found in' FILENAME
+     `ncptl-logmerge' needs to map filenames to process ranks to
+     indicate which ranks produced which lines of output.  If an input
+     file does not contain a `Rank (0<=P<tasks)' comment,
      `ncptl-logmerge' aborts with the preceding error message.
 
 
@@ -4596,8 +4913,8 @@ ncptl-logunmerge [`--logfile'=TEMPLATE] [`--procs'=PROCESS_LIST] [`--quiet']
 DESCRIPTION
 ...........
 
-`ncptl-logmerge' merges a set of CONCEPTUAL log files into a more
-convenient, single file.  `ncptl-logunmerge' performs the inverse
+While `ncptl-logmerge' merges a set of CONCEPTUAL log files into a more
+convenient, single file, `ncptl-logunmerge' performs the inverse
 operation, splitting a merged file into separate CONCEPTUAL log files.
 Specifically, unadorned comment lines such as the following are written
 to all log files:
@@ -4680,8 +4997,13 @@ from standard input.
 DIAGNOSTICS
 ...........
 
-`The input file does not look like a merged coNCePTuaL log file'
-     Only the output from `ncptl-logmerge' is valid input to
+`The input file does not look like a merged coNCePTuaL log file; assuming simple concatenation'
+     `ncptl-logunmerge' expects its input file to contain the output
+     from `ncptl-logmerge'.  However, `ncptl-logunmerge' can also
+     accept an input file produced by concatenating a collection of
+     CONCEPTUAL log files end-to-end (e.g., by using the `cat'
+     command).  The preceding warning message serves merely to alert
+     the user in case the wrong input file was provided to
      `ncptl-logunmerge'.
 
 `Unable to find a unique number of tasks in the input file'
@@ -4855,8 +5177,8 @@ newline characters.
    Use `\"' for a double-quote character, `\\' for a backslash, and
 `\n' for a newline character.  All other escape sequences produce a
 warning message and are discarded.  As examples of valid
-escape-sequence usage, the string `"August 2009"' represents the text
-"August 2009" and `"I store \"stuff\" in C:\\MyStuff."' represents the
+escape-sequence usage, the string `"March 2011"' represents the text
+"March 2011" and `"I store \"stuff\" in C:\\MyStuff."' represents the
 text "I store "stuff" in C:\MyStuff."
 
    Integers consist of an optional `+' or `-'(1) followed by one or
@@ -4879,7 +5201,7 @@ In addition, a multiplier can be `E' (exponent) followed by a positive
 integer.  An `E' multiplier multiplies the base integer by 10 raised to
 the power of the alternate integer.
 
-   Some examples of valid integers include `2009', `-42', `64K'
+   Some examples of valid integers include `2010', `-42', `64K'
 (= 65,536), and `8E3' (= 8,000).
 
    ---------- Footnotes ----------
@@ -5012,7 +5334,7 @@ which is a number that can't be entered directly in a CONCEPTUAL
 program.  (The language supports only integral constants, as mentioned
 in *note Primitives::.)
 
-   The CONCEPTUAL language provides a special form called `REAL' which
+   The CONCEPTUAL language provides a special form called `REAL', which
 resembles a single-argument function.  When evaluated in floating-point
 context, `REAL' returns its argument evaluated normally, as if `REAL'
 were absent.  When evaluated in integer context, however, `REAL'
@@ -5082,13 +5404,13 @@ K-nomial trees.  CONCEPTUAL currently supports the following functions:
               |     `CEILING' | `FLOOR' | `ROUND'
               |     `TREE_PARENT' | `TREE_CHILD'
               |     `KNOMIAL_PARENT' | `KNOMIAL_CHILD' | `KNOMIAL_CHILDREN'
-              |     `MESH_NEIGHBOR' | `MESH_COORDINATE'
-              |     `TORUS_NEIGHBOR' | `TORUS_COORDINATE'
-              |     `RANDOM_UNIFORM' | `RANDOM_GAUSSIAN' | `RANDOM_POISSON'
+              |     `MESH_NEIGHBOR' | `MESH_COORDINATE' | `MESH_DISTANCE'
+              |     `RANDOM_UNIFORM' | `RANDOM_GAUSSIAN'
+              |     `RANDOM_POISSON' | `RANDOM_PARETO'
 
-   All of the above take as an argument one or more integers (which may
-be the result of an arithmetic expression).  The following sections
-describe each function in turn.
+   All of the above take as an argument one or more numeric values
+(which may be the result of an arithmetic expression).  The following
+sections describe each function in turn.
 
 * Menu:
 
@@ -5096,8 +5418,7 @@ describe each function in turn.
 * Floating-point functions::    Map one floating-point value to another
 * n-ary tree functions::        Find parents and children in n-ary trees
 * k-nomial tree functions::     Find parents and children in k-nomial trees
-* Mesh functions::              Find neighbors in 1-D, 2-D, and 3-D meshes
-* Torus functions::             Find neighbors in 1-D, 2-D, and 3-D tori
+* Mesh/torus functions::        Find neighbors in 1-D, 2-D, and 3-D meshes/tori
 * Random-number functions::     Generate unsynchronized pseudorandom numbers
 
 
@@ -5137,12 +5458,11 @@ example, `MIN(8,6,7,5,3,0,9)' is `0' and `MAX(8,6,7,5,3,0,9)' is `9'.
 
    `ROOT(n, x)' returns the nth root of x.  More precisely, it returns
 the largest integer r such that r^n <= x.  `ROOT' is not currently
-defined on negative values of x but this may change in a future release
-of CONCEPTUAL.  As an example of `ROOT' usage, `ROOT(5, 245)' is `3'
-because 3^5 = 243 <= 245 but 4^5 = 1024 > 245.  Similarly,
-`ROOT(2, 16)' = `4'; `ROOT(3, 27)' = `3'; `ROOT(0, 0)' and `ROOT(4,
--245)' each return a run-time error; and, `ROOT(-3, 8)' = `0' (because
-`ROOT(-3, 8)' = `1/ROOT(3, 8)' = `1/2' = `0').
+defined on negative values of x.  As an example of `ROOT' usage,
+`ROOT(5, 245)' is `3' because 3^5 = 243 <= 245 while 4^5 = 1024 > 245.
+Similarly, `ROOT(2, 16)' = `4'; `ROOT(3, 27)' = `3'; `ROOT(0, 0)' and
+`ROOT(4, -245)' each return a run-time error; and, `ROOT(-3, 8)' = `0'
+(because `ROOT(-3, 8)' = `1/ROOT(3, 8)' = `1/2' = `0').
 
    `SQRT' is an integer square root function.  It is essentially just
 syntactic sugar for the more general `ROOT' function: `SQRT(X)' =
@@ -5157,10 +5477,10 @@ Floating-point functions
 As stated in *note Arithmetic expressions::, there are certain
 constructs in which expressions are evaluated in floating-point context
 instead of integer context.  In such constructs, all of CONCEPTUAL's
-built-in functions return floating-point values.  Furthermore, the `CBRT', `LOG10', `ROOT',
-and `SQRT' functions (*note Integer functions::) compute floating-point
-results, not integer results which are coerced into floating-point
-format.
+built-in functions accept and return floating-point values.
+Furthermore, the `CBRT', `LOG10', `ROOT', and `SQRT' functions (*note
+Integer functions::) compute floating-point results, not integer
+results that are coerced into floating-point format.
 
    The following functions are not meaningful in integer context but are
 in floating-point context:
@@ -5248,7 +5568,7 @@ hold:
    * `TREE_CHILD(2, 2, 3)' => `9'
 
 
-File: conceptual.info,  Node: k-nomial tree functions,  Next: Mesh functions,  Prev: n-ary tree functions,  Up: Built-in functions
+File: conceptual.info,  Node: k-nomial tree functions,  Next: Mesh/torus functions,  Prev: n-ary tree functions,  Up: Built-in functions
 
 K-nomial tree functions
 .......................
@@ -5368,81 +5688,137 @@ evaluations, assuming `num_tasks' is `27':
    * `KNOMIAL_CHILDREN(8, 3, 10)' => `0'
 
 
-File: conceptual.info,  Node: Mesh functions,  Next: Torus functions,  Prev: k-nomial tree functions,  Up: Built-in functions
+File: conceptual.info,  Node: Mesh/torus functions,  Next: Random-number functions,  Prev: k-nomial tree functions,  Up: Built-in functions
 
-Mesh functions
-..............
+Mesh/torus functions
+....................
 
-CONCEPTUAL provides two functions, `MESH_NEIGHBOR' and `MESH_COORDINATE',
-that help treat (linear) task IDs as positions on a multidimensional
-mesh.  Each of these functions takes a variable number of arguments,
-determined by the dimensionality of the mesh (1-D, 2-D, or 3-D).
+CONCEPTUAL provides three functions--`MESH_NEIGHBOR', `MESH_COORDINATE',
+and `MESH_DISTANCE'--that help treat (linear) task IDs as positions on
+a multidimensional mesh or torus.  Each of these functions takes a
+variable number of arguments, determined by the dimensionality of the
+mesh (1-D, 2-D, or 3-D).
 
- -- Function: MESH_NEIGHBOR (TASK_ID, WIDTH, X_OFFSET [, HEIGHT,
-          Y_OFFSET [, DEPTH, Z_OFFSET]])
+     _Terminology note_: In the context of network topologies in
+     general and `MESH_NEIGHBOR', `MESH_COORDINATE', and `MESH_DISTANCE'
+     in particular, "torus" refers to a mesh topology, of any number of
+     dimensions, that contains wraparound links.  That is, nodes on the
+     right side of the mesh are directly connected to nodes on the left
+     side of the mesh, nodes on the top of the mesh are directly
+     connected to nodes on the bottom of the mesh, and so forth.  A
+     "partial torus" refers to a mesh topology of two or more
+     dimensions in which at least one dimension contains wraparound
+     links and at least one dimension does not.
+
+ -- Function: MESH_NEIGHBOR (`(' WIDTH `*'? [, HEIGHT `*'?
+          [, DEPTH `*'?]] `)', TASK_ID, `(' X_OFFSET [, Y_OFFSET
+          [, Z_OFFSET]] `)')
      `MESH_NEIGHBOR' returns a task's neighbor on a 1-D, 2-D, or 3-D
-     mesh.  It always takes a task number, the mesh's width, and the
-     desired x offset from the given task.  For a 2-D or 3-D mesh, the
-     next two arguments are the mesh's height and the desired y offset
-     from the given task.  For a 3-D mesh only, the next two arguments
-     are the mesh's depth and the desired z offset from the given task.
-     Offsets that move off the mesh cause `MESH_NEIGHBOR' to return the
-     value `-1'.
+     mesh or torus.  It takes exactly three arguments: a list of the
+     mesh/torus's dimensions, a task number, and a list of the
+     neighbor's offset in each dimension from the given task.  The two
+     list arguments must be parenthesized, even if they contain only a
+     single element.  Each dimension in the dimension list may be
+     followed by an asterisk to indicate that the mesh wraps around in
+     that dimension.  If not specified, HEIGHT and DEPTH default to
+     `1', and Y_OFFSET and Z_OFFSET default to `0'.  In the absence of
+     wraparound links, offsets that move off the mesh cause `MESH_NEIGHBOR'
+     to return the value `-1'.
 
- -- Function: MESH_COORDINATE (TASK_ID, COORDINATE, WIDTH [, HEIGHT
-          [, DEPTH]])
+ -- Function: MESH_COORDINATE (`(' WIDTH `*'? [, HEIGHT `*'?
+          [, DEPTH `*'?]] `)', TASK_ID, COORDINATE)
      `MESH_COORDINATE' returns a task's X, Y, or Z coordinate on a 1-D,
-     2-D, or 3-D mesh.  The first argument to `MESH_COORDINATE' is a
-     task number.  The second argument should be `0' to calculate an X
+     2-D, or 3-D mesh/torus.  The first argument to `MESH_COORDINATE'
+     is a list of the mesh/torus's dimensions.  The second argument is
+     a task number.  The third argument should be `0' to calculate an X
      coordinate, `1' to calculate a Y coordinate, or `2' to calculate a
-     Z coordinate.  The remaining arguments are the mesh's width,
-     height, and depth, respectively.  The height can be omitted for a
-     1-D mesh and the depth can be omitted for a 2-D mesh.  (Both
-     default to `1'.)
+     Z coordinate.  Coordinates are zero-origined.  Each dimension in
+     the dimension list may be followed by an asterisk to indicate that
+     the mesh wraps around in that dimension, but this has no impact on
+     the result.  (Asterisks are allowed solely for consistency with
+     the other mesh functions.)
 
-   `MESH_NEIGHBOR' and `MESH_COORDINATE' number tasks following the
-right-hand rule: left-to-right, then top-to-bottom, and finally
-back-to-front, as shown in the following illustrations of a 4-element
-(1-D) mesh, a 4x3 (2-D) mesh, and a 4x3x2 (3-D) mesh.  Examples of `MESH_NEIGHBOR'
-and `MESH_COORDINATE' for 1-D, 2-D, and 3-D meshes follow the
-corresponding illustration.
+ -- Function: MESH_DISTANCE (`(' WIDTH `*'? [, HEIGHT `*'?
+          [, DEPTH `*'?]] `)', TASK_ID_1, TASK_ID_2)
+     `MESH_DISTANCE' returns the shortest Manhattan distance between
+     two tasks on a 1-D, 2-D, or 3-D mesh or torus.  It takes exactly
+     three arguments: a list of the mesh/torus's dimensions and two
+     task numbers.  The list argument must be parenthesized, even if it
+     contains only a single element.  Each dimension in the dimension
+     list may be followed by an asterisk to indicate that the mesh
+     wraps around in that dimension.  If not specified, HEIGHT and
+     DEPTH default to `1'.
+
+   `MESH_NEIGHBOR', `MESH_COORDINATE', and `MESH_DISTANCE' number tasks
+following the right-hand rule: left-to-right, then top-to-bottom, and
+finally back-to-front, as shown in the following illustrations of a
+4-element (1-D) mesh, a 4x3 (2-D) mesh, and a 4x3x2 (3-D) mesh.
+Examples of `MESH_NEIGHBOR', `MESH_COORDINATE', and `MESH_DISTANCE' for
+1-D, 2-D, and 3-D meshes follow the corresponding illustration.
 
 
 
                            0 -- 1 -- 2 -- 3
 
-   * `MESH_NEIGHBOR(0, 4, -1)' => `-1'
+The following examples show how to use `MESH_NEIGHBOR' and `MESH_COORDINATE'
+to calculate neighbors and coordinates on the 1-D mesh shown above:
 
-   * `MESH_NEIGHBOR(0, 4, +1)' => `1'
+   * `MESH_NEIGHBOR((4), 0, (-1))' => `-1'
 
-   * `MESH_NEIGHBOR(1, 4, -1)' => `0'
+   * `MESH_NEIGHBOR((4), 0, (+1))' => `1'
 
-   * `MESH_NEIGHBOR(1, 4, +1)' => `2'
+   * `MESH_NEIGHBOR((4), 1, (-1))' => `0'
 
-   * `MESH_NEIGHBOR(2, 4, -1)' => `1'
+   * `MESH_NEIGHBOR((4), 1, (+1))' => `2'
 
-   * `MESH_NEIGHBOR(2, 4, +1)' => `3'
+   * `MESH_NEIGHBOR((4), 2, (-1))' => `1'
 
-   * `MESH_NEIGHBOR(3, 4, -1)' => `2'
+   * `MESH_NEIGHBOR((4), 2, (+1))' => `3'
 
-   * `MESH_NEIGHBOR(3, 4, +1)' => `-1'
+   * `MESH_NEIGHBOR((4), 3, (-1))' => `2'
+
+   * `MESH_NEIGHBOR((4), 3, (+1))' => `-1'
 
 
-   * `MESH_COORDINATE(-1, 0, 4)' => `-1'
+   * `MESH_COORDINATE((4), -1, 0)' => `-1'
 
-   * `MESH_COORDINATE( 0, 0, 4)' => `0'
+   * `MESH_COORDINATE((4), 0, 0)' => `0'
 
-   * `MESH_COORDINATE( 1, 0, 4)' => `1'
+   * `MESH_COORDINATE((4), 1, 0)' => `1'
 
-   * `MESH_COORDINATE( 2, 0, 4)' => `2'
+   * `MESH_COORDINATE((4), 2, 0)' => `2'
 
-   * `MESH_COORDINATE( 3, 0, 4)' => `3'
+   * `MESH_COORDINATE((4), 3, 0)' => `3'
 
-   * `MESH_COORDINATE( 4, 0, 4)' => `-1'
+   * `MESH_COORDINATE((4), 4, 0)' => `-1'
 
-   * `MESH_COORDINATE( 2, 1, 4)' => `0'
+   * `MESH_COORDINATE((4), 2, 1)' => `0'
 
-   * `MESH_COORDINATE( 2, 2, 4)' => `0'
+   * `MESH_COORDINATE((4), 2, 2)' => `0'
+
+
+   * `MESH_DISTANCE((4), -1, 0)' => `-1'
+
+   * `MESH_DISTANCE((4), 1, 2)' => `1'
+
+   * `MESH_DISTANCE((4), 0, 3)' => `3'
+
+   We can treat the 1-D mesh as a 1-D torus (a ring) by putting a `*'
+after the length of the x dimension:
+
+   * `MESH_NEIGHBOR((4*), 0, (-1))' => `3'
+
+   * `MESH_NEIGHBOR((4*), 3, (+1))' => `0'
+
+   * `MESH_DISTANCE((4*), -1, 0)' => `-1'
+
+   * `MESH_DISTANCE((4*), 1, 2)' => `1'
+
+   * `MESH_DISTANCE((4*), 0, 3)' => `1'
+
+The remaining `MESH_NEIGHBOR' examples return the same value as before.
+`MESH_COORDINATE' _always_ returns the same value regardless of the
+presence or absence of wraparound links.
 
 
                            0 -- 1 -- 2 -- 3
@@ -5455,38 +5831,84 @@ corresponding illustration.
                            |    |    |    |
                            8 -- 9 - 10 - 11
 
-   * `MESH_NEIGHBOR(5, 4, -1, 3, -1)' => `0'
+The next set of examples shows how to use `MESH_NEIGHBOR', `MESH_COORDINATE',
+and `MESH_DISTANCE' to calculate neighbors, coordinates, and distances
+on the 2-D mesh shown above:
 
-   * `MESH_NEIGHBOR(5, 4,  0, 3, -1)' => `1'
+   * `MESH_NEIGHBOR((4, 3), 5, (-1, -1))' => `0'
 
-   * `MESH_NEIGHBOR(5, 4, +1, 3, -1)' => `2'
+   * `MESH_NEIGHBOR((4, 3), 5, ( 0, -1))' => `1'
 
-   * `MESH_NEIGHBOR(5, 4, -1, 3,  0)' => `4'
+   * `MESH_NEIGHBOR((4, 3), 5, (+1, -1))' => `2'
 
-   * `MESH_NEIGHBOR(5, 4,  0, 3,  0)' => `5'
+   * `MESH_NEIGHBOR((4, 3), 5, (-1,  0))' => `4'
 
-   * `MESH_NEIGHBOR(5, 4, +1, 3,  0)' => `6'
+   * `MESH_NEIGHBOR((4, 3), 5, ( 0,  0))' => `5'
 
-   * `MESH_NEIGHBOR(5, 4, -1, 3, +1)' => `8'
+   * `MESH_NEIGHBOR((4, 3), 5, (+1,  0))' => `6'
 
-   * `MESH_NEIGHBOR(5, 4,  0, 3, +1)' => `9'
+   * `MESH_NEIGHBOR((4, 3), 5, (-1, +1))' => `8'
 
-   * `MESH_NEIGHBOR(5, 4, +1, 3, +1)' => `10'
+   * `MESH_NEIGHBOR((4, 3), 5, ( 0, +1))' => `9'
+
+   * `MESH_NEIGHBOR((4, 3), 5, (+1, +1))' => `10'
 
 
-   * `MESH_COORDINATE( 1, 0, 4, 3)' => `1'
+   * `MESH_COORDINATE((4, 3), 1, 0)' => `1'
 
-   * `MESH_COORDINATE( 6, 0, 4, 3)' => `2'
+   * `MESH_COORDINATE((4, 3), 6, 0)' => `2'
 
-   * `MESH_COORDINATE( 6, 1, 4, 3)' => `1'
+   * `MESH_COORDINATE((4, 3), 6, 1)' => `1'
 
-   * `MESH_COORDINATE( 6, 2, 4, 3)' => `0'
+   * `MESH_COORDINATE((4, 3), 6, 2)' => `0'
 
-   * `MESH_COORDINATE( 8, 0, 4, 3)' => `0'
+   * `MESH_COORDINATE((4, 3), 8, 0)' => `0'
 
-   * `MESH_COORDINATE( 8, 1, 4, 3)' => `2'
+   * `MESH_COORDINATE((4, 3), 8, 1)' => `2'
 
-   * `MESH_COORDINATE(12, 0, 4, 3)' => `-1'
+   * `MESH_COORDINATE((4, 3), 12, 0)' => `-1'
+
+
+   * `MESH_DISTANCE((4, 3),  1, 2)' => `1'
+
+   * `MESH_DISTANCE((4, 3),  2, 6)' => `1'
+
+   * `MESH_DISTANCE((4, 3),  0, 5)' => `2'
+
+   * `MESH_DISTANCE((4, 3),  3, 9)' => `4'
+
+   * `MESH_DISTANCE((4, 3), 11, 0)' => `5'
+
+   Wraparound links turn some out-of-bounds (`-1') neighbor values into
+in-bounds values and reduce some of the shortest-path distances between
+tasks:
+
+   * `MESH_NEIGHBOR((4, 3), 5, (-2,  0))' => `-1'
+
+   * `MESH_NEIGHBOR((4, 3), 5, (-2, -2))' => `-1'
+
+   * `MESH_NEIGHBOR((4, 3*), 5, (-2,  0))' => `-1'
+
+   * `MESH_NEIGHBOR((4, 3*), 5, (-2, -2))' => `-1'
+
+   * `MESH_NEIGHBOR((4*, 3), 5, (-2,  0))' => `7'
+
+   * `MESH_NEIGHBOR((4*, 3), 5, (-2, -2))' => `-1'
+
+   * `MESH_NEIGHBOR((4*, 3*), 5, (-2,  0))' => `7'
+
+   * `MESH_NEIGHBOR((4*, 3*), 5, (-2, -2))' => `11'
+
+
+   * `MESH_DISTANCE((4*, 3*),  1, 2)' => `1'
+
+   * `MESH_DISTANCE((4*, 3*),  2, 6)' => `1'
+
+   * `MESH_DISTANCE((4*, 3*),  0, 5)' => `2'
+
+   * `MESH_DISTANCE((4*, 3*),  3, 9)' => `3'
+
+   * `MESH_DISTANCE((4*, 3*), 11, 0)' => `2'
 
 
 			   0 -- 1 -- 2 -- 3
@@ -5501,158 +5923,73 @@ corresponding illustration.
 			    \ |  \ |  \ |  \ |
 			     20 - 21 - 22 - 23
 
-   * `MESH_NEIGHBOR(0, 4,  0, 3,  0, 2, +1)' => `12'
+The final set of examples in this section shows how to use `MESH_NEIGHBOR', `MESH_COORDINATE',
+and `MESH_DISTANCE' to calculate neighbors, coordinates, and distances
+on the 3-D mesh shown above:
 
-   * `MESH_NEIGHBOR(0, 4,  0, 3, +1, 2,  0)' => `4'
+   * `MESH_NEIGHBOR((4, 3, 2),  0, (0, 0, +1))' => `12'
 
-   * `MESH_NEIGHBOR(0, 4, +1, 3,  0, 2,  0)' => `1'
+   * `MESH_NEIGHBOR((4, 3, 2),  0, (0, +1, 0))' => `4'
 
-   * `MESH_NEIGHBOR(0, 4, +1, 3, +1, 2, +1)' => `17'
+   * `MESH_NEIGHBOR((4, 3, 2),  0, (+1, 0, 0))' => `1'
 
-   * `MESH_NEIGHBOR(17, 4, +2, 3, -1, 2, -1)' => `3'
+   * `MESH_NEIGHBOR((4, 3, 2),  0, (+1, +1, +1))' => `17'
 
-   * `MESH_NEIGHBOR(23, 4, +1, 3, +1, 2, +1)' => `-1'
+   * `MESH_NEIGHBOR((4, 3, 2), 17, (+2, -1, -1))' => `3'
+
+   * `MESH_NEIGHBOR((4, 3, 2), 23, (+1, +1, +1))' => `-1'
+
+   * `MESH_NEIGHBOR((4, 3, 2),  7, (+100, -200, +300))' => `-1'
 
 
-   * `MESH_COORDINATE(-5, 0, 4, 3, 2)' => `-1'
+   * `MESH_COORDINATE((4, 3, 2), -5, 0)' => `-1'
 
-   * `MESH_COORDINATE( 1, 0, 4, 3, 2)' => `1'
+   * `MESH_COORDINATE((4, 3, 2),  1, 0)' => `1'
 
-   * `MESH_COORDINATE( 6, 0, 4, 3, 2)' => `2'
+   * `MESH_COORDINATE((4, 3, 2),  6, 0)' => `2'
 
-   * `MESH_COORDINATE( 6, 1, 4, 3, 2)' => `1'
+   * `MESH_COORDINATE((4, 3, 2),  6, 1)' => `1'
 
-   * `MESH_COORDINATE( 6, 2, 4, 3, 2)' => `0'
+   * `MESH_COORDINATE((4, 3, 2),  6, 2)' => `0'
 
-   * `MESH_COORDINATE(18, 0, 4, 3, 2)' => `2'
+   * `MESH_COORDINATE((4, 3, 2), 18, 0)' => `2'
 
-   * `MESH_COORDINATE(18, 1, 4, 3, 2)' => `1'
+   * `MESH_COORDINATE((4, 3, 2), 18, 1)' => `1'
 
-   * `MESH_COORDINATE(18, 2, 4, 3, 2)' => `1'
+   * `MESH_COORDINATE((4, 3, 2), 18, 2)' => `1'
 
-   * `MESH_COORDINATE(18, 3, 4, 3, 2)' => error--> Invalid coordinate
+   * `MESH_COORDINATE((4, 3, 2), 18, 3)' => error--> Invalid coordinate
+
+
+   * `MESH_DISTANCE((4, 3, 2), 23, 24)' => `-1'
+
+   * `MESH_DISTANCE((4, 3, 2),  5, 17)' => `1'
+
+   * `MESH_DISTANCE((4, 3, 2),  1, 16)' => `3'
+
+   * `MESH_DISTANCE((4, 3, 2), 14,  8)' => `5'
+
+   * `MESH_DISTANCE((4, 3, 2),  0, 23)' => `6'
+
+   As before, wraparound links affect some of the return values:
+
+   * `MESH_NEIGHBOR((4*, 3*, 2*), 23, (+1, +1, +1))' => `0'
+
+   * `MESH_NEIGHBOR((4*, 3*, 2*),  7, (+100, -200, +300))' => `11'
+
+
+   * `MESH_DISTANCE((4*, 3*, 2*), 23, 24)' => `-1'
+
+   * `MESH_DISTANCE((4*, 3*, 2*),  5, 17)' => `1'
+
+   * `MESH_DISTANCE((4*, 3*, 2*),  1, 16)' => `3'
+
+   * `MESH_DISTANCE((4*, 3*, 2*), 14,  8)' => `4'
+
+   * `MESH_DISTANCE((4*, 3*, 2*),  0, 23)' => `3'
 
 
-File: conceptual.info,  Node: Torus functions,  Next: Random-number functions,  Prev: Mesh functions,  Up: Built-in functions
-
-Torus functions
-...............
-
-A torus is a mesh with wraparound edges.  CONCEPTUAL provides analogues
-to `MESH_NEIGHBOR' and `MESH_COORDINATE' called `TORUS_NEIGHBOR' and `TORUS_COORDINATE'
-which enable (linear) task IDs to be treated as positions on a 1-D,
-2-D, or 3-D torus.
-
- -- Function: TORUS_NEIGHBOR (TASK_ID, WIDTH, X_OFFSET [, HEIGHT,
-          Y_OFFSET [, DEPTH, Z_OFFSET]])
-     `TORUS_NEIGHBOR' takes the same arguments as `MESH_NEIGHBOR' but
-     calculates neighbors on a torus instead of a mesh.  *Note Mesh
-     functions::, for explanations of the arguments.  While task offsets
-     that go out-of-bounds on a mesh return `-1', such offsets merely
-     wrap around a torus.
-
- -- Function: TORUS_COORDINATE (TASK_ID, COORDINATE, WIDTH [, HEIGHT
-          [, DEPTH]])
-     `TORUS_COORDINATE' returns a task's X, Y, or Z coordinate on a
-     1-D, 2-D, or 3-D torus.  It performs exactly the same function as `MESH_COORDINATE'
-     and is aliased in the language merely for symmetry.  *Note Mesh
-     functions::, for details.
-
-   * `TORUS_NEIGHBOR(0, 4, -1)' => `3'
-
-   * `TORUS_NEIGHBOR(0, 4, +1)' => `1'
-
-   * `TORUS_NEIGHBOR(1, 4, -1)' => `0'
-
-   * `TORUS_NEIGHBOR(1, 4, +1)' => `2'
-
-   * `TORUS_NEIGHBOR(2, 4, -1)' => `1'
-
-   * `TORUS_NEIGHBOR(2, 4, +1)' => `3'
-
-   * `TORUS_NEIGHBOR(3, 4, -1)' => `2'
-
-   * `TORUS_NEIGHBOR(3, 4, +1)' => `0'
-
-
-   * `TORUS_COORDINATE(-1, 0, 4)' => `-1'
-
-   * `TORUS_COORDINATE( 0, 0, 4)' => `0'
-
-   * `TORUS_COORDINATE( 1, 0, 4)' => `1'
-
-   * `TORUS_COORDINATE( 2, 0, 4)' => `2'
-
-   * `TORUS_COORDINATE( 3, 0, 4)' => `3'
-
-   * `TORUS_COORDINATE( 4, 0, 4)' => `-1'
-
-   * `TORUS_COORDINATE( 2, 1, 4)' => `0'
-
-   * `TORUS_COORDINATE( 2, 2, 4)' => `0'
-
-
-   * `TORUS_NEIGHBOR(0, 4, -1, 3, -1)' => `11'
-
-   * `TORUS_NEIGHBOR(0, 4,  0, 3, -1)' => `8'
-
-   * `TORUS_NEIGHBOR(0, 4, +1, 3, -1)' => `9'
-
-   * `TORUS_NEIGHBOR(0, 4, -1, 3,  0)' => `3'
-
-   * `TORUS_NEIGHBOR(0, 4,  0, 3,  0)' => `0'
-
-   * `TORUS_NEIGHBOR(0, 4, +1, 3,  0)' => `1'
-
-   * `TORUS_NEIGHBOR(0, 4, -1, 3, +1)' => `7'
-
-   * `TORUS_NEIGHBOR(0, 4,  0, 3, +1)' => `4'
-
-   * `TORUS_NEIGHBOR(0, 4, +1, 3, +1)' => `5'
-
-
-   * `TORUS_NEIGHBOR(23, 4, +1, 3, +1, 2, +1)' => `0'
-
-   * `TORUS_NEIGHBOR(23, 4, +2, 3, +2, 2, +2)' => `17'
-
-   * `TORUS_NEIGHBOR(23, 4, +3, 3, +3, 2, +3)' => `10'
-
-
-   * `TORUS_COORDINATE( 1, 0, 4, 3)' => `1'
-
-   * `TORUS_COORDINATE( 6, 0, 4, 3)' => `2'
-
-   * `TORUS_COORDINATE( 6, 1, 4, 3)' => `1'
-
-   * `TORUS_COORDINATE( 6, 2, 4, 3)' => `0'
-
-   * `TORUS_COORDINATE( 8, 0, 4, 3)' => `0'
-
-   * `TORUS_COORDINATE( 8, 1, 4, 3)' => `2'
-
-   * `TORUS_COORDINATE(12, 0, 4, 3)' => `-1'
-
-
-   * `TORUS_COORDINATE(-5, 0, 4, 3, 2)' => `-1'
-
-   * `TORUS_COORDINATE( 1, 0, 4, 3, 2)' => `1'
-
-   * `TORUS_COORDINATE( 6, 0, 4, 3, 2)' => `2'
-
-   * `TORUS_COORDINATE( 6, 1, 4, 3, 2)' => `1'
-
-   * `TORUS_COORDINATE( 6, 2, 4, 3, 2)' => `0'
-
-   * `TORUS_COORDINATE(18, 0, 4, 3, 2)' => `2'
-
-   * `TORUS_COORDINATE(18, 1, 4, 3, 2)' => `1'
-
-   * `TORUS_COORDINATE(18, 2, 4, 3, 2)' => `1'
-
-   * `TORUS_COORDINATE(18, 3, 4, 3, 2)' => error--> Invalid coordinate
-
-
-File: conceptual.info,  Node: Random-number functions,  Prev: Torus functions,  Up: Built-in functions
+File: conceptual.info,  Node: Random-number functions,  Prev: Mesh/torus functions,  Up: Built-in functions
 
 Random-number functions
 .......................
@@ -5678,6 +6015,14 @@ synchronized across tasks and thereby enables random-task selection.
  -- Function: RANDOM_POISSON (MEAN)
      Return an integer selected at random from a Poisson distribution
      with mean MEAN and standard deviation sqrt(MEAN).
+
+ -- Function: RANDOM_PARETO (SHAPE, SCALE)
+ -- Function: RANDOM_PARETO (SHAPE, LOWER_BOUND, UPPER_BOUND)
+     With the two-argument form, return an integer selected at random
+     from a Pareto distribution with shape SHAPE and scale SCALE.  With
+     the three-argument form, return an integer selected at random from
+     a bounded Pareto distribution with shape SHAPE and bounded by the
+     range [LOWER_BOUND, UPPER_BOUND].
 
 
 File: conceptual.info,  Node: Aggregate expressions,  Next: Aggregate functions,  Prev: Built-in functions,  Up: Expressions
@@ -5906,12 +6251,13 @@ File: conceptual.info,  Node: Source tasks,  Next: Target tasks,  Prev: Restrict
 4.3.2 Source tasks
 ------------------
 
-A <SOURCE_TASK> specification takes one of four forms:
+A <SOURCE_TASK> specification takes one of five forms:
 
 <SOURCE_TASK>   ::=   `ALL TASKS'
                 |     `ALL TASKS' <IDENT>
                 |     `TASK' <EXPR>
                 |     `TASKS' <RESTRICTED_IDENT>
+                |     `TASK' `GROUP' <IDENT>
 
    `ALL TASKS' specifies that each task will perform a given operation.
 If followed by a variable name (<IDENT>), each task will individually
@@ -5933,6 +6279,10 @@ computation.  On each task that satisfies the relational expression,
 will be undefined on task 0, `1' on task 1, `2' on task 2, and so forth
 up to task `num_tasks-1', on which `x' will again be undefined.
 
+   ``TASK GROUP' <IDENT>' specifies that a previously defined group of
+tasks will perform a given operation.  This form of <SOURCE_TASK> is
+described further in *note Binding variables::.
+
    As per the definitions in *note Primitives:: and *note Restricted
 identifiers::, respectively, <IDENT>s and <RESTRICTED_IDENT>s do not
 accept parentheses.  Hence, `TASKS (bad SUCH THAT bad IS EVEN)' and
@@ -5950,11 +6300,12 @@ File: conceptual.info,  Node: Target tasks,  Prev: Source tasks,  Up: Task descr
 4.3.3 Target tasks
 ------------------
 
-A <TARGET_TASKS> specification takes one of three forms:
+A <TARGET_TASKS> specification takes one of four forms:
 
 <TARGET_TASKS>   ::=   `ALL OTHER TASKS'
                  |     `TASK' <EXPR>
                  |     `TASKS' <RESTRICTED_IDENT>
+                 |     `TASK' `GROUP' <IDENT>
 
    `ALL OTHER TASKS' is just like `ALL TASKS' in a <SOURCE_TASK>
 specification (*note Source tasks::) but applies to all tasks _except_
@@ -5974,6 +6325,10 @@ declares a variable.  However, in a <TARGET_TASKS> specification the
 variable's scope is limited to the relational expression within the <RESTRICTED_IDENT>.
 As an example, `TASKS dst SUCH THAT dst>src' refers to all tasks `dst'
 with a greater ID than a (previously declared) task `src'.
+
+   `TASK GROUP <IDENT>' specifies that a previously defined group of
+tasks will perform a given operation.  This form of <TARGET_TASKS> is
+described further in *note Binding variables::.
 
 
 File: conceptual.info,  Node: Communication statements,  Next: I/O statements,  Prev: Task descriptions,  Up: Grammar
@@ -6031,8 +6386,8 @@ is a formal definition:
                             `MESSAGES'
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
-                            [`FROM' `BUFFER' <EXPR> |
-                            `FROM' `THE DEFAULT BUFFER']
+                            [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                            `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
    Within a `RECEIVE' statement (*note Receiving::), a <MESSAGE_SPEC>'s `FROM'
 keyword must be replaced with `INTO'.
@@ -6050,8 +6405,8 @@ to here as a <RECV_MESSAGE_SPEC>:
                             `MESSAGES']
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
-                            [`FROM' `BUFFER' <EXPR> |
-                            `FROM' `THE DEFAULT BUFFER']
+                            [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                            `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
    Although not indicated by the preceding grammatical rule, a <RECV_MESSAGE_SPEC>
 is not allowed to be empty.  That is, at least one of the optional
@@ -6067,8 +6422,8 @@ variations of <MESSAGE_SPEC> and <RECV_MESSAGE_SPEC>, respectively:
                               <MESSAGE_ALIGNMENT> `MISALIGNED']
                               `INTEGERS' | `DOUBLEWORDS'
                               [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
-                              [`FROM' `BUFFER' <EXPR> |
-                              `FROM' `THE DEFAULT BUFFER']
+                              [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                              `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
 <REDUCE_TARGET_MESSAGE_SPEC>   ::=   [`AS' <ITEM_COUNT>
                                      [`NONUNIQUE' | `UNIQUE']
@@ -6076,8 +6431,8 @@ variations of <MESSAGE_SPEC> and <RECV_MESSAGE_SPEC>, respectively:
                                      <MESSAGE_ALIGNMENT> `MISALIGNED']
                                      `INTEGERS' | `DOUBLEWORDS']
                                      [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
-                                     [`INTO' `BUFFER' <EXPR> |
-                                     `INTO' `THE DEFAULT BUFFER']
+                                     [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                                     `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
 
    We now describe in turn each component of a <MESSAGE_SPEC>, <RECV_MESSAGE_SPEC>, <REDUCE_MESSAGE_SPEC>,
@@ -6132,7 +6487,7 @@ be empty or expressed in one of two other ways:
 
    A <DATA_MULTIPLIER> is a scaling factor that converts a unitless
 number into a number of bytes.  The following are the valid
-possibilities for <DATA_MULTIPLIER> and the number of bytes which which
+possibilities for <DATA_MULTIPLIER> and the number of bytes by which
 they multiply <EXPR>:
 
 <DATA_MULTIPLIER>   ::=   `BIT' | `BYTE' | `HALFWORD' | `WORD' |      `INTEGER' |
@@ -6304,6 +6659,10 @@ negative, the behavior is the same as if `FROM BUFFER'/`INTO BUFFER'
 was not specified.  `FROM THE DEFAULT BUFFER' and `INTO THE DEFAULT
 BUFFER' also explicitly specify the default buffer-allocation behavior.
 
+   It is also possible to specify byte offsets into a buffer.  For
+example, a message sent `FROM 4 WORDS INTO BUFFER 3' will be sent from
+4 words (12 bytes) past buffer 3's normal starting memory address.
+
 
 File: conceptual.info,  Node: Blocking semantics,  Prev: Buffer control,  Up: Message specifications
 
@@ -6370,6 +6729,55 @@ description:
    * `TASKS nonzero SUCH THAT nonzero>0 SEND nonzero 1E3 BYTE MESSAGES
      TO UNSUSPECTING TASK 0'
 
+   There are a number of attributes associated with every message
+transmission:
+
+   * synchronous vs. asynchronous operation
+
+   * unique vs. recycled message buffers
+
+   * unaligned vs. aligned vs. misaligned message buffers
+
+   * no data touching vs. data touching vs. data verification
+
+   * implicit vs. explicit message-buffer selection
+
+   * explicit byte offsets into message buffers
+
+A few of those appear in the preceding examples.
+
+   When `UNSUSPECTING' is omitted, the implicit `RECEIVE' statement
+normally inherits all of the attributes of the corresponding `SEND'.
+However, the second form of a <SEND_STMT>, which contains a `WHO
+RECEIVES IT' (or `WHO RECEIVES THEM') clause, enables the receiver's
+attributes to be overridden on a per-attribute basis.  For instance,
+consider the following `SEND' statement:
+
+     TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 WHO RECEIVES IT
+     ASYNCHRONOUSLY
+
+The alternative sequence of statements that does not use RECEIVES IT
+`WHO RECEIVES IT' is less straightforward to read because it splits a
+single message transmission into two statements:
+
+  1. `TASK 1 ASYNCHRONOUSLY RECEIVES A 1 MEGABYTE MESSAGE FROM TASK 0'
+
+  2. `TASK 0 SENDS A 1 MEGABYTE MESSAGE TO UNSUSPECTING TASK 1'
+
+   Some further examples of `WHO RECEIVES IT' follow:
+
+     TASKS left SUCH THAT left IS EVEN SEND 5 2 KILOBYTE 64 BYTE ALIGNED
+     MESSAGES TO TASKS left+1 WHO RECEIVE THEM AS UNALIGNED MESSAGES WITH
+     DATA TOUCHING
+
+     TASK num_tasks-1 ASYNCHRONOUSLY SENDS A 1E5 BYTE MESSAGE WITH
+     VERIFICATION TO TASK 0 WHO RECEIVES IT SYNCHRONOUSLY
+
+     TASK leaf SUCH THAT KNOMIAL_CHILDREN(leaf,2)=0 SENDS A UNIQUE 1536
+     BYTE MESSAGE WITH DATA TOUCHING TO TASK KNOMIAL_PARENT(leaf,2) WHO
+     RECEIVES IT ASYNCHRONOUSLY AS A NONUNIQUE QUADWORD ALIGNED MESSAGE
+     WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
+
    One subtlety of the `SEND' statement when used without `UNSUSPECTING'
 involves the orderings of the sends and receives.  The rule is that
 receives are posted before sends.  Furthermore, <RESTRICTED_IDENT>s
@@ -6403,49 +6811,27 @@ multiple communication operations, the component communications proceed
 sequentially because of data dependences and because the operations are
 blocking.
 
-   As should now be apparent, there are a number of attributes
-associated with every message transmission:
+   As another example of send/receive ordering, consider the statement,
+`TASKS x SUCH THAT x IS IN {1,4,5} SEND A 768 BYTE MESSAGE FROM 4
+DOUBLEWORDS INTO THE DEFAULT BUFFER TO TASKS y SUCH THAT y IS IN
+{6,2,3}'.  This statement causes nine messages to be sent and received
+and in the following order: 1 => 2, 1 => 3, 1 => 6, 4 => 2, 4 => 3,
+4 => 6, 5 => 2, 5 => 3, 5 => 6.  The reason that task 6 receives from
+each sender _after_ tasks 2 and 3 relates to the comment above that <RESTRICTED_IDENT>s
+are evaluated in order from 0 to NUM_TASKS-1.  One can therefore think
+of the preceding CONCEPTUAL statement as being implemented with the
+following pseudocode:
 
-   * synchronous vs. asynchronous operation
-
-   * unique vs. recycled message buffers
-
-   * unaligned vs. aligned vs. misaligned message buffers
-
-   * no data touching vs. data touching vs. data verification
-
-   * implicit vs. explicit message-buffer selection
-
-   When `UNSUSPECTING' is omitted, the implicit `RECEIVE' statement
-normally inherits all of the attributes of the corresponding `SEND'.
-However, the second form of a <SEND_STMT>, which contains a `WHO
-RECEIVES IT' (or `WHO RECEIVES THEM') clause, enables the receiver's
-attributes to be overridden on a per-attribute basis.  For instance,
-consider the following `SEND' statement:
-
-     TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 WHO RECEIVES IT
-     ASYNCHRONOUSLY
-
-The alternative sequence of statements that does not use `WHO RECEIVES
-IT' is less straightforward:
-
-  1. `TASK 1 ASYNCHRONOUSLY RECEIVES A 1 MEGABYTE MESSAGE FROM TASK 0'
-
-  2. `TASK 0 SENDS A 1 MEGABYTE MESSAGE TO UNSUSPECTING TASK 1'
-
-   Some further examples of `WHO RECEIVES IT' follow:
-
-     TASKS left SUCH THAT left IS EVEN SEND 5 2 KILOBYTE 64 BYTE ALIGNED
-     MESSAGES TO TASKS left+1 WHO RECEIVE THEM AS UNALIGNED MESSAGES WITH
-     DATA TOUCHING
-
-     TASK num_tasks-1 ASYNCHRONOUSLY SENDS A 1E5 BYTE MESSAGE WITH
-     VERIFICATION TO TASK 0 WHO RECEIVES IT SYNCHRONOUSLY
-
-     TASK leaf SUCH THAT KNOMIAL_CHILDREN(leaf,2)=0 SENDS A UNIQUE 1536
-     BYTE MESSAGE WITH DATA TOUCHING TO TASK KNOMIAL_PARENT(leaf,2) WHO
-     RECEIVES IT ASYNCHRONOUSLY AS A NONUNIQUE QUADWORD ALIGNED MESSAGE
-     WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
+     for s := 0 to num_tasks-1 do
+       if s is in {1, 4, 5} then
+         for r := 0 to num_tasks-1 do
+           if r is in {6, 2, 3} then
+             r receives from s
+     for s := 0 to num_tasks-1 do
+       if s is in {1, 4, 5} then
+         for r := 0 to num_tasks-1 do
+           if r is in {6, 2, 3} then
+             s sends to r
 
 
 File: conceptual.info,  Node: Receiving,  Next: Awaiting completion,  Prev: Sending,  Up: Communication statements
@@ -6456,7 +6842,7 @@ File: conceptual.info,  Node: Receiving,  Next: Awaiting completion,  Prev: Send
 *note Sending::, mentioned the <SEND_STMT>'s `UNSUSPECTING' keyword,
 which specifies that the targets should not implicitly perform a
 receive operation.  Because every send must have a matching receive,
-CONCEPTUAL offers a `RECEIVE' statement which explicitly receives a set
+CONCEPTUAL offers a `RECEIVE' statement that explicitly receives a set
 of messages.  A <RECEIVE_STMT> is much like a <SEND_STMT> (*note
 Sending::) with the <SOURCE_TASK> and <TARGET_TASKS> in the reverse
 order:
@@ -6469,6 +6855,33 @@ order:
 <TARGET_TASKS> is described in *note Target tasks::; <MESSAGE_SPEC> is
 described in *note Message specifications::; and, <SOURCE_TASK> is
 described in *note Source tasks::.
+
+   Like other statements that contain both a <SOURCE_TASK> and a <TARGET_TASKS>,
+the `RECEIVE' statement propagates all variables declared by the <SOURCE_TASK>
+to the <TARGET_TASKS>, as in
+
+     TASKS src-1 RECEIVE A 1 MEGABYTE MESSAGE FROM ALL TASKS src.
+
+However, the `RECEIVE' statement is unique among CONCEPTUAL statements
+in that it can alternatively propagate all variables declared by the <TARGET_TASKS>
+to the <SOURCE_TASK>, as in
+
+     ALL TASKS dst RECEIVE A 1 MEGABYTE MESSAGE FROM TASKS dst+1.
+
+The `RECEIVE' statement automatically determines the direction in which
+variables should be propagated.  If the direction cannot unambiguously
+be determined, the CONCEPTUAL compiler aborts with an error message.
+For example, the `RECEIVE' statement in the following code is ambiguous
+because the `bbb' in the expression `aaa < bbb' can refer to either the
+one in the `LET' statement or the one in the `TASKS bbb SUCH THAT bbb >
+3' expression:
+
+     LET bbb BE 5 WHILE {
+       TASKS aaa SUCH THAT aaa < bbb RECEIVE A MESSAGE FROM TASKS bbb SUCH
+       THAT bbb > 3 THEN
+       TASKS ccc SUCH THAT ccc > 3 SEND A MESSAGE TO UNSUSPECTING TASKS
+       ddd SUCH THAT ddd < ccc
+     }
 
    For each message sent via a `SEND'...`TO UNSUSPECTING' statement
 there must be a `RECEIVE' statement that receives a message of the same
@@ -6551,533 +6964,22 @@ Note that in the first <MCAST_STMT>, task 0 both sends and receives a
 message, while in the second <MCAST_STMT>, task 0 sends but does not
 receive.
 
-
-File: conceptual.info,  Node: Reducing,  Next: Synchronizing,  Prev: Multicasting,  Up: Communication statements
-
-4.4.6 Reducing
---------------
-
-A reduction operation is, in a sense, a complementary operation to a
-multicast (*note Multicasting::).  While a multicast delivers a message
-from one source to multiple targets, a reduction combines messages from
-multiple sources (by applying a commutative/associative operator to
-corresponding elements) to a single target.  Reduction is a collective
-operation: all parties collaborate to calculate the reduced value(s).
-As an example, if tasks 0, 1, and 2 collectively reduce the messages
-{5, 1}, {2, 7}, and {3, 4} to task 2 using the "+" operator, then
-task 2 will receive the message {10, 12}.  In fact, CONCEPTUAL's
-implementation of reductions also supports reductions to multiple
-targets with each target receiving a copy of the reduced value.
-
-   The following grammatical rules define CONCEPTUAL's many-to-many and
-many-to-one reduction facilities:
-
-<REDUCE_STMT>   ::=   <SOURCE_TASK>
-                      `REDUCES'
-                      <REDUCE_MESSAGE_SPEC>
-                      `TO' <SOURCE_TASK>
-                      [`WHO RECEIVES THE RESULT' <REDUCE_TARGET_MESSAGE_SPEC>]
-                |     <SOURCE_TASK>
-                      `REDUCES'
-                      <REDUCE_MESSAGE_SPEC>
-                      [`TO' <REDUCE_MESSAGE_SPEC>]
-
-   <REDUCE_MESSAGE_SPEC> is defined in *note Message specifications::.
-Both the data providers and data receivers are specified as <SOURCE_TASK>
-nonterminals (*note Source tasks::).  This design enables any set of
-tasks to provide the data to reduce and any disjoint or overlapping set
-of tasks to receive the reduced data.  As with all communication in
-CONCEPTUAL, message contents are opaque.  Furthermore, the grammar does
-not currently enable the programmer to specify the
-commutative/associative operator to use.
-
-   A simple many-to-one reduction can be expressed in CONCEPTUAL with
-`ALL TASKS REDUCE 5 DOUBLEWORDS TO TASK 0'.  Note that the definition
-of <REDUCE_MESSAGE_SPEC> and <REDUCE_TARGET_MESSAGE_SPEC> (*note
-Message specifications::) supports reductions only of `INTEGER's and `DOUBLEWORD's,
-not arbitrary <DATA_TYPE> values.  Omitting the optional ``TO' <REDUCE_MESSAGE_SPEC>',
-as in `TASKS rt SUCH THAT 3 DIVIDES rt REDUCE AN INTEGER', specifies
-that all tasks performing the reduction will receive a copy of the
-reduced value.  The sources and targets can also be designated
-explicitly as in `TASKS xyz SUCH THAT xyz<num_tasks/2 REDUCE 100
-DOUBLEWORDS TO TASKS xyz+num_tasks/4'.  When that code is run with
-8 tasks, tasks 0-3 reduce 100 doublewords (800 bytes) apiece and
-tasks 2-5 each receive identical copies of the 100 doublewords of
-reduced data.
-
-   Message data used with `REDUCES' can be transfered DATA TOUCHING
-`WITH DATA TOUCHING' (but not `WITH VERIFICATION'); data alignment can
-be specified; and, messages buffers can be named explicitly.  The
-following example represents fairly complex many-to-many usage of `REDUCES':
-
-     TASKS rsrc SUCH THAT rsrc IS EVEN REDUCE 32 64-BYTE-ALIGNED INTEGERS
-     WITH DATA TOUCHING FROM BUFFER 2 TO TASKS rtarg SUCH THAT
-     rtarg<num_tasks/4 \/ rtarg>(3*num_tasks)/4 WHO RECEIVE THE RESULT AS
-     32 UNIQUE PAGE-ALIGNED INTEGERS WITHOUT DATA TOUCHING.
-
-
-File: conceptual.info,  Node: Synchronizing,  Prev: Reducing,  Up: Communication statements
-
-4.4.7 Synchronizing
--------------------
-
-CONCEPTUAL enables sets of tasks to perform "barrier synchronization".
-The semantics are that no task can finish synchronizing until all tasks
-have started synchronizing.  The syntax is as follows:
-
-<SYNC_STMT>   ::=   <SOURCE_TASK>
-                    `SYNCHRONIZES'
-
-   A <SYNC_STMT> can be used to ensure that one set of statements has
-completed before beginning another set.  For example, a CONCEPTUAL
-program might have a set of tasks post a series of asynchronous
-receives (*note Receiving::), then make `ALL TASKS SYNCHRONIZE' before
-having another set of tasks perform the corresponding `UNSUSPECTING'
-sends (*note Sending::).  This procedure ensures that all of the target
-tasks are ready to receive before the source tasks start sending to
-them.
-
-
-File: conceptual.info,  Node: I/O statements,  Next: Counter and timer statements,  Prev: Communication statements,  Up: Grammar
-
-4.5 I/O statements
-==================
-
-CONCEPTUAL provides two statements for presenting information.  One
-statement writes simple messages to the standard output device and is
-intended to be used for providing status information during the run of
-a program.  The other statement provides a powerful mechanism for
-storing performance and correctness data to a log file.
-
-* Menu:
-
-* Utilizing log-file comments::  Treating log-file comments as a database
-* Writing to standard output::  Displaying status messages
-* Writing to a log file::       Storing test results
-
-
-File: conceptual.info,  Node: Utilizing log-file comments,  Next: Writing to standard output,  Prev: I/O statements,  Up: I/O statements
-
-4.5.1 Utilizing log-file comments
----------------------------------
-
-<OUTPUT_STMT>s and <LOG_STMT>s have limited access to the <KEY:VALUE>
-pairs that are written as comments at the top of every log file as
-shown in *note Log-file format::.  Given a key, KEY, the string
-expression `THE VALUE OF KEY' represents the value associated with that
-key or the empty string if KEY does not appear in the log-file comments:
-
-<STRING_OR_LOG_COMMENT>   ::=   <STRING>
-                          |     `THE VALUE OF' <STRING>
-
-That is, `"CPU frequency"' means the literal string "CPU frequency"
-while `THE VALUE OF "CPU frequency"' translates to a string like
-"1300000000 Hz (1.3 GHz)".  Environment variables are also considered
-keys and are therefore acceptable input to a VALUE OF `THE VALUE OF'
-construct.
-
-
-File: conceptual.info,  Node: Writing to standard output,  Next: Writing to a log file,  Prev: Utilizing log-file comments,  Up: I/O statements
-
-4.5.2 Writing to standard output
---------------------------------
-
-CONCEPTUAL's `OUTPUT' keyword is used to write a message from one or
-more source tasks (*note Source tasks::) to the standard output device.
-This is useful for providing progress reports during the execution of
-long-running CONCEPTUAL programs.  An <OUTPUT_STMT> looks like this:
-
-<OUTPUT_STMT>   ::=   <SOURCE_TASK>
-                      `OUTPUTS'
-                      <EXPR> | <STRING_OR_LOG_COMMENT>
-                      [`AND'   <EXPR> | <STRING_OR_LOG_COMMENT>]*
-
-   The following are some sample <OUTPUT_STMT>s:
-
-     TASK 0 OUTPUTS "Hello, world!"
-
-     TASKS nr SUCH THAT nr>0 OUTPUT nr AND "'s parent is " AND nr>>1 AND
-     " and its children are " AND nr<<1 AND " and " AND nr<<1+1
-
-     ALL TASKS me OUTPUT "Task " AND me AND " is running on host " AND THE
-     VALUE OF "Host name" AND " and plans to send to task " AND (me+1) MOD
-     num_tasks
-
-   `OUTPUT' does not implicitly output spaces between terms.  Hence,
-`OUTPUT "Yes" AND "No"' will output "YesNo", not "Yes No".  Although it
-is unlikely that a program would ever need to output two arithmetic
-expressions with no intervening text, an empty string can be used for
-this purpose: `OUTPUT 6 AND "" AND 3'.
-
-   An <OUTPUT_STMT> implicitly outputs a newline character at the end.
-Additional newline characters can be output by embedding `\n' in a
-string.  (*note Primitives::.)  CONCEPTUAL does not provide a means for
-suppressing the newline, however.
-
-
-File: conceptual.info,  Node: Writing to a log file,  Prev: Writing to standard output,  Up: I/O statements
-
-4.5.3 Writing to a log file
----------------------------
-
-After performing a network correctness or performance test it is almost
-always desirable to store the results in a file.  CONCEPTUAL has
-language support for writing tabular data to a log file.  The <LOG_STMT>
-command does the bulk of the work:
-
-<LOG_STMT>   ::=   <SOURCE_TASK>
-                   `LOGS'
-                   <AGGR_EXPR> `AS' <STRING_OR_LOG_COMMENT>
-                   [`AND' <AGGR_EXPR> `AS' <STRING_OR_LOG_COMMENT>]*
-
-   The idea behind a <LOG_STMT> is that a set of source tasks (*note
-Source tasks::) log an aggregate expression (*note Aggregate
-expressions::) to a log file under the column heading <STRING_OR_LOG_COMMENT>.
-Each task individually maintains a separately named log file so there
-is no ambiguity over which task wrote which entries.
-
-   Each (static) `LOGS' statement in a CONCEPTUAL program specifies one
-or more columns of the log file.  Every dynamic execution of a `LOGS'
-statement writes a single row to the log file.  A single `LOGS'
-statement should suffice for most CONCEPTUAL programs.
-
-   The following are some examples of <LOG_STMT>s:
-
-     ALL TASKS LOG bit_errors AS "Bit errors"
-
-     TASK 0 LOGS THE msgsize AS "Bytes" AND
-                 THE MEDIAN OF (1E6*bytes_sent)/(1M*elapsed_usecs) AS "MB/s"
-
-The first example produces a log file like the following:
-
-     "Bit errors"
-     "(all data)"
-     3
-
-The second example produces a log file like this:
-
-     "Bytes","MB/s"
-     "(only value)","(median)"
-     65536,179.9416266
-
-Note that in each log file, the CONCEPTUAL run-time system writes two
-rows of column headers for each column.  The first row contains <STRING_OR_LOG_COMMENT>
-as is.  The second row describes the <AGGR_FUNC> (*note Aggregate
-functions::) used to aggregate the data.  One or more rows of data
-follow.
-
-   Assume that the second <LOG_STMT> presented above appears within a
-loop (*note Iterating::).  It is therefore important to include the `THE'
-keyword before `msgsize' to assert that the expression `msgsize' is
-constant across invocations of the <LOG_STMT> and that, consequently,
-only a single row of data should be written to the log file.  Using
-`msgsize' without the `THE' would produce a column of data with one row
-per <LOG_STMT> invocation:
-
-     "Bytes","MB/s"
-     "(all data)","(median)"
-     65536,179.9416266
-     65536,
-     65536,
-     65536,
-     65536,
-          .
-          .
-          .
-
-   The rules that determine how `LOGS' statements produce rows and
-columns of a log file are presented below:
-
-  1. Each _static_ `LOGS' statement (and `AND' clause within a `LOGS'
-     statement) in a program produces a unique column.
-
-  2. Each _dynamic_ execution of a `LOGS' statement appends a row to
-     the column(s) it describes.
-
-  3. Each top-level complex statement (*note Complete programs::)
-     produces a new table in the log file.
-
-   Note that the choice of column name is inconsequential for
-determining what columns are written to the log file:
-
-     TASK 0 LOGS 314/100 AS "Pi" AND 22/7 AS "Pi"
-
-     "Pi","Pi"
-     "(all data)","(all data)"
-     3.14,3.142857143
-
-* Menu:
-
-* Computing aggregates::        Forcing aggregates to compute a result
-
-
-File: conceptual.info,  Node: Computing aggregates,  Prev: Writing to a log file,  Up: Writing to a log file
-
-Computing aggregates
-....................
-
-What if `msgsize' takes on a number of values throughout the execution
-of the program and for each value a number of runs is performed?  How
-would one log the median of each set of data?  Using `THE msgsize'
-won't work because the message size is not constant.  Using `msgsize'
-alone won't work either because CONCEPTUAL would then take the median
-of the times gathered across _all_ message sizes, which is undesirable.
-The solution is for the program to specify explicitly when aggregate
-functions (`MEDIAN' and all of the other functions listed in *note
-Aggregate functions::) compute a value:
-
-<FLUSH_STMT>   ::=   <SOURCE_TASK>
-                     `COMPUTES AGGREGATES'
-
-   The intention is that an inner loop might `LOG' data after every
-iteration and an outer loop would `COMPUTE AGGREGATES' after each
-iteration.
-
-
-File: conceptual.info,  Node: Counter and timer statements,  Next: Complex statements,  Prev: I/O statements,  Up: Grammar
-
-4.6 Counter and timer statements
-================================
-
-Critical to any performance or correctness test is the ability to
-specify which operations represent the test itself and should be
-measured and which are setup or other uninteresting operations and
-should not.  CONCEPTUAL automatically maintains a number of
-"counters"--variables that represent message counts, byte counts,
-bit-error counts, and elapsed time.  The complete list is presented in
-*note Predeclared variables::.
-
-   Normally, a CONCEPTUAL program performs some setup operations, `RESETS
-ITS COUNTERS' to zero, executes a communication pattern, and logs some
-function of the resulting changes in counter values (*note Writing to a
-log file::).  If additional setup work needs to be performed during an
-experiment, a program can COUNTERS `STORE ITS COUNTERS', perform any
-arbitrarily costly operations, ITS COUNTERS `RESTORE ITS COUNTERS', and
-continue the experiment as if those operations never happened.
-
-   Some CONCEPTUAL statements implicitly store and restore counters.
-For example, the `LOGS' statement *note Writing to a log file::) takes
-up no time from the program's perspective, and counted loops (*note
-Counted loops::) bracket any warmup repetitions and post-warmup
-synchronizations between a counter store and restore so no delays, bit
-errors, or messaging operations contribute to the totals measured by
-the experiment.
-
-* Menu:
-
-* Resetting counters::          Clearing message, byte, and time tallies
-* Storing counter values::      Storing message, byte, and time tallies
-* Restoring counter values::    Restoring stored message, byte, and time tallies
-
-
-File: conceptual.info,  Node: Resetting counters,  Next: Storing counter values,  Prev: Counter and timer statements,  Up: Counter and timer statements
-
-4.6.1 Resetting counters
-------------------------
-
-At the start of an experiment, after all setup processing has
-completed, all tasks that will eventually log measurement results
-should zero out their counters:
-
-<RESET_STMT>   ::=   <SOURCE_TASK>
-                     `RESETS ITS COUNTERS'
-
-   Hence, writing `ALL TASKS RESET THEIR COUNTERS' causes each task to
-reset all of the variables listed in *note Predeclared
-variables::--with the exception of `num_tasks'--to zero.  Note that
-`ITS' and `THEIR', like `RESET' and `RESETS', are considered synonyms
-(*note Primitives::).
-
-
-File: conceptual.info,  Node: Storing counter values,  Next: Restoring counter values,  Prev: Resetting counters,  Up: Counter and timer statements
-
-4.6.2 Storing counter values
-----------------------------
-
-A program can store the current values of all of the variables listed
-in *note Predeclared variables:: as follows:
-
-<STORE_STMT>   ::=   <SOURCE_TASK>
-                     `STORES ITS COUNTERS'
-
-   For example, writing `TASK 0 STORES ITS COUNTERS' causes task 0 to
-store the current values of `elapsed_usecs', `total_msgs', `bit_errors',
-etc.  The values are not modified.  Note that `ITS' and `THEIR', like
-`STORE' and `STORES', are considered synonyms (*note Primitives::).
-
-
-File: conceptual.info,  Node: Restoring counter values,  Prev: Storing counter values,  Up: Counter and timer statements
-
-4.6.3 Restoring counter values
-------------------------------
-
-Counters can be restored to their most recently saved values with a <RESTORE_STMT>:
-
-<RESTORE_STMT>   ::=   <SOURCE_TASK>
-                       `RESTORES ITS COUNTERS'
-
-   For example, writing `TASKS t SUCH THAT 3 DIVIDES t RESTORE THEIR
-COUNTERS' causes every third task to replace `elapsed_usecs', `total_msgs', `bit_errors',
-etc. with the values stored by a corresponding <STORE_STMT> (*note
-Storing counter values::).  Note that `ITS' and `THEIR', like `RESTORE'
-and `RESTORES', are considered synonyms (*note Primitives::).
-
-   An important feature of `STORES' and `RESTORES' is that they can be
-nested.  That is, each `STORE' pushes a set of counter values on a
-stack, and each `RESTORE' pops a set of counter values from the stack.
-Consequently, one can write code like the following:
-
-     ALL TASKS RESET THEIR COUNTERS THEN                                 #  1
-     ALL TASKS COMPUTE FOR 2 SECONDS THEN                                #  2
-     ALL TASKS STORE THEIR COUNTERS THEN                                 #  3
-       ALL TASKS COMPUTE FOR 5 SECONDS THEN                              #  4
-       ALL TASKS STORE THEIR COUNTERS THEN                               #  5
-         ALL TASKS COMPUTE FOR 9 SECONDS THEN                            #  6
-         ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 16" THEN   #  7
-       ALL TASKS RESTORE THEIR COUNTERS THEN                             #  8
-       ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 7" THEN      #  9
-       ALL TASKS STORE THEIR COUNTERS THEN                               # 10
-         ALL TASKS COMPUTE FOR 1 SECOND THEN                             # 11
-         ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 8" THEN    # 12
-       ALL TASKS RESTORE THEIR COUNTERS THEN                             # 13
-       ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 7" THEN      # 14
-       ALL TASKS RESTORE THEIR COUNTERS THEN                             # 15
-     ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 2".            # 16
-
-   Indentation is used in the above to clarify which `RESTORE'
-operations match which `STORE' operations.  The first `STORE' statement
-(line 3) occurs after 2 seconds have elapsed.  The second `STORE'
-statement (line 5) occurs after 2+5=7 seconds have elapsed.  When the `LOG'
-statement in line 7 is executed, it reports that 2+5+9=16 seconds have
-elapsed.  The `RESTORE' statement in line 8 then "winds back the clock"
-to the previous `STORE' statement, the one in line 5.  The next `LOG'
-statement (line 9) executes as if lines 5-8 never ran and therefore
-reports that only 2+5=7 seconds have elapsed.  The `LOG' statement in
-line 12 sees an additional second of elapsed time due to line 11's `COMPUTE'
-statement, for a total of 2+5+1=8 seconds.  However, the `RESTORE' in
-line 13 makes it as if that `COMPUTE' never happened.  Consequently,
-the `LOG' statement in line 14 reports that only 2+5=7 seconds have
-elapsed.  Finally, the `RESTORE' in line 15 sets the timer to the value
-it had all the way back at line 3.  The final `LOG' statement (line 16)
-therefore reports that only 2 seconds have elapsed because line 2
-contains the only `COMPUTE' statement whose execution time has not been
-discarded.
-
-   Because the `interpret' backend and those derived from it use
-logical time instead of physical time, the code listed above will
-report all zeroes.  Replacing `ROUND(elapsed_usecs/1E6)' with just
-`elapsed_usecs' will log the logical times {6,5,8,7,3}.  That is, the `LOG'
-statement in line 7 sees six events after the initial `RESET';(1) the `LOG'
-statement in line 9 sees only five events after the `RESET'
-(corresponding to lines 2, 3, 4, 5, and 9); and so forth up to the final `LOG'
-statement, which sees only three events: those produced by lines 2, 3,
-and 16.
-
-   A program that calls `RESTORE' more times than it calls `STORE' will
-abort with a fatal run-time error.
-
-   ---------- Footnotes ----------
-
-   (1) Each statement in the example corresponds to a single event and
-therefore counts as one unit of time.
-
-
-File: conceptual.info,  Node: Complex statements,  Next: Other statements,  Prev: Counter and timer statements,  Up: Grammar
-
-4.7 Complex statements
-======================
-
-The CONCEPTUAL statements presented in *note Communication statements::,
-*note I/O statements::, and *note Other statements:: are all known as
-"simple statements".  This section expands upon the statements already
-introduced by presenting "complex statements".  In its most basic form,
-a <COMPLEX_STMT> is just a <SIMPLE_STMT>.  However, the primary purpose
-of a <COMPLEX_STMT> is to juxtapose simple statements and other complex
-statements into more expressive forms.
-
-   Complex statements take the following form:
-
-<COMPLEX_STMT>   ::=   <SIMPLE_STMT> [`THEN' <COMPLEX_STMT>]
-
-   The constituent simple statements include `FOR' loops, `LET'
-bindings, `IF' conditionals, grouping constructs, and all of the
-statements introduced in *note Communication statements::, *note I/O
-statements::, and *note Other statements:::
-
-<SIMPLE_STMT>   ::=   `FOR' <EXPR> `REPETITIONS'   [`PLUS' <EXPR> `WARMUP' `REPETITIONS'
-                       [`AND A SYNCHRONIZATION']]   <SIMPLE_STMT>
-                |      `FOR EACH' <IDENT> `IN' <RANGE>   [`,' <RANGE>]* <SIMPLE_STMT>
-                |      `FOR' <EXPR> <TIME_UNIT> <SIMPLE_STMT>
-                |      `LET' <LET_BINDING> [`AND' <LET_BINDING>]*   `WHILE'
-                      <SIMPLE_STMT>
-                |      `IF' <REL_EXPR> `THEN' <SIMPLE_STMT>   [`OTHERWISE'
-                      <SIMPLE_STMT>]
-                |     `{' [<COMPLEX_STMT>] `}'
-                |     <SEND_STMT>
-                |     <RECEIVE_STMT>
-                |     <WAIT_STMT>
-                |     <MCAST_STMT>
-                |     <REDUCE_STMT>
-                |     <SYNC_STMT>
-                |     <OUTPUT_STMT>
-                |     <LOG_STMT>
-                |     <FLUSH_STMT>
-                |     <RESET_STMT>
-                |     <STORE_STMT>
-                |     <RESTORE_STMT>
-                |     <ASSERT_STMT>
-                |     <DELAY_STMT>
-                |     <TOUCH_STMT>
-                |     <TOUCH_BUFFER_STMT>
-                |     <PROCESSOR_STMT>
-                |     <BACKEND_STMT>
-
-   The remainder of this section describes in turn the `THEN' construct
-and each of the just-introduced <SIMPLE_STMT> types.
-
-* Menu:
-
-* Combining statements::        Performing multiple statements in sequence
-* Iterating::                   Performing a statement multiple times
-* Binding variables::           Lending values to variables
-* Conditional execution::       Executing statements only if a condition is met
-* Grouping::                    Treating multiple statements as one
-
-
-File: conceptual.info,  Node: Combining statements,  Next: Iterating,  Prev: Complex statements,  Up: Complex statements
-
-4.7.1 Combining statements
---------------------------
-
-The `THEN' keyword separates statements that are to be performed
-sequentially.  For example, a simple ping-pong communication can be
-expressed as follows:
-
-     ALL TASKS RESET ALL COUNTERS THEN
-     TASK 0 SENDS A 0 BYTE MESSAGE TO TASK 1 THEN
-     TASK 1 SENDS A 0 BYTE MESSAGE TO TASK 0 THEN
-     TASK 0 LOGS elapsed_usecs/2 AS "One-way latency"
-
-   There is no implicit intertask synchronization across `THEN'
-statements.  Consequently, the two communications specified in the
-following statement will be performed concurrently:
-
-     TASK 0 ASYNCHRONOUSLY SENDS AN 8 KILOBYTE MESSAGE TO TASK 1 THEN
-     TASK 1 ASYNCHRONOUSLY SENDS AN 8 KILOBYTE MESSAGE TO TASK 0 THEN
-     ALL TASKS AWAIT COMPLETION
-
-
-File: conceptual.info,  Node: Iterating,  Next: Binding variables,  Prev: Combining statements,  Up: Complex statements
-
-4.7.2 Iterating
----------------
-
-CONCEPTUAL provides a variety of looping constructs designed to
-repeatedly execute a <SIMPLE_STMT>.
-
-* Menu:
-
-* Counted loops::               Iterating for a given number of iterations
-* Range loops::                 Iterating over lists of numbers
-* Timed loops::                 Iterating for a given length of time
+   The `MULTICASTS' statement supports not only traditional one-to-many
+multicasting as shown in the preceding example but also many-to-many
+multicasting--and the less interesting but still valid many-to-one and
+one-to-one multicasting.  The constituent pairs of communicating tasks
+are identical to those induced by the `SENDS' statement (*note
+Sending::).  For example, the statement
+
+     TASKS s SUCH THAT s<3 MULTICAST A 1 KILOBYTE MESSAGE TO TASKS s SUCH
+     THAT s>6
+
+performs the collective analogue of
+
+     TASKS s SUCH THAT s<3 SEND A 1 KILOBYTE MESSAGE TO TASKS s SUCH
+     THAT s>6
+
+Specifically, task 0 will send a message to each of tasks 7, 8, 9, ...;
+task 1 will send a message to each of tasks 7, 8, 9, ...; and task 2
+will send a message to each of tasks 7, 8, 9, ...
 

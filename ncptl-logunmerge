@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -162,6 +162,7 @@ $memcache *= 2**20;
 my $is_merged = 0;      # 1="Merged coNCePTuaL log file" was found; 0=not found
 my $numtasks;           # Number of log files to generate
 my $numlines = 0;       # Number of lines in the input file
+my @ranklist;           # List of ranks in the order they appear
 open (INPUTLINES, "<$inputfile") || die "${progname}: Unable to open $inputfile\n";
 print STDERR "Acquiring information from $inputfile ... " if $verbose;
 while (my $oneline = <INPUTLINES>) {
@@ -180,10 +181,13 @@ while (my $oneline = <INPUTLINES>) {
     elsif (!defined $logfiletmpl && $oneline =~ /\# Log-file template: (.*)$/o) {
         $logfiletmpl = basename $1;
     }
+    elsif ($oneline =~ /\# Rank \(0<=P<tasks\): (\d+)$/o) {
+        push @ranklist, ($1) x 4;    # One per separator row
+    }
 }
 output_progress "done." if $verbose;
 close INPUTLINES;
-die "${progname}: The input file does not look like a merged coNCePTuaL log file\n" if !$is_merged;
+warn "${progname}: The input file does not look like a merged coNCePTuaL log file; assuming simple concatenation\n" if !$is_merged;
 die "${progname}: Unable to find a unique number of tasks in the input file\n" if !defined $numtasks;
 if (!defined $logfiletmpl) {
     $logfiletmpl = "a.out-%p.log";
@@ -202,15 +206,15 @@ foreach my $fnum (keys %validprocs) {
     $outfilename{$fnum} = $logfiletmpl;
     $outfilename{$fnum} =~ s/(?<!\%)\%(\d*)p/sprintf "\%$1d", $fnum/geo;
     if ($outfilename{$fnum} =~ /(?<!\%)\%(\d*)r/o) {
-	# Generate a unique run number.
-	for (my $run=1; ; $run++) {
-	    my $newoutfilename = $outfilename{$fnum};
-	    $newoutfilename =~ s/(?<!\%)\%(\d*)r/sprintf "\%$1d", $run/geo;
-	    if (!-e $newoutfilename) {
-		$outfilename{$fnum} = $newoutfilename;
-		last;
-	    }
-	}
+        # Generate a unique run number.
+        for (my $run=1; ; $run++) {
+            my $newoutfilename = $outfilename{$fnum};
+            $newoutfilename =~ s/(?<!\%)\%(\d*)r/sprintf "\%$1d", $run/geo;
+            if (!-e $newoutfilename) {
+                $outfilename{$fnum} = $newoutfilename;
+                last;
+            }
+        }
     }
 
     # Delete the file so we don't inadvertently append text to an
@@ -225,18 +229,18 @@ my %task_to_file_data;    # Map from a task number to the complete file data
 my $flush_to_disk = sub {
     # Flush all task data to disk then clear the data from memory.
     while (my ($fnum, $filecontents) = each %task_to_file_data) {
-	# Append to the output file.
-	open (OUTFILE, ">>", $outfilename{$fnum}) || die "${progname}: Failed to open $outfilename{$fnum} ($!)\n";
-	print OUTFILE $task_to_file_data{$fnum};
-	close OUTFILE;
-	$task_to_file_data{$fnum} = "";
+        # Append to the output file.
+        open (OUTFILE, ">>", $outfilename{$fnum}) || die "${progname}: Failed to open $outfilename{$fnum} ($!)\n";
+        print OUTFILE $task_to_file_data{$fnum};
+        close OUTFILE;
+        $task_to_file_data{$fnum} = "";
     }
     $bytesused = 0;
 };
 open (INPUTLINES, "<$inputfile") || die "${progname}: Unable to open $inputfile\n";
 if ($verbose) {
     my $numprocs = keys %validprocs;
-    printf STDERR "Extracting %d %s ... ", $numprocs, $numprocs==1 ? "file" : "files";
+    printf STDERR "Extracting %d %s to %s ... ", $numprocs, $numprocs==1 ? "file" : "files", $logfiletmpl;
 }
 my $lineno = 0;
 while (my $oneline = <INPUTLINES>) {
@@ -247,31 +251,49 @@ while (my $oneline = <INPUTLINES>) {
     }
 
     # Determine which output files receive the current line of input.
-    my $lineprocs = \%validprocs;      # Processes who output the current line
+    my $lineprocs;                     # Processes who output the current line
     my $origline = $oneline;           # Line from original log file
-    if (substr($oneline, 0, 2) eq "#[") {
-	if ($oneline =~ /^\#\[(\d+)\](.*)$/os) {
-	    # Lines beginning with "#[...]" where "..." is a single
-	    # number get written to a single log file.
-	    $origline = $2;
-	    $lineprocs = {$1 => 1};
-	}
-	elsif ($oneline =~ /^\#\[([^\#]+?)\](.*)$/os) {
-	    # Other lines beginning with "#[...]" get written only to
-	    # a set of log files.
-	    $origline = $2;
-	    $lineprocs = range2set $1;
-	}
-	else {
-	    warn "${progname}: Unable to parse line $lineno; skipping\n";
-	    $lineprocs = {};
-	}
+    if ($is_merged) {
+        # Common case: Properly merged input file
+        $lineprocs = \%validprocs;
+        if (substr($oneline, 0, 2) eq "#[") {
+            if ($oneline =~ /^\#\[(\d+)\](.*)$/os) {
+                # Lines beginning with "#[...]" where "..." is a single
+                # number get written to a single log file.
+                $origline = $2;
+                $lineprocs = {$1 => 1};
+            }
+            elsif ($oneline =~ /^\#\[([^\#]+?)\](.*)$/os) {
+                # Other lines beginning with "#[...]" get written only to
+                # a set of log files.
+                $origline = $2;
+                $lineprocs = range2set $1;
+            }
+            else {
+                warn "${progname}: Unable to parse line $lineno; skipping\n";
+                $lineprocs = {};
+            }
+        }
+        elsif ($oneline =~ /^\# Merged coNCePTuaL log file/o) {
+            $origline = "# coNCePTuaL log file\n";
+        }
+        elsif ($oneline =~ /^\# ==========================/o) {
+            $origline = "# ===================\n";
+        }
     }
-    elsif ($oneline =~ /^\# Merged coNCePTuaL log file/o) {
-        $origline = "# coNCePTuaL log file\n";
-    }
-    elsif ($oneline =~ /^\# ==========================/o) {
-        $origline = "# ===================\n";
+    else {
+        # Rarer case: Simply concatenated input files
+        die "${progname}: Exhausted the list of ranks (corrupt input file?)\n" if !$is_merged && !@ranklist;
+        $lineprocs = {$ranklist[0] => 1};
+        if ($oneline =~ /^\#{75}/o) {
+            my $newrank = shift @ranklist;
+            $lineprocs = {$newrank => 1};
+        }
+        elsif ($oneline =~ /\# Rank \(0<=P<tasks\): (\d+)$/o
+               && $1 ne $ranklist[0]) {
+            chomp $oneline;
+            die "${progname}: \"$oneline\" appeared in rank $ranklist[0]'s log file (corrupt input file?)\n";
+        }
     }
 
     # Associate the current input line with a set of files.
@@ -279,7 +301,7 @@ while (my $oneline = <INPUTLINES>) {
     foreach my $fnum (keys %$lineprocs) {
         next if !defined $validprocs{$fnum};
         $task_to_file_data{$fnum} .= $origline;
-	$bytesused += $origlinelen;
+        $bytesused += $origlinelen;
     }
 
     # Periodically flush the memory cache to disk.
@@ -288,6 +310,7 @@ while (my $oneline = <INPUTLINES>) {
 $flush_to_disk->();      # Flush any remaining data.
 output_progress "done." if $verbose;
 close INPUTLINES;
+die "${progname}: Exhausted the input file before the list of ranks (corrupt input file?)\n" if !$is_merged && @ranklist;
 exit 0;
 
 ###########################################################################
@@ -318,8 +341,8 @@ I<filename>
 
 =head1 DESCRIPTION
 
-B<ncptl-logmerge> merges a set of coNCePTuaL log files into a more
-convenient, single file.  B<ncptl-logunmerge> performs the inverse
+While B<ncptl-logmerge> merges a set of coNCePTuaL log files into a
+more convenient, single file, B<ncptl-logunmerge> performs the inverse
 operation, splitting a merged file into separate coNCePTuaL log files.
 Specifically, unadorned comment lines such as the following are
 written to all log files:
@@ -412,10 +435,14 @@ file from standard input.
 
 =over 6
 
-=item C<The input file does not look like a merged coNCePTuaL log file>
+=item C<The input file does not look like a merged coNCePTuaL log file; assuming simple concatenation>
 
-Only the output from B<ncptl-logmerge> is valid input to
-B<ncptl-logunmerge>.
+B<ncptl-logunmerge> expects its input file to contain the output from
+B<ncptl-logmerge>.  However, B<ncptl-logunmerge> can also accept an
+input file produced by concatenating a collection of coNCePTuaL log
+files end-to-end S<(e.g., by using> the F<cat> command).  The
+preceding warning message serves merely to alert the user in case the
+wrong input file was provided to B<ncptl-logunmerge>.
 
 =item C<Unable to find a unique number of tasks in the input file>
 

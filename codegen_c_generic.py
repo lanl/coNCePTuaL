@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -285,21 +285,17 @@ class NCPTL_CodeGen:
 
     def newvar(self, prefix="ivar", suffix=""):
         "Return the name of a new variable that we can use internally."
-        while 1:
-            self.nextvarnum = self.nextvarnum + 1
-            num = self.nextvarnum
-            stringnum = ""
-            while 1:
-                quot, rem = divmod (num, 27)
-                stringnum = "_abcdefghijklmnopqrstuvwxyz"[rem] + stringnum
-                if rem==0 or quot==0:
-                    break
-                num = quot
-            if stringnum[-1] != '_':
-                if suffix:
-                    return prefix + "_" + stringnum + "_" + suffix
-                else:
-                    return prefix + "_" + stringnum
+        stringnum = ""
+        self.nextvarnum = self.nextvarnum + 1
+        num = self.nextvarnum
+        while num > 0:
+            quot, rem = divmod(num-1, 26)
+            stringnum = "abcdefghijklmnopqrstuvwxyz"[rem] + stringnum
+            num = quot
+        if suffix:
+            return prefix + "_" + stringnum + "_" + suffix
+        else:
+            return prefix + "_" + stringnum
 
     def push_marker(self, stack=None):
         '''
@@ -504,6 +500,24 @@ class NCPTL_CodeGen:
             func(node)
         except AttributeError:
             self.errmsg.error_internal('I don\'t know how to process nodes of type "%s"' % node.type)
+
+    def tasks_to_text(self, task_tuple):
+        "Return a pretty-printed version of a task tuple."
+        if task_tuple[0] == "task_expr":
+            return "TASK %s" % task_tuple[1]
+        elif task_tuple[0] == "task_restricted":
+            return "TASKS %s SUCH THAT %s" % (task_tuple[1], task_tuple[2])
+        elif task_tuple[0] == "all_others":
+            return "ALL OTHER TASKS"
+        elif task_tuple[0] == "task_all":
+            if task_tuple[1] == None:
+                return "ALL TASKS"
+            else:
+                return "ALL TASKS %s" % task_tuple[1]
+        elif task_tuple[0] == "let_task":
+            return "TASK GROUP %s" % task_tuple[1]
+        else:
+            self.errmsg.error_internal('I don\'t know how to process tasks of type "%s"' % task_tuple[0])
 
     def clean_comments(self, comment_str):
         'Replace "/*" with "/_*" and "*/" with "*_/" so as not to confuse C.'
@@ -764,6 +778,36 @@ class NCPTL_CodeGen:
         self.combine_to_marker(wrapper_code)
         return (wrapper_code[0], ["}", "}", "}"])
 
+    def search_stack_for_task_group(self, varname):
+        "Walk the code stack for the definition of a task-group variable."
+        groupname = re.sub(r'^var_', "var_GROUP ", varname)
+        for pos in range(len(self.codestack)):
+            try:
+                stackvar, stackvalue = self.codestack[-pos]
+                if stackvar == groupname:
+                    return stackvalue
+            except:
+                pass
+        self.errmsg.error_internal("Failed to find a definition of %s" % varname)
+
+    def task_group_to_task(self, taskgroup):
+        "Convert a task-group tuple to a task tuple plus a possible variable rename."
+        groupname, tasktype, varname, taskexpr = taskgroup[1:5]
+        renamefrom = None
+        renameto = None
+        if taskexpr and varname and varname[:4] == "var_":
+            if groupname != varname and re.search(r'\b' + groupname + r'\b', taskexpr):
+                # The group name already appears in the task
+                # expression.  We'll need to rename it later.
+                renamefrom = groupname
+                renameto = self.newvar(suffix=varname[4:])
+                taskexpr = re.sub(r'\b' + renamefrom + r'\b', renameto, taskexpr)
+            tasktuple = [tasktype, groupname,
+                         re.sub(r'\b' + varname + r'\b', groupname, taskexpr)] + list(taskgroup[5:])
+        else:
+            tasktuple = taskgroup[2:]
+        return [tuple(tasktuple), renamefrom, renameto]
+
 
     #------------------------------#
     # Utility functions            #
@@ -772,21 +816,27 @@ class NCPTL_CodeGen:
 
     def code_begin_source_scope(self, source_task, stack=None):
         "Begin a new scope if source_task includes our task's rank."
+        # Convert task groups to ordinary tasks.
+        if source_task[0] == "let_task":
+            source_task, renamefrom, renameto = self.task_group_to_task(source_task)
+            if renamefrom != None:
+                self.push("{", stack)
+                self.code_declare_var(name=renameto, rhs=renamefrom, stack=stack)
+
+        # Determine if the calling rank is a source task.
         if source_task[0] == "task_all":
+            self.push("{   /* %s */" % self.tasks_to_text(source_task), stack)
             if source_task[1]:
-                self.pushmany([
-                    "{    /* ALL TASKS %s */" % source_task[1],
-                    "ncptl_int %s = virtrank;" % source_task[1]],
-                              stack)
-            else:
-                self.push("{   /* ALL TASKS */", stack)
+                self.push("ncptl_int %s = virtrank;" % source_task[1], stack)
         elif source_task[0] == "task_expr":
-            self.push("if ((%s) == virtrank) {" % source_task[1], stack)
+            self.push("if ((%s) == virtrank) {   /* %s */" %
+                      (source_task[1], self.tasks_to_text(source_task)),
+                      stack)
         elif source_task[0] == "task_restricted":
             self.pushmany([
                 "{",
                 "ncptl_int %s = virtrank;" % source_task[1],
-                "if (%s) {" % source_task[2]],
+                "if (%s) {   /* %s */" % (source_task[2], self.tasks_to_text(source_task))],
                           stack)
         else:
             self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
@@ -794,6 +844,10 @@ class NCPTL_CodeGen:
 
     def code_end_source_scope(self, source_task, stack=None):
         "End the scope(s) created by code_begin_source_scope."
+        if source_task[0] == "let_task":
+            source_task, renamefrom, renameto = self.task_group_to_task(source_task)
+        else:
+            renamefrom = None
         if source_task[0] == "task_all":
             self.push("}", stack)
         elif source_task[0] == "task_expr":
@@ -801,11 +855,22 @@ class NCPTL_CodeGen:
         elif source_task[0] == "task_restricted":
             self.push("}", stack)
             self.push("}", stack)
+        elif source_task[0] == "let_task":
+            self.code_end_source_scope(source_task[2:], stack)
         else:
             self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+        if renamefrom != None:
+            self.push("}", stack)
 
     def code_begin_target_loop(self, source_task, target_tasks, stack=None):
         "Loop over all tasks, seeing if our task receives from each in turn."
+        # Convert source task groups to ordinary tasks.
+        if source_task[0] == "let_task":
+            source_task, srenamefrom, srenameto = self.task_group_to_task(source_task)
+            if srenamefrom != None:
+                self.push("{", stack)
+                self.code_declare_var(name=srenameto, rhs=srenamefrom, stack=stack)
+
         # Iterate over all potential source tasks.
         sourcevar = self.newvar(suffix="task")
         if source_task[0] == "task_all":
@@ -840,6 +905,12 @@ class NCPTL_CodeGen:
             "ncptl_int %s = %s;" % (sourcevar, rankvar)],
                   stack)
 
+        # Convert target task groups to ordinary tasks.
+        if target_tasks[0] == "let_task":
+            target_tasks, trenamefrom, trenameto = self.task_group_to_task(target_tasks)
+            if trenamefrom != None:
+                self.code_declare_var(name=trenameto, rhs=trenamefrom, stack=stack)
+
         # Create a scope for the target task(s).
         if target_tasks[0] == "all_others":
             self.push("if (virtrank != %s) {" % rankvar, stack)
@@ -856,17 +927,25 @@ class NCPTL_CodeGen:
 
     def code_end_target_loop(self, source_task, target_tasks, stack=None):
         "End the scope(s) created by code_begin_target_loop."
-        if source_task[0] in ["task_all", "task_restricted"]:
-            self.push("}", stack)
-            self.push("}", stack)
-        elif source_task[0] == "task_expr":
-            self.push("}", stack)
-        else:
-            self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+        num_closing_braces = 0
+        if source_task[0] == "let_task":
+            source_task, srenamefrom, srenameto = self.task_group_to_task(source_task)
+            if srenamefrom != None:
+                num_closing_braces += 1
+        if target_tasks[0] == "let_task":
+            target_tasks, trenamefrom, trenameto = self.task_group_to_task(target_tasks)
         if target_tasks[0] in ["all_others", "task_expr", "task_restricted"]:
-            self.push("}", stack)
+            num_closing_braces += 1
         else:
             self.errmsg.error_internal('unknown target task type "%s"' % target_tasks[0])
+        if source_task[0] in ["task_all", "task_restricted"]:
+            num_closing_braces += 2
+        elif source_task[0] == "task_expr":
+            num_closing_braces += 1
+        else:
+            self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+        for i in range(num_closing_braces):
+            self.push("}", stack)
 
     def code_declare_var(self, type="ncptl_int", name=None, suffix="",
                          arraysize="", rhs=None, comment="", stack=None):
@@ -991,7 +1070,7 @@ class NCPTL_CodeGen:
                                  targetvar, rankvar, stack=None,
                                  verification=1):
         "Fill in common fields of various communication-state structures."
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_num = message_spec
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
 
         # Fill in most of the fields.
         if rankvar != None and targetvar != None:
@@ -1008,6 +1087,8 @@ class NCPTL_CodeGen:
                 self.push("%s.verification = %d;" % (struct, int(touching=="verification")), stack)
         self.push("%s.pendingsends = pendingsends;" % struct, stack)
         self.push("%s.pendingrecvs = pendingrecvs;" % struct, stack)
+        if buffer_ofs != None:
+            self.push("%s.bufferofs = %s;" % (struct, buffer_ofs), stack)
 
         # The buffer_num field is assigned in one of many different ways.
         if buffer_num != None:
@@ -1041,8 +1122,8 @@ class NCPTL_CodeGen:
                               stack)
             else:
                 self.pushmany([
-                    "(void) ncptl_malloc_message (%s.size, %s.alignment, %s.buffernum, %s.misaligned);" %
-                    (struct, struct, struct, struct),
+                    "(void) ncptl_malloc_message (%s.size+%s.bufferofs, %s.alignment, %s.buffernum, %s.misaligned);" %
+                    (struct, struct, struct, struct, struct),
                     "%s.buffer = NULL;" % struct],
                               stack)
 
@@ -1119,10 +1200,13 @@ class NCPTL_CodeGen:
         self.push('"%s"' % cstring)
 
     def n_ident(self, node):
-        variable = "var_" + re.sub(r'\W', '_', node.attr)
+        variable = "var_" + node.attr
         self.push(variable)
         if self.exported_vars.has_key(variable):
             self.referenced_exported_vars[variable] = 1
+
+    def n_my_task(self, node):
+        self.push("virtrank")
 
 
     #--------------#
@@ -1148,6 +1232,11 @@ class NCPTL_CodeGen:
         elif node.attr == "all_others":
             # ALL OTHER TASKS
             self.push(("all_others", None, None))
+        elif node.attr == "let_task":
+            # TASK GROUP <var>
+            variable = self.pop()
+            task_expr = self.search_stack_for_task_group(variable)
+            self.push(tuple(["let_task", variable] + list(task_expr)))
         else:
             self.errmsg.error_internal('Unknown task_expr type "%s"' % node.attr)
 
@@ -1266,6 +1355,13 @@ class NCPTL_CodeGen:
     def n_no_touching(self, node):
         self.push("no_touching")
 
+    def n_buffer_offset(self, node):
+        if node.kids:
+            # An <expr> was already pushed on the stack.
+            pass
+        else:
+            self.push("0%s" % self.ncptl_int_suffix)
+
     def n_buffer_number(self, node):
         if node.kids:
             # An <expr> was already pushed on the stack.
@@ -1283,26 +1379,28 @@ class NCPTL_CodeGen:
     def n_message_spec(self, node):
         # Store all message-specification parameters in a single tuple.
         buffer_num = self.pop()
+        buffer_ofs = self.pop()
         touching = self.pop()
         alignment = self.pop()
         message_size = self.pop()
         uniqueness = self.pop()
         num_messages = self.pop()
         misaligned = node.attr
-        self.push((num_messages, uniqueness, message_size,
-                   alignment, misaligned, touching, buffer_num))
+        self.push((num_messages, uniqueness, message_size, alignment,
+                   misaligned, touching, buffer_ofs, buffer_num))
 
     def n_reduce_message_spec(self, node):
         # Store all message-specification parameters in a single tuple.
         buffer_num = self.pop()
+        buffer_ofs = self.pop()
         touching = self.pop()
         data_type = self.pop()
         alignment = self.pop()
         uniqueness = self.pop()
         item_count = self.pop()
         misaligned = node.attr
-        self.push((item_count, uniqueness, data_type,
-                   alignment, misaligned, touching, buffer_num))
+        self.push((item_count, uniqueness, data_type, alignment,
+                   misaligned, touching, buffer_ofs, buffer_num))
 
     def n_send_attrs(self, node):
         self.push(node.attr)
@@ -1520,17 +1618,38 @@ class NCPTL_CodeGen:
         if_expr = self.pop()
         self.push("(%s) ? (%s) : (%s)" % (condition, if_expr, else_expr))
 
+    def n_dimension_list(self, node):
+        "Return a list of (dimension length, torus?) pairs."
+        dimension_list = []
+        for d in range(node.attr):
+            dimension_list.insert(0, self.pop())
+        self.push(dimension_list)
+
+    def n_dimension(self, node):
+        "Return a dimension as an (length, torus?) pair."
+        dimension = self.pop()
+        self.push((dimension, node.attr))
+
     def n_func_call(self, node):
         "Push a call to a function that takes one or more arguments."
-        func_name = node.attr
-        arguments = self.pop()
+        # Acquire the function name and parameters.
+        funcname = node.attr
+        if funcname[:5] == "MESH_":
+            # Each mesh function takes three separate stack arguments.
+            other = self.pop()
+            tasknum = self.pop()
+            dimens = self.pop()
+            arguments = [dimens, tasknum, other]
+        else:
+            # All other functions take a single list argument.
+            arguments = self.pop()
         num_args = len(arguments)
 
         # MIN and MAX are special in that they take an arbitrary
         # number of arguments.
-        if func_name in ["MIN", "MAX"]:
+        if funcname in ["MIN", "MAX"]:
             self.push("ncptl_func_%s(%d%s, %s)" %
-                      (string.lower(func_name),
+                      (string.lower(funcname),
                        num_args,
                        self.ncptl_int_suffix,
                        string.join(arguments, ",")))
@@ -1544,25 +1663,25 @@ class NCPTL_CodeGen:
             "CEILING":          [1],
             "FACTOR10":         [1],
             "FLOOR":            [1],
+            "KNOMIAL_CHILD":    [2, 3, 4],
+            "KNOMIAL_CHILDREN": [1, 2, 3],
+            "KNOMIAL_PARENT":   [1, 2, 3],
             "LOG10":            [1],
+            "MESH_COORDINATE":  [3],
+            "MESH_DISTANCE":    [3],
+            "MESH_NEIGHBOR":    [3],
+            "RANDOM_GAUSSIAN":  [2],
+            "RANDOM_PARETO":    [2, 3],
+            "RANDOM_POISSON":   [1],
+            "RANDOM_UNIFORM":   [2],
+            "ROOT":             [2],
             "ROUND":            [1],
             "SQRT":             [1],
-            "ROOT":             [2],
-            "RANDOM_UNIFORM":   [2],
-            "RANDOM_GAUSSIAN":  [2],
-            "RANDOM_POISSON":   [1],
-            "TREE_PARENT":      [1, 2],
             "TREE_CHILD":       [2, 3],
-            "MESH_NEIGHBOR":    [3, 5, 7],
-            "TORUS_NEIGHBOR":   [3, 5, 7],
-            "MESH_COORDINATE":  [3, 4, 5],
-            "TORUS_COORDINATE": [3, 4, 5],
-            "KNOMIAL_PARENT":   [1, 2, 3],
-            "KNOMIAL_CHILD":    [2, 3, 4],
-            "KNOMIAL_CHILDREN": [1, 2, 3]
+            "TREE_PARENT":      [1, 2]
         }
         try:
-            valid_num_args = function_arguments[func_name]
+            valid_num_args = function_arguments[funcname]
             if num_args not in valid_num_args:
                 if len(valid_num_args) == 1:
                     expected_args = "%d argument(s)" % valid_num_args
@@ -1570,70 +1689,78 @@ class NCPTL_CodeGen:
                     expected_args = string.join(map(str, valid_num_args[:-1]), ", ") + \
                                     " or %d arguments" % valid_num_args[-1]
                 self.errmsg.error_fatal("%s expects %s but was given %d" %
-                                        (func_name, expected_args, num_args))
+                                        (funcname, expected_args, num_args))
         except KeyError:
-            self.errmsg.error_internal("unknown number of arguments to %s" % func_name)
+            self.errmsg.error_internal("unknown number of arguments to %s" % funcname)
 
-        # All of the mesh and torus neighbor functions map to the same
-        # library call.  Patch the argument list accordingly.
-        if func_name in ["MESH_NEIGHBOR", "TORUS_NEIGHBOR"]:
-            gtask = arguments[0]
-            gtorus = str(int(func_name=="TORUS_NEIGHBOR"))
-            gwidth = arguments[1]
-            gheight = "1"
-            gdepth = "1"
-            gdeltax = arguments[2]
-            gdeltay = "0"
-            gdeltaz = "0"
-            if num_args >= 5:
-                gheight = arguments[3]
-                gdeltay = arguments[4]
-            if num_args >= 7:
-                gdepth = arguments[5]
-                gdeltaz = arguments[6]
-            func_name = "GRID_NEIGHBOR"
-            arguments = [gtask, gtorus,
-                         gwidth, gheight, gdepth,
-                         gdeltax, gdeltay, gdeltaz]
-        # All of the mesh and torus coordinate functions map to the same
-        # library call.  Patch the argument list accordingly.
-        elif func_name in ["MESH_COORDINATE", "TORUS_COORDINATE"]:
-            gtask = arguments[0]
-            gcoord = arguments[1]
-            gwidth = arguments[2]
-            gheight = "1"
-            gdepth = "1"
-            if num_args >= 4:
-                gheight = arguments[3]
-            if num_args >= 5:
-                gdepth = arguments[4]
-            func_name = "GRID_COORD"
-            arguments = [gtask, gcoord,
-                         gwidth, gheight, gdepth]
+        # Regardless of dimensionality, all of the mesh and torus
+        # neighbor functions map to the same library call.  Patch the
+        # argument list accordingly.
+        nis = self.ncptl_int_suffix
+        if funcname == "MESH_NEIGHBOR":
+            # Extract the function's parameters.  Pad all lists to
+            # exactly three elements.
+            gdimens = [dim_wrap[0] for dim_wrap in arguments[0]]
+            gdimens = (gdimens + ["1" + nis]*3)[:3]
+            gtorus = [dim_wrap[1] for dim_wrap in arguments[0]]
+            gtorus = (gtorus + [False, False, False])[:3]
+            gtorus = [str(int(flag)) + nis for flag in gtorus]
+            gtask = arguments[1]
+            gdeltas = arguments[2]
+            gdeltas = (gdeltas + ["0" + nis]*3)[:3]
+            arguments = gdimens + gtorus + [gtask] + gdeltas
+        # Regardless of dimensionality, all of the mesh and torus
+        # coordinate functions map to the same library call.  Patch
+        # the argument list accordingly.
+        elif funcname == "MESH_COORDINATE":
+            # Extract the function's parameters.  Pad all lists to
+            # exactly three elements.
+            gdimens = [dim_wrap[0] for dim_wrap in arguments[0]]
+            gdimens = (gdimens + ["1" + nis]*3)[:3]
+            gtask = arguments[1]
+            gcoord = arguments[2]
+            funcname = "MESH_COORD"
+            arguments = gdimens + [gtask, gcoord]
+        # Regardless of dimensionality, all of the mesh and torus
+        # distance functions map to the same library call.  Patch the
+        # argument list accordingly.
+        elif funcname == "MESH_DISTANCE":
+            # Extract the function's parameters.  Pad all lists to
+            # exactly three elements.
+            gdimens = [dim_wrap[0] for dim_wrap in arguments[0]]
+            gdimens = (gdimens + ["1" + nis]*3)[:3]
+            gtorus = [dim_wrap[1] for dim_wrap in arguments[0]]
+            gtorus = (gtorus + [False, False, False])[:3]
+            gtorus = [str(int(flag)) + nis for flag in gtorus]
+            gtask1 = arguments[1]
+            gtask2 = arguments[2]
+            arguments = gdimens + gtorus + [gtask1, gtask2]
         # Tree arity defaults to 2.
-        elif func_name in ["TREE_PARENT", "TREE_CHILD"]:
+        elif funcname in ["TREE_PARENT", "TREE_CHILD"]:
             if num_args == valid_num_args[0]:
                 arguments.append("2")
         # k defaults to 2 in k-nomial tree and the number of tasks
         # defaults to num_tasks.
-        elif func_name[:8] == "KNOMIAL_":
+        elif funcname[:8] == "KNOMIAL_":
             if num_args < valid_num_args[-2]:
                 arguments.append("2")
             if num_args < valid_num_args[-1]:
                 arguments.append("var_num_tasks")
-            if func_name == "KNOMIAL_CHILD":
+            if funcname == "KNOMIAL_CHILD":
                 arguments.append("0")
-            elif func_name == "KNOMIAL_CHILDREN":
+            elif funcname == "KNOMIAL_CHILDREN":
                 arguments.insert(1, "0")
                 arguments.append("1")
-                func_name = "KNOMIAL_CHILD"
+                funcname = "KNOMIAL_CHILD"
         # Keep track of our use of random numbers.
-        elif func_name[:7] == "RANDOM_":
+        elif funcname[:7] == "RANDOM_":
             self.program_uses_randomness = max(self.program_uses_randomness, 1)
+            if funcname == "RANDOM_PARETO" and num_args == 2:
+                arguments.append(arguments[1])
 
         # Return a C function call.
         self.push("ncptl_func_%s(%s)" %
-                  (string.lower(func_name), string.join(arguments, ",")))
+                  (string.lower(funcname), string.join(arguments, ",")))
 
     def n_real(self, node):
         "Evaluate an expression in floating-point context."
@@ -1663,11 +1790,7 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS %s THEIR COUNTERS */" % operation, istack)
-        else:
-            self.push(" /* TASKS %s %s THEIR COUNTERS */" % (source_task[1], operation),
-                      istack)
+        self.push(" /* %s %s THEIR COUNTERS */" % (self.tasks_to_text(source_task), operation), istack)
         self.code_begin_source_scope(source_task, istack)
         self.code_allocate_event("EV_%s" % operation, declare="(void)", stack=istack)
         self.code_end_source_scope(source_task, istack)
@@ -1738,11 +1861,17 @@ class NCPTL_CodeGen:
             "/* Define the maximum loop trip count that we're willing to unroll fully. */",
             "#define CONC_MAX_UNROLL 5",
             "",
-            "/* Specify the number of trial iterations in each FOR <time> loop. */",
+            "/* Specify the number of trial iterations in each FOR <time> loop and the",
+            " * minimum number of microseconds for which the trials need to run. */",
             "#define CONC_FOR_TIME_TRIALS 10",
+            "#define CONC_FOR_TIME_MIN_USECS 10000",
             "",
             "/* Define a macro that rounds a double to a ncptl_int. */",
-            "#define CONC_DBL2INT(D) ((ncptl_int)((D)+0.5))"])
+            "#define CONC_DBL2INT(D) ((ncptl_int)((D)+0.5))",
+            "",
+            "/* Define a macro that increments a buffer pointer by a byte offset. */",
+            "#define CONC_GETBUFPTR(S) ((void *)((char *)thisev->s.S.buffer + thisev->s.S.bufferofs))",
+            ""])
         self.pushmany(self.invoke_hook("code_define_macros_POST", locals(),
                                        before=[""]))
 
@@ -1800,6 +1929,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingsends; /* # of outstanding sends */",
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to send from */",
+            "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word before sending */",
             "int verification;       /* 1=fill message buffer with known contents */",
@@ -1816,6 +1946,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingsends; /* # of outstanding sends */",
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to receive into */",
+            "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word after reception */",
             "int verification;       /* 1=verify that all bits are correct */",
@@ -1859,12 +1990,13 @@ class NCPTL_CodeGen:
             "",
             "/* Describe a synchronous multicast event. */",
             "typedef struct {",
-            "ncptl_int source;       /* Source task */",
+            "ncptl_int source;       /* Source task, -1 in the many-to-many case */",
             "ncptl_int size;         /* Number of bytes to send */",
             "ncptl_int alignment;    /* Message alignment (in bytes) */",
             "ncptl_int pendingsends; /* # of outstanding sends */",
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to send/receive from */",
+            "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word before sending */",
             "int verification;       /* 1=verify that all bits are correct */",
@@ -1881,6 +2013,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingsends; /* # of outstanding sends */",
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to send/receive from */",
+            "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word before sending/after receiving */",
             "int sending;            /* 1=we're a sender */",
@@ -2578,10 +2711,11 @@ class NCPTL_CodeGen:
         for tag, field in msg_events.items():
             if self.events_used.has_key(tag):
                 struct = "thisev->s.%s" % field
+                sizefield = "%s.bufferofs + " % struct
                 if tag == "EV_REDUCE":
-                    sizefield = "%s.numitems * %s.itemsize" % (struct, struct)
+                    sizefield += "%s.numitems * %s.itemsize" % (struct, struct)
                 else:
-                    sizefield = "%s.size" % struct
+                    sizefield += "%s.size" % struct
                 self.pushmany([
                     "case %s:" % tag,
                     "if (!%s.buffer)" % struct,
@@ -2592,7 +2726,7 @@ class NCPTL_CodeGen:
                 if tag != "EV_REDUCE":
                     self.pushmany([
                         "if (%s.verification)" % struct,
-                        "ncptl_fill_buffer (%s.buffer, %s, -1);" % (struct, sizefield)])
+                        "ncptl_fill_buffer (CONC_GETBUFPTR(%s), %s, -1);" % (field, sizefield)])
                 self.pushmany(self.invoke_hook("code_def_init_msg_mem_EACH_TAG", locals()))
                 self.push("break;")
                 self.push("")
@@ -2820,10 +2954,10 @@ class NCPTL_CodeGen:
             if self.program_uses_touching:
                 self.pushmany([
                     "if (thisev->s.send.touching)",
-                    "ncptl_touch_data (thisev->s.send.buffer, thisev->s.send.size);",
+                    "ncptl_touch_data (CONC_GETBUFPTR(send), thisev->s.send.size);",
                     "else",
                     "if (thisev->s.send.verification)",
-                    "ncptl_fill_buffer (thisev->s.send.buffer, thisev->s.send.size, 1);"])
+                    "ncptl_fill_buffer (CONC_GETBUFPTR(send), thisev->s.send.size, 1);"])
             self.pushmany(self.invoke_hook("code_def_procev_send_BODY", locals(),
                                            alternatepy=lambda loc:
                                            loc["self"].errmsg.error_fatal("the %s backend does not support SENDS" %
@@ -2844,10 +2978,10 @@ class NCPTL_CodeGen:
             if self.program_uses_touching:
                 self.pushmany([
                     "if (thisev->s.send.touching)",
-                    "ncptl_touch_data (thisev->s.send.buffer, thisev->s.send.size);",
+                    "ncptl_touch_data (CONC_GETBUFPTR(send), thisev->s.send.size);",
                     "else",
                     "if (thisev->s.send.verification)",
-                    "ncptl_fill_buffer (thisev->s.send.buffer, thisev->s.send.size, 1);"])
+                    "ncptl_fill_buffer (CONC_GETBUFPTR(send), thisev->s.send.size, 1);"])
             self.pushmany(self.invoke_hook("code_def_procev_asend_BODY", locals(),
                                            alternatepy=lambda loc:
                                            loc["self"].errmsg.error_fatal("the %s backend does not support ASYNCHRONOUSLY SENDS" %
@@ -2872,10 +3006,10 @@ class NCPTL_CodeGen:
             if self.program_uses_touching:
                 self.pushmany([
                     "if (thisev->s.recv.touching)",
-                    "ncptl_touch_data (thisev->s.recv.buffer, thisev->s.recv.size);",
+                    "ncptl_touch_data (CONC_GETBUFPTR(recv), thisev->s.recv.size);",
                     "else",
                     "if (thisev->s.recv.verification)",
-                    "var_bit_errors += ncptl_verify (thisev->s.recv.buffer, thisev->s.recv.size);"])
+                    "var_bit_errors += ncptl_verify (CONC_GETBUFPTR(recv), thisev->s.recv.size);"])
             self.code_update_exported_vars(["var_bytes_received",
                                             "var_total_bytes",
                                             "var_msgs_received",
@@ -2935,9 +3069,9 @@ class NCPTL_CodeGen:
                     "for (touchev=0; touchev<numtouches; touchev++) {",
                     "CONC_RECV_EVENT *thisrecv = (CONC_RECV_EVENT *) &eventlist[touchedlist[touchev]].s.recv;",
                     "if (thisrecv->touching)",
-                    "ncptl_touch_data (thisrecv->buffer, thisrecv->size);",
+                    "ncptl_touch_data ((void *)((char *)thisrecv->buffer + thisrecv->bufferofs), thisrecv->size);",
                     "else if (thisrecv->verification)",
-                    "var_bit_errors += ncptl_verify (thisrecv->buffer, thisrecv->size);",
+                    "var_bit_errors += ncptl_verify ((void *)((char *)thisrecv->buffer + thisrecv->bufferofs), thisrecv->size);",
                     "else",
                     'ncptl_fatal ("Internal error: non-touch data was found on the touch list");',
                     "}"])
@@ -2969,10 +3103,10 @@ class NCPTL_CodeGen:
                     "if (thisev->s.mcast.source == physrank) {",
                     " /* We're the sender */",
                     "if (thisev->s.mcast.touching)",
-                    "ncptl_touch_data (thisev->s.mcast.buffer, thisev->s.mcast.size);",
+                    "ncptl_touch_data (CONC_GETBUFPTR(mcast), thisev->s.mcast.size);",
                     "else",
                     "if (thisev->s.mcast.verification)",
-                    "ncptl_fill_buffer (thisev->s.mcast.buffer, thisev->s.mcast.size, 1);",
+                    "ncptl_fill_buffer (CONC_GETBUFPTR(mcast), thisev->s.mcast.size, 1);",
                     "}"])
             self.pushmany(self.invoke_hook("code_def_procev_mcast_BODY", locals(),
                                            alternatepy=lambda loc:
@@ -2983,10 +3117,10 @@ class NCPTL_CodeGen:
                     "if (thisev->s.mcast.source != physrank) {",
                     " /* We're a receiver */",
                     "if (thisev->s.mcast.touching)",
-                    "ncptl_touch_data (thisev->s.mcast.buffer, thisev->s.mcast.size);",
+                    "ncptl_touch_data (CONC_GETBUFPTR(mcast), thisev->s.mcast.size);",
                     "else",
                     "if (thisev->s.mcast.verification)",
-                    "var_bit_errors += ncptl_verify (thisev->s.mcast.buffer, thisev->s.mcast.size);",
+                    "var_bit_errors += ncptl_verify (CONC_GETBUFPTR(mcast), thisev->s.mcast.size);",
                     "}"])
             self.push("break;")
             self.push("")
@@ -3006,7 +3140,7 @@ class NCPTL_CodeGen:
                     "if (thisev->s.reduce.sending)",
                     " /* We're a sender */",
                     "if (thisev->s.reduce.touching)",
-                    "ncptl_touch_data (%s, thisev->s.reduce.numitems*thisev->s.reduce.itemsize);" % msgbuffer])
+                    "ncptl_touch_data (CONC_GETBUFPTR(reduce), thisev->s.reduce.numitems*thisev->s.reduce.itemsize);"])
             localvars = locals()
             self.pushmany(self.invoke_hook("code_def_procev_reduce_BODY", localvars,
                                            alternatepy=lambda loc:
@@ -3018,7 +3152,7 @@ class NCPTL_CodeGen:
                     "if (thisev->s.reduce.receiving)",
                     " /* We're a receiver */",
                     "if (thisev->s.reduce.touching)",
-                    "ncptl_touch_data (%s, thisev->s.reduce.numitems*thisev->s.reduce.itemsize);" % msgbuffer])
+                    "ncptl_touch_data ((void *)((char *)%s + thisev->s.reduce.bufferofs), thisev->s.reduce.numitems*thisev->s.reduce.itemsize);" % msgbuffer])
             self.push("break;")
             self.push("")
 
@@ -3183,9 +3317,10 @@ class NCPTL_CodeGen:
                 "beginev->itersleft += beginev->itersleft/4 + 1;   /* Add a 25% fudge factor. */",
                 "",
                 " /* Determine if we need to perform another set of trial iterations. */",
-                "if (minelapsedtime < beginev->usecs/100) {",
-                " /* itersleft doesn't correspond to at least 1% of the desired execution",
-                "  * time.  We therefore try again using 10X the number of iterations. */"])
+                "if (minelapsedtime < beginev->usecs/10 && minelapsedtime < CONC_FOR_TIME_MIN_USECS) {",
+                " /* itersleft doesn't correspond to at least 10% of the desired execution",
+                "  * time or 100% of the minimum trial time.  We therefore try again using",
+                "  * 10X the number of iterations. */"])
             self.code_declare_var("uint64_t", name="now",
                                   comment="Current time in microseconds")
             self.pushmany([
@@ -3196,7 +3331,7 @@ class NCPTL_CodeGen:
                 "beginev->starttime = now;",
                 "}",
                 "else {",
-                " /* The trial iterations lasted for at least 1% of the desired execution",
+                " /* The trial iterations lasted for a sufficient length of",
                 "  * time.  It's now safe to begin the timed iterations. */",
                 "beginev->previters = beginev->itersleft;"])
             for var in self.referenced_exported_vars.keys():
@@ -3509,21 +3644,6 @@ class NCPTL_CodeGen:
         self.push_marker(wrapper_code)
         opencurlies = 0
         for lval, rval in bindlist:
-            # Because LET is evaluated at initialization time, none of
-            # the dynamic variables have been assigned yet.  Until we
-            # find a way to deal with dynamic variables in LET
-            # statements we just won't allow them.  In addition,
-            # dynamic variables may not be assigned to as that's just
-            # too weird to deal with.
-            for variable in self.exported_vars.keys():
-                if re.search(r'\b%s\b' % variable, rval) and variable != "var_num_tasks":
-                    self.errmsg.error_fatal("%s cannot be accessed from a LET statement" %
-                                            variable[4:],
-                                            lineno0=node.lineno0, lineno1=node.lineno1)
-                if lval == variable:
-                    self.errmsg.error_fatal("%s is a read-only variable" %
-                                            variable[4:],
-                                            lineno0=node.lineno0, lineno1=node.lineno1)
             # Wrap the initialization code within a let-binding.  One
             # tricky case we need to handle is when a variable is
             # let-bound to a function of its previous value.
@@ -3531,19 +3651,24 @@ class NCPTL_CodeGen:
                 "{",
                 " /* LET %s BE %s WHILE... */" % (lval, rval)],
                           wrapper_code)
-            if re.search(r'\b%s\b' % lval, rval):
-                # Evil case: lval is defined in terms of itself; employ a
-                # temporary variable to help out.
-                temprvalvar = self.code_declare_var("ncptl_int",
-                                                    rhs=rval,
-                                                    suffix="expr",
-                                                    stack=wrapper_code)
-                self.code_declare_var("ncptl_int", name=lval, rhs=temprvalvar,
-                                      stack=wrapper_code)
-            else:
-                # Easy case: lval is not defined in terms of itself.
-                self.code_declare_var("ncptl_int", name=lval, rhs=rval,
-                                      stack=wrapper_code)
+            try:
+                # LET <var> BE <expr>
+                if re.search(r'\b%s\b' % lval, rval):
+                    # Evil case: lval is defined in terms of itself; employ a
+                    # temporary variable to help out.
+                    temprvalvar = self.code_declare_var("ncptl_int",
+                                                        rhs=rval,
+                                                        suffix="expr",
+                                                        stack=wrapper_code)
+                    self.code_declare_var("ncptl_int", name=lval, rhs=temprvalvar,
+                                          stack=wrapper_code)
+                else:
+                    # Easy case: lval is not defined in terms of itself.
+                    self.code_declare_var("ncptl_int", name=lval, rhs=rval,
+                                          stack=wrapper_code)
+            except TypeError:
+                # LET <var> BE <task_expr>
+                pass
             opencurlies = opencurlies + 1
         self.push("", wrapper_code)
         self.combine_to_marker(wrapper_code)
@@ -3860,7 +3985,7 @@ class NCPTL_CodeGen:
         attributes = self.pop()
         message_spec = self.pop()
         source_task = self.pop()
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_num = message_spec
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
 
         # Blocking all-to-all communication currently deadlocks.
         if "asynchronously" not in attributes and \
@@ -3878,15 +4003,21 @@ class NCPTL_CodeGen:
             self.push(recv_message_spec)
             self.push(source_task)
             self.push(recv_attributes)
+            node.sem["receive_dir"] = "S2T"
             self.n_receive_stmt(node)
             self.pushmany(self.pop(istack), istack)
 
-        # Determine the set of tasks we're sending to.
-        if target_tasks[0] == "all_others":
-            self.push(" /* SEND...TO ALL OTHERS */", istack)
+        # Convert target task groups to ordinary tasks.
+        self.push(" /* %s SENDS TO %s */" % (self.tasks_to_text(source_task), self.tasks_to_text(target_tasks)), istack)
+        if target_tasks[0] == "let_task":
+            target_tasks, trenamefrom, trenameto = self.task_group_to_task(target_tasks)
         else:
-            self.push(" /* SEND...TO %s */" % str(target_tasks[1]), istack)
+            trenamefrom = None
+
+        # Determine the set of tasks we're sending to.
         self.code_begin_source_scope(source_task, istack)
+        if trenamefrom != None:
+            self.code_declare_var(name=trenameto, rhs=trenamefrom, stack=stack)
         if target_tasks[0] == "all_others":
             targetvar = self.code_declare_var(suffix="loop", stack=istack)
             self.pushmany([
@@ -3949,10 +4080,11 @@ class NCPTL_CodeGen:
             else:
                 lineno_msg = "lines %d-%d" % (node.lineno0, node.lineno1)
             self.code_allocate_event("EV_SEND", stack=istack)
-            self.pushmany([
-                "if (virtrank == (%s))" % targetvar,
-                'ncptl_fatal ("Send-to-self deadlock encountered on task %%d in %s of the source code", virtrank);' % lineno_msg],
-                          istack)
+            if "unsuspecting" not in attributes:
+                self.pushmany([
+                        "if (virtrank == (%s))" % targetvar,
+                        'ncptl_fatal ("Send-to-self deadlock encountered on task %%d in %s of the source code", virtrank);' % lineno_msg],
+                              istack)
         self.push("", istack)
         struct = "thisev->s.send"
         self.push(" /* Fill in all of the fields of a send-event structure. */",
@@ -3978,15 +4110,18 @@ class NCPTL_CodeGen:
         target_tasks = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        if source_task[0] == "task_all":
-            self.push(" /* RECEIVE...FROM ALL TASKS */", istack)
-        else:
-            self.push(" /* RECEIVE...FROM %s */" % str(source_task[1]), istack)
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_num = message_spec
+        self.push(" /* %s RECEIVES FROM %s */" % (self.tasks_to_text(source_task), self.tasks_to_text(target_tasks)), istack)
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
 
         # Determine the set of tasks we're receiving from.
-        sourcevar = self.code_begin_target_loop(source_task, target_tasks, istack)
-        self.push(" /* In this scope, we must be a message recipient. */", istack)
+        if node.sem["receive_dir"] == "S2T":
+            # Source scope propagates to the target.
+            sourcevar = self.code_begin_target_loop(source_task, target_tasks, istack)
+            self.push(" /* In this scope, we must be a message recipient. */", istack)
+        else:
+            # Target scope propagates to the source.
+            self.code_begin_source_scope(target_tasks, istack)
+
         if "asynchronously" not in attributes:
             if node.lineno0 == node.lineno1:
                 lineno_msg = "line %d" % node.lineno0
@@ -4024,13 +4159,37 @@ class NCPTL_CodeGen:
                     "if (numreps > 0%s) {" % self.ncptl_int_suffix],
                               stack=istack)
 
-        # Fill in the receive-event data structure.
+        # Fill in the receive-event data structure, once per receiver.
+        if node.sem["receive_dir"] == "T2S":
+            # When the source scope is inferior to the target scope,
+            # we may have more than one sender.
+            if source_task[0] == "all_others":
+                sourcevar = self.code_declare_var(suffix="loop", stack=istack)
+                self.pushmany([
+                    "for (%s=0; %s<var_num_tasks; %s++)" % (sourcevar, sourcevar, sourcevar),
+                    "if (%s != virtrank) {" % sourcevar],
+                              istack)
+            elif source_task[0] == "task_expr":
+                sourcevar = source_task[1]
+                self.code_declare_var(name="virtsrc", rhs=sourcevar, stack=istack)
+                self.push("if (virtsrc>=0 && virtsrc<var_num_tasks) {",
+                          stack=istack)
+            elif source_task[0] == "task_restricted":
+                sourcevar = self.code_declare_var(name=source_task[1], stack=istack)
+                self.pushmany([
+                    "for (%s=0; %s<var_num_tasks; %s++)" % (sourcevar, sourcevar, sourcevar),
+                    "if (%s) {" % source_task[2]],
+                              istack)
+            else:
+                self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+            self.push(" /* In this scope, %s represents a single sender. */" % sourcevar,
+                      istack)
         if "asynchronously" in attributes:
             self.code_allocate_event("EV_ARECV", istack)
             self.push("pendingrecvs++;", istack)
-            self.push("", istack)
         else:
             self.code_allocate_event("EV_RECV", istack)
+        self.push("", istack)
         struct = "thisev->s.recv"
         self.push(" /* Fill in all of the fields of a receive-event structure. */",
                   istack)
@@ -4046,7 +4205,11 @@ class NCPTL_CodeGen:
         # Close the scope(s) begun earlier in this method.
         if num_messages != "1":
             self.push("}", istack)
-        self.code_end_target_loop(source_task, target_tasks, istack)
+        if node.sem["receive_dir"] == "S2T":
+            self.code_end_target_loop(source_task, target_tasks, istack)
+        else:
+            self.push("}", istack)
+            self.code_end_source_scope(target_tasks, istack)
         self.combine_to_marker(istack)
 
 
@@ -4055,11 +4218,7 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS AWAIT COMPLETION */", istack)
-        else:
-            self.push(" /* TASKS %s AWAIT COMPLETION */" % source_task[1],
-                      istack)
+        self.push(" /* %s AWAIT COMPLETION */" % self.tasks_to_text(source_task), istack)
         self.code_begin_source_scope(source_task, istack)
         self.push(" /* Fill in all of the fields of a wait-event structure. */",
                   istack)
@@ -4086,20 +4245,7 @@ class NCPTL_CodeGen:
         self.push_marker(istack)
         outputvalues = map(lambda p: p[1], outputlist)
         output_text = self.clean_comments(repr(outputvalues))
-        if source_task[0] == "task_all":
-            if source_task[1]:
-                header_comment = (" /* ALL TASKS %s OUTPUT %s */" %
-                                  (source_task[1], output_text))
-            else:
-                header_comment = " /* ALL TASKS OUTPUT %s */" % output_text
-        elif source_task[0] == "task_expr":
-            header_comment = (" /* TASK %s OUTPUTS %s */" %
-                              (source_task[1], output_text))
-        elif source_task[0] == "task_restricted":
-            header_comment = (" /* TASKS %s SUCH THAT %s OUTPUT %s */" %
-                              (source_task[1], source_task[2], output_text))
-        else:
-            self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+        header_comment = " /* %s OUTPUTS %s */" % (self.tasks_to_text(source_task), output_text)
         self.push(header_comment, istack)
         self.code_allocate_code_event(source_task,
                                       string.join(outputvalues),
@@ -4139,21 +4285,8 @@ class NCPTL_CodeGen:
         istack = self.init_elements
         self.push_marker(istack)
         execvalues = map(lambda p: p[1], execlist)
-        backend_text = self.clean_comments(repr(execvalues))
-        if source_task[0] == "task_all":
-            if source_task[1]:
-                header_comment = (" /* ALL TASKS %s BACKEND EXECUTE %s */" %
-                                  (source_task[1], backend_text))
-            else:
-                header_comment = " /* ALL TASKS BACKEND EXECUTE %s */" % backend_text
-        elif source_task[0] == "task_expr":
-            header_comment = (" /* TASK %s BACKEND EXECUTES %s */" %
-                              (source_task[1], backend_text))
-        elif source_task[0] == "task_restricted":
-            header_comment = (" /* TASKS %s SUCH THAT %s BACKEND EXECUTES %s */" %
-                              (source_task[1], source_task[2], backend_text))
-        else:
-            self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+        header_comment = " /* %s BACKEND EXECUTES %s */" % (self.tasks_to_text(source_task),
+                                                            self.clean_comments(repr(execvalues)))
         self.push(header_comment, istack)
         self.code_allocate_code_event(source_task, string.join(execvalues), istack)
         self.combine_to_marker(istack)
@@ -4199,8 +4332,8 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        self.push(" /* COMPUTE FOR (%s)*(%s) MICROSECONDS */" %
-                   (count, multiplier),
+        self.push(" /* %s COMPUTES FOR (%s)*(%s) MICROSECONDS */" %
+                   (self.tasks_to_text(source_task), count, multiplier),
                   istack)
         self.code_begin_source_scope(source_task, istack)
         self.code_allocate_event("EV_DELAY", istack)
@@ -4219,8 +4352,8 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        self.push(" /* SLEEP FOR (%s)*(%s) MICROSECONDS */" %
-                   (count, multiplier),
+        self.push(" /* %s SLEEPS FOR (%s)*(%s) MICROSECONDS */" %
+                   (self.tasks_to_text(source_task), count, multiplier),
                   istack)
         self.code_begin_source_scope(source_task, istack)
         self.code_allocate_event("EV_DELAY", istack)
@@ -4277,14 +4410,9 @@ class NCPTL_CodeGen:
         else:
             stride_desc = "STRIDE %s BYTES" % stride_bytes
             random_stride = 0
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS TOUCH %s BYTES WITH %s */" %
-                      (region_bytes, stride_desc),
-                      istack)
-        else:
-            self.push(" /* TASKS %s TOUCH %s BYTES WITH %s */" %
-                      (source_task[1], region_bytes, stride_desc),
-                      istack)
+        self.push(" /* %s TOUCHES %s BYTES WITH %s */" %
+                  (self.tasks_to_text(source_task), region_bytes, stride_desc),
+                  istack)
         self.code_begin_source_scope(source_task, istack)
         if not random_stride:
             self.code_declare_var(type="static ncptl_int", name="nextbyte",
@@ -4335,12 +4463,7 @@ class NCPTL_CodeGen:
                 self.errmsg.error_internal('Unknown buffer number "%s"' % node.attr)
         else:
             buffer_name = "BUFFER %s" % buffer_num
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS TOUCH %s */" % buffer_name, istack)
-        else:
-            self.push(" /* TASKS %s TOUCH %s */" %
-                      (source_task[1], buffer_name),
-                      istack)
+        self.push(" /* %s TOUCHES %s */" % (self.tasks_to_text(source_task), buffer_name), istack)
 
         # Allocate an event and fill it in.
         self.code_begin_source_scope(source_task, istack)
@@ -4373,10 +4496,7 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS SYNCHRONIZE */", istack)
-        else:
-            self.push(" /* TASKS %s SYNCHRONIZE */" % source_task[1], istack)
+        self.push(" /* %s SYNCHRONIZE */" % self.tasks_to_text(source_task), istack)
 
         # Produce a synchronization event.
         extra_decl_code = self.invoke_hook("n_sync_stmt_DECL", locals(), before=["{"])
@@ -4415,15 +4535,7 @@ class NCPTL_CodeGen:
         self.push_marker(istack)
 
         # Write a comment string.
-        comment = ""
-        if source_task[0] == "task_all":
-            comment = comment + ' /* ALL TASKS LOG '
-        elif source_task[0] == "task_expr":
-            comment = comment + ' /* TASK %s LOGS ' % source_task[1]
-        elif source_task[0] == "task_restricted":
-            comment = comment + ' /* TASKS %s SUCH THAT %s LOG ' % source_task[1:]
-        else:
-            self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+        comment = " /* %s LOGS " % self.tasks_to_text(source_task)
         for logentry in range(len(entrylist)):
             description = self.clean_comments(entrylist[logentry][0])
             if logentry == 0:
@@ -4469,16 +4581,7 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS COMPUTE AGGREGATES */", istack)
-        elif source_task[0] == "task_expr":
-            self.push(" /* TASK %s COMPUTES AGGREGATES */" % source_task[1],
-                      istack)
-        elif source_task[0] == "task_restricted":
-            self.push(" /* TASKS %s SUCH THAT %s COMPUTE AGGREGATES */" % source_task[1:],
-                      istack)
-        else:
-            self.errmsg.error_internal("Unknown source task type %s" % repr(source_task[0]))
+        self.push(" /* %s COMPUTES AGGREGATES */" % self.tasks_to_text(source_task), istack)
         self.code_begin_source_scope(source_task, istack)
         self.code_allocate_event("EV_FLUSH", declare="(void)", stack=istack)
         self.code_end_source_scope(source_task, istack)
@@ -4500,25 +4603,20 @@ class NCPTL_CodeGen:
             target_tasks = source_tasks
         istack = self.init_elements
         self.push_marker(istack)
-        if source_tasks[0] == "task_all":
-            source_task_str = "ALL TASKS"
-        else:
-            source_task_str = str(source_tasks[1])
-        if allreduce:
-            self.push(" /* REDUCE from %s...back to %s */" % (source_task_str, source_task_str), istack)
-        else:
-            if target_tasks[0] == "task_all":
-                target_task_str = "ALL TASKS"
-            else:
-                target_task_str = "TASKS " + str(target_tasks[1])
-            self.push(" /* REDUCE from %s TO %s */" %
-                      (source_task_str, target_task_str),
-                      istack)
+        self.push(" /* %s REDUCE...TO %s */" %
+                  (self.tasks_to_text(source_tasks),
+                   self.tasks_to_text(target_tasks)),
+                  istack)
         if not allreduce and source_tasks == target_tasks:
             # If we know at compile time that the senders must match
             # the receivers then we can consider this an allreduce
             # operation.
             allreduce = 1
+
+        # We haven't yet implemented target message specifications.
+        if source_message_spec != target_message_spec:
+            self.errmsg.error_fatal('WHO RECEIVES THE RESULT is not yet implemented by the %s backend' % self.backend_name,
+                                    lineno0=node.lineno0, lineno1=node.lineno1)
 
         # Determine if we're a sender.
         self.push("{", istack)
@@ -4618,7 +4716,7 @@ class NCPTL_CodeGen:
                     "if ((%s)>=0 && (%s)<var_num_tasks) {" %
                     (target_tasks[1], target_tasks[1]),
                     "reduce_receivers[%s] = 1;" % target_tasks[1],
-                    "numreceivers = 1%s;" % self.ncptl_int_suffix,
+                    "numreceivers++;",
                     "}"],
                               stack=istack)
             elif target_tasks[0] == "task_restricted":
@@ -4651,7 +4749,7 @@ class NCPTL_CodeGen:
                               comment="Message size as the product of the number of items and the item size",
                               stack=istack)
         struct = "thisev->s.reduce"
-        item_count, uniqueness, data_type, alignment, misaligned, touching, buffer_num = source_message_spec
+        item_count, uniqueness, data_type, alignment, misaligned, touching, buffer_ofs, buffer_num = source_message_spec
         self.pushmany(self.invoke_hook("n_reduce_stmt_INIT", locals(),
                                        before=[""]),
                       stack=istack)
@@ -4662,7 +4760,7 @@ class NCPTL_CodeGen:
             "%s.receiving = reduce_receivers[virtrank];" % struct,
             "message_size = %s.numitems * %s.itemsize;" % (struct, struct)],
                       stack=istack)
-        faked_message_spec = (1, uniqueness, None, alignment, misaligned, touching, buffer_num)
+        faked_message_spec = (1, uniqueness, None, alignment, misaligned, touching, buffer_ofs, buffer_num)
         self.code_fill_in_comm_struct(struct, faked_message_spec, [], None, None, stack=istack, verification=0)
 
         # Handle the buffer field differently based on whether the
@@ -4678,8 +4776,8 @@ class NCPTL_CodeGen:
                           istack)
         else:
             self.pushmany([
-                "(void) ncptl_malloc_message (message_size, %s.alignment, %s.buffernum, %s.misaligned);" %
-                (struct, struct, struct),
+                "(void) ncptl_malloc_message (message_size + %s.bufferofs, %s.alignment, %s.buffernum, %s.misaligned);" %
+                (struct, struct, struct, struct),
                 "%s.buffer = NULL;" % struct],
                           istack)
         self.pushmany(self.invoke_hook("n_reduce_stmt_INIT2", locals(),
@@ -4712,16 +4810,48 @@ class NCPTL_CodeGen:
         if "asynchronously" in attributes:
             self.errmsg.error_fatal('asynchronous multicasts are not yet implemented by the %s backend' % self.backend_name,
                                     lineno0=node.lineno0, lineno1=node.lineno1)
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_num = message_spec
-        if source_task[0] != "task_expr":
-            self.errmsg.error_fatal("many-to-one and many-to-many multicast messages are not yet implemented by the %s backend" % self.backend_name,
-                                    lineno0=node.lineno0, lineno1=node.lineno1)
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
         istack = self.init_elements
+
+        # If a derived backend directly supports many-to-many
+        # multicasts (i.e., without repeated one-to-many multicasts),
+        # transfer all control to it.
+        many_many_code = self.invoke_hook("n_mcast_stmt_MANY_MANY", locals())
+        if many_many_code != []:
+            self.pushmany(many_many_code, istack)
+            return
+
+        # Perform one multicast per sender.
         self.push_marker(istack)
-        if target_tasks[0] == "all_others":
-            self.push(" /* MULTICAST...TO ALL OTHERS */", istack)
+        self.pushmany([
+                " /* %s MULTICASTS...TO %s */" %
+                (self.tasks_to_text(source_task), self.tasks_to_text(target_tasks)),
+                "{"],
+                      stack=istack)
+        if source_task[0] == "task_expr":
+            sourcevar = self.code_declare_var(suffix="task", rhs=source_task[1],
+                                              comment="Source task for a single one-to-many multicast",
+                                              stack=istack)
         else:
-            self.push(" /* MULTICAST...TO %s */" % str(target_tasks[1]), istack)
+            sourcevar = self.code_declare_var(name=source_task[1],
+                                              comment="Source task for a single one-to-many multicast",
+                                              stack=istack)
+        if source_task[0] == "task_all":
+            self.push("for (%s=0; %s<var_num_tasks; %s++)   /* %s */" %
+                      (sourcevar, sourcevar, sourcevar,
+                       self.tasks_to_text(source_task)),
+                      istack)
+        elif source_task[0] == "task_expr":
+            # We handled this case above.
+            pass
+        elif source_task[0] == "task_restricted":
+            self.pushmany([
+                    "for (%s=0; %s<var_num_tasks; %s++)" % (sourcevar, sourcevar, sourcevar),
+                    "if (%s)   /* %s */" %
+                    (source_task[2], self.tasks_to_text(source_task))],
+                          stack=istack)
+        else:
+            self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
 
         # Assign target_or_source the union of the source and target tasks.
         if target_tasks[0] == "task_expr":
@@ -4729,11 +4859,11 @@ class NCPTL_CodeGen:
             target_or_source = ("task_restricted",
                                 rankvar,
                                 "((%s==%s) || (%s==%s))" %
-                                (rankvar, source_task[1], rankvar, target_tasks[1]))
+                                (rankvar, sourcevar, rankvar, target_tasks[1]))
         elif target_tasks[0] == "task_restricted":
             target_or_source = (target_tasks[0], target_tasks[1],
                                 "((%s==%s) || (%s))" %
-                                (target_tasks[1], source_task[1], target_tasks[2]))
+                                (target_tasks[1], sourcevar, target_tasks[2]))
         elif target_tasks[0] == "all_others":
             target_or_source = ("task_all", None)
         else:
@@ -4747,13 +4877,13 @@ class NCPTL_CodeGen:
 
         # Perform the correct number of multicasts.
         one = "1" + self.ncptl_int_suffix
+        self.push("", istack)
         if num_messages == "1":
             num_messages = one
-        if num_messages != one:
-            self.pushmany([
-                " /* Prepare to multicast %s messages. */" % num_messages,
-                "{"],
-                          istack)
+        if num_messages == one:
+            self.push(" /* Prepare to multicast a message. */", istack)
+        else:
+            self.push(" /* Prepare to multicast %s messages. */" % num_messages, istack)
             loopvar = self.code_declare_var(suffix="loop", stack=istack)
             self.push("for (%s=0; %s<%s; %s++)" %
                       (loopvar, loopvar, num_messages, loopvar),
@@ -4771,8 +4901,7 @@ class NCPTL_CodeGen:
         self.code_end_source_scope(target_or_source, istack)
 
         # Close any scopes we opened.
-        if num_messages != one:
-            self.push("}", istack)
+        self.push("}", istack)
         self.pushmany(self.invoke_hook("n_mcast_stmt_POST", locals(),
                                        before=[""]),
                       stack=istack)
@@ -4789,12 +4918,9 @@ class NCPTL_CodeGen:
         source_task = self.pop()
         istack = self.init_elements
         self.push_marker(istack)
-        if source_task[0] == "task_all":
-            self.push(" /* ALL TASKS ARE ASSIGNED PROCESSOR %s */" % physrank, istack)
-        else:
-            self.push(" /* TASKS %s ARE ASSIGNED PROCESSOR %s */" %
-                      (source_task[1], physrank),
-                      istack)
+        self.push(" /* %s ARE ASSIGNED PROCESSOR %s */" %
+                  (self.tasks_to_text(source_task), physrank),
+                  istack)
         if physrank == "[random]":
             physrank = "ncptl_random_task(0, var_num_tasks-1, -1)"
             self.program_uses_randomness = max(self.program_uses_randomness, 2)

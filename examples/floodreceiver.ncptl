@@ -3,7 +3,7 @@
 # Benchmark proposed by Adolfy Hoisie
 # coNCePTuaL implementation by Scott Pakin
 
-Require language version "1.2".
+Require language version "1.3".
 
 reps is "Number of repetitions" and comes from "--reps" or "-r" with default 100.
 maxcomptime is "Maximum computation time in microseconds" and comes from "--compute" or "-c" with default 16.

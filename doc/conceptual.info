@@ -1,4 +1,4 @@
-This is conceptual.info, produced by makeinfo version 4.12 from
+This is conceptual.info, produced by makeinfo version 4.13 from
 conceptual.texi.
 
 INFO-DIR-SECTION Programming
@@ -8,231 +8,237 @@ END-INFO-DIR-ENTRY
 
    This file describes the coNCePTuaL language and tool suite.
 
-   Copyright (C) 2009, Los Alamos National Security, LLC
+   Copyright (C) 2011, Los Alamos National Security, LLC
 
 
 Indirect:
 conceptual.info-1: 354
-conceptual.info-2: 299792
-conceptual.info-3: 526314
+conceptual.info-2: 298572
+conceptual.info-3: 568582
 
 Tag Table:
 (Indirect)
 Node: Top354
-Node: Introduction1907
-Node: Motivation2829
-Node: Limitations5887
-Node: Typesetting conventions6815
-Node: Installation7822
-Node: configure10516
-Node: make18110
-Node: Validating the coNCePTuaL timer25252
-Ref: Validating the coNCePTuaL timer-Footnote-126733
-Node: make install27171
-Node: Installing stylesheets29000
-Node: SLOCCount31866
-Node: pkg-config32719
-Node: Usage33634
-Node: The coNCePTuaL GUI34684
-Node: Components37720
-Node: Menu bar41918
-Node: Command bar43322
-Node: Compiling coNCePTuaL programs45083
-Ref: Compiling coNCePTuaL programs-Footnote-152354
-Node: Supplied backends52499
-Node: The c_seq backend56559
-Node: The c_mpi backend56966
-Node: Command-line options for c_mpi59036
-Node: Implementation of reductions60168
-Node: The c_udgram backend61163
-Node: The c_trace backend63144
-Node: Command-line options for c_trace63886
-Node: Default c_trace tracing64921
-Ref: Default c_trace tracing-Footnote-166922
-Node: c_trace tracing with curses67034
-Node: Offline tracing with curses70147
-Node: The c_profile backend72035
-Node: The interpret backend75342
-Node: Task latency hierarchies83442
-Node: The stats backend85891
-Node: The picl backend93261
-Node: The latex_vis backend97635
-Ref: The latex_vis backend-Footnote-1105776
-Ref: The latex_vis backend-Footnote-2106065
-Node: Further customizations106267
-Node: The dot_ast backend109870
-Ref: The dot_ast backend-Footnote-1118533
-Node: Running coNCePTuaL programs118610
-Ref: Running coNCePTuaL programs-Footnote-1129431
-Node: Interpreting coNCePTuaL log files129548
-Node: Log-file format130519
-Node: ncptl-logextract143903
-Node: ncptl-logextract manual page144935
-Node: ncptl-logmerge188527
-Node: ncptl-logmerge manual page189993
-Node: ncptl-logunmerge197590
-Node: ncptl-logunmerge manual page198545
-Node: Grammar203497
-Ref: Grammar-Footnote-1206504
-Ref: Grammar-Footnote-2206604
-Node: Primitives206642
-Ref: Primitives-Footnote-1210318
-Node: Expressions210620
-Node: Arithmetic expressions211629
-Ref: Arithmetic expressions-Footnote-1214718
-Node: Evaluation contexts214819
-Node: Formal grammar for arithmetic expressions216604
-Node: Built-in functions218034
-Node: Integer functions219946
-Node: Floating-point functions222189
-Node: n-ary tree functions223566
-Node: k-nomial tree functions225841
-Node: Mesh functions230764
-Node: Torus functions235667
-Node: Random-number functions238868
-Node: Aggregate expressions240153
-Ref: Aggregate expressions-Footnote-1241455
-Node: Aggregate functions241533
-Node: Relational expressions242408
-Node: Formal grammar for relational expressions245917
-Node: Task descriptions247066
-Node: Restricted identifiers248430
-Node: Source tasks249485
-Node: Target tasks251569
-Node: Communication statements252923
-Node: Message specifications254371
-Node: Item count258220
-Node: Unique messages258531
-Node: Item size258973
-Node: Message alignment261083
-Node: Data touching262866
-Node: Buffer control264514
-Node: Blocking semantics266029
-Node: Sending266755
-Node: Receiving271780
-Node: Awaiting completion274016
-Node: Multicasting274996
-Node: Reducing276467
-Node: Synchronizing279797
-Node: I/O statements280690
-Node: Utilizing log-file comments281389
-Node: Writing to standard output282327
-Node: Writing to a log file283967
-Node: Computing aggregates287290
-Node: Counter and timer statements288267
-Node: Resetting counters290045
-Node: Storing counter values290778
-Node: Restoring counter values291465
-Ref: Restoring counter values-Footnote-1295614
-Node: Complex statements295724
-Node: Combining statements298431
-Node: Iterating299317
-Node: Counted loops299792
-Node: Range loops301964
-Node: Timed loops306659
-Node: Binding variables307753
-Node: Conditional execution311988
-Node: Grouping312987
-Node: Other statements314951
-Node: Asserting conditions315748
-Node: Delaying execution317086
-Node: Touching memory318809
-Node: Simulating computation319520
-Node: Priming message buffers323915
-Node: Reordering task IDs326363
-Node: Injecting arbitrary code330192
-Node: Header declarations332726
-Node: Language versioning333473
-Node: Command-line arguments334657
-Node: Backend-specific declarations337635
-Node: Complete programs339922
-Node: Top-level statements and log files341908
-Node: Summary of the grammar343164
-Node: Examples355500
-Node: Latency356193
-Node: Hot potato357713
-Node: Hot spot359877
-Node: Multicast trees361820
-Node: Calling MPI functions364505
-Node: Implementation367191
-Node: Overview368515
-Node: Compiler368893
-Node: Run-time library369796
-Node: Build process370460
-Node: Backend creation371571
-Node: Hook methods376099
-Node: A minimal C-based backend380605
-Node: Generated code384419
-Node: Internals388421
-Node: Run-time library functions393439
-Ref: Run-time library functions-Footnote-1395268
-Node: Variables and data types395464
-Node: Initialization functions399239
-Node: Memory-allocation functions402900
-Node: Message-buffer manipulation functions406919
-Node: Time-related functions410492
-Node: Log-file functions417271
-Ref: Log-file functions-Footnote-1424390
-Node: Random-task functions424492
-Node: Task-mapping functions426056
-Node: Queue functions427474
-Node: Unordered-set functions430900
-Node: Language-visible functions433402
-Node: Integer-function descriptions434681
-Node: Floating-point-function descriptions438625
-Node: Topology-function descriptions439527
-Node: Random-number-function descriptions442729
-Node: Finalization functions443803
-Node: Tips and Tricks444437
-Node: Using out-of-bound task IDs to simplify code445288
-Node: Proper use of conditionals449709
-Node: Memory efficiency451560
-Node: Cross-compilation454130
-Ref: Cross-compilation-Footnote-1458602
-Node: Implicit dynamic-library search paths458833
-Node: Running without installing460138
-Node: Reporting configuration information461404
-Ref: Reporting configuration information-Footnote-1462055
-Node: Troubleshooting462137
-Node: Problems with configure462757
-Node: Interpreting configure warnings463782
-Node: PRId64 is not a valid printf conversion specifier466431
-Node: present but cannot be compiled467916
-Node: Checking maximum line length is slow469255
-Node: configure is slow470512
-Node: Problems with ``C compiler used for Python extension modules''471967
-Node: Manual configuration473772
-Node: Problems with make476042
-Node: Too many columns in multitable item476992
-Node: Can't find compiler_version.h477530
-Node: Could not read symbols478102
-Node: Incorrect tools/flags are utilized478977
-Node: Compaq compilers on Alpha CPUs480094
-Node: undefined type found DEFINE____482379
-Node: "makehelper.py config" fails483571
-Node: Building on problematic platforms484559
-Node: Problems running485799
-Node: ``cannot open shared object file''487484
-Node: Miscellaneous mysterious hangs or crashes490387
-Node: Extremely noisy measurements492379
-Node: Keeping programs from dying on a signal493597
-Node: ``Unaligned access'' warnings494677
-Node: ``Unable to determine the OS page size''496764
-Node: Invalid timing measurements497758
-Node: ``TeX capacity exceeded''498932
-Node: Bad bounding boxes from latex_vis500479
-Node: When all else fails501351
-Node: Reserved Words502150
-Node: Keywords502889
-Node: Predeclared variables506120
-Node: Backend Developer's Reference508265
-Node: Method calls508959
-Node: C hooks510986
-Node: Event types515941
-Node: Representing aggregate functions517230
-Node: Environment Variables518248
-Node: Referenced Applications522736
-Node: License523790
-Node: Index526314
+Node: Introduction1986
+Node: Motivation2908
+Node: Limitations5966
+Node: Typesetting conventions6893
+Node: Installation7900
+Node: configure10594
+Node: make18188
+Node: Validating the coNCePTuaL timer25505
+Ref: Validating the coNCePTuaL timer-Footnote-126986
+Node: make install27424
+Node: Installing stylesheets29253
+Node: SLOCCount33192
+Node: pkg-config34045
+Node: Usage34960
+Node: The coNCePTuaL GUI36009
+Node: Components39045
+Node: Menu bar43243
+Node: Command bar44647
+Node: Compiling coNCePTuaL programs46408
+Ref: Compiling coNCePTuaL programs-Footnote-153679
+Node: Supplied backends53824
+Node: The c_seq backend58173
+Node: The c_mpi backend58580
+Node: Command-line options for c_mpi60799
+Node: Implementation of reductions61931
+Node: Implementation of multicasts62963
+Node: The c_udgram backend64303
+Node: Implementation of collectives66375
+Node: The c_trace backend67132
+Node: Command-line options for c_trace67874
+Node: Default c_trace tracing68909
+Ref: Default c_trace tracing-Footnote-170910
+Node: c_trace tracing with curses71022
+Node: Offline tracing with curses74135
+Node: The c_profile backend76023
+Node: The interpret backend79328
+Node: Task latency hierarchies87881
+Node: The stats backend90330
+Node: The picl backend97671
+Node: The paraver backend102042
+Node: The latex_vis backend107638
+Ref: The latex_vis backend-Footnote-1115982
+Ref: The latex_vis backend-Footnote-2116271
+Node: Further customizations116473
+Node: The dot_ast backend120073
+Ref: The dot_ast backend-Footnote-1128793
+Node: The libsea_ast backend128870
+Ref: The libsea_ast backend-Footnote-1132855
+Node: Running coNCePTuaL programs132937
+Ref: Running coNCePTuaL programs-Footnote-1143754
+Node: Interpreting coNCePTuaL log files143871
+Node: Log-file format144842
+Node: ncptl-logextract158224
+Node: ncptl-logextract manual page159256
+Node: ncptl-logmerge204358
+Node: ncptl-logmerge manual page205824
+Node: ncptl-logunmerge213403
+Node: ncptl-logunmerge manual page214358
+Node: Grammar219679
+Ref: Grammar-Footnote-1222686
+Ref: Grammar-Footnote-2222786
+Node: Primitives222824
+Ref: Primitives-Footnote-1226498
+Node: Expressions226800
+Node: Arithmetic expressions227809
+Ref: Arithmetic expressions-Footnote-1230898
+Node: Evaluation contexts230999
+Node: Formal grammar for arithmetic expressions232785
+Node: Built-in functions234215
+Node: Integer functions236061
+Node: Floating-point functions238251
+Node: n-ary tree functions239637
+Node: k-nomial tree functions241912
+Node: Mesh/torus functions246841
+Node: Random-number functions256619
+Node: Aggregate expressions258339
+Ref: Aggregate expressions-Footnote-1259641
+Node: Aggregate functions259719
+Node: Relational expressions260594
+Node: Formal grammar for relational expressions264103
+Node: Task descriptions265252
+Node: Restricted identifiers266616
+Node: Source tasks267671
+Node: Target tasks269989
+Node: Communication statements271576
+Node: Message specifications273024
+Node: Item count276981
+Node: Unique messages277292
+Node: Item size277734
+Node: Message alignment279841
+Node: Data touching281624
+Node: Buffer control283272
+Node: Blocking semantics284993
+Node: Sending285719
+Node: Receiving291908
+Node: Awaiting completion295332
+Node: Multicasting296312
+Node: Reducing298572
+Node: Synchronizing301902
+Node: I/O statements302795
+Node: Utilizing log-file comments303494
+Node: Writing to standard output304432
+Node: Writing to a log file306072
+Node: Computing aggregates309395
+Node: Counter and timer statements310372
+Node: Resetting counters312150
+Node: Storing counter values312883
+Node: Restoring counter values313570
+Ref: Restoring counter values-Footnote-1317719
+Node: Complex statements317829
+Node: Combining statements320536
+Node: Iterating321422
+Node: Counted loops321897
+Node: Range loops324069
+Node: Timed loops328764
+Node: Binding variables329858
+Node: Conditional execution335256
+Node: Grouping336255
+Node: Other statements338219
+Node: Asserting conditions339016
+Node: Delaying execution340354
+Node: Touching memory342077
+Node: Simulating computation342788
+Node: Priming message buffers347183
+Node: Reordering task IDs349630
+Node: Injecting arbitrary code353459
+Node: Header declarations355993
+Node: Language versioning356740
+Node: Command-line arguments357924
+Node: Backend-specific declarations360902
+Node: Complete programs363189
+Node: Top-level statements and log files365175
+Node: Summary of the grammar366431
+Node: Examples378897
+Node: Latency379590
+Node: Hot potato381110
+Node: Hot spot383274
+Node: Multicast trees385217
+Node: Calling MPI functions387902
+Node: Implementation390588
+Node: Overview391912
+Node: Compiler392290
+Node: Run-time library393193
+Node: Build process393857
+Node: Backend creation394968
+Node: Hook methods399496
+Node: A minimal C-based backend404000
+Node: Generated code407814
+Node: Internals411815
+Node: Run-time library functions416833
+Ref: Run-time library functions-Footnote-1418662
+Node: Variables and data types418858
+Node: Initialization functions422629
+Node: Memory-allocation functions426290
+Node: Message-buffer manipulation functions430309
+Node: Time-related functions433882
+Node: Log-file functions440661
+Ref: Log-file functions-Footnote-1448547
+Node: Random-task functions448649
+Node: Task-mapping functions450213
+Node: Queue functions451631
+Node: Unordered-set functions455057
+Node: Language-visible functions457559
+Node: Integer-function descriptions458838
+Node: Floating-point-function descriptions462782
+Node: Topology-function descriptions463684
+Node: Random-number-function descriptions467009
+Node: Finalization functions468642
+Node: Tips and Tricks469276
+Node: Using out-of-bound task IDs to simplify code470127
+Node: Proper use of conditionals474548
+Node: Memory efficiency476399
+Node: Cross-compilation478969
+Ref: Cross-compilation-Footnote-1483440
+Node: Implicit dynamic-library search paths483671
+Node: Running without installing484976
+Node: Reporting configuration information486242
+Ref: Reporting configuration information-Footnote-1486893
+Node: Troubleshooting486975
+Node: Problems with configure487595
+Node: Interpreting configure warnings488620
+Node: PRId64 is not a valid printf conversion specifier491269
+Node: present but cannot be compiled492754
+Node: Checking maximum line length is slow494093
+Node: configure is slow495350
+Node: Problems with ``C compiler used for Python extension modules''496804
+Node: Manual configuration498711
+Node: Problems with make501681
+Node: Failure following "missing" check502669
+Node: Too many columns in multitable item503896
+Node: Can't find compiler_version.h504449
+Node: Could not read symbols505021
+Node: Incorrect tools/flags are utilized505896
+Node: Compaq compilers on Alpha CPUs507013
+Node: undefined type found DEFINE____509298
+Node: "makehelper.py config" fails510490
+Node: Building on problematic platforms511477
+Node: Problems running512716
+Node: ``cannot open shared object file''514401
+Node: Miscellaneous mysterious hangs or crashes517304
+Node: Extremely noisy measurements519296
+Node: Keeping programs from dying on a signal520514
+Node: ``Unaligned access'' warnings521594
+Node: ``Unable to determine the OS page size''523681
+Node: Invalid timing measurements524674
+Node: ``TeX capacity exceeded''525848
+Node: Bad bounding boxes from latex_vis527395
+Node: When all else fails528267
+Node: Reserved Words529066
+Node: Keywords529805
+Node: Predeclared variables533057
+Node: Backend Developer's Reference535202
+Node: Method calls535896
+Node: C hooks538010
+Node: Event types542964
+Node: Representing aggregate functions544253
+Node: Environment Variables545271
+Node: Cache Variables549747
+Node: Referenced Applications564700
+Node: License566058
+Node: Index568582
 
 End Tag Table

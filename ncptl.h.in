@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -253,8 +253,10 @@ extern double nearbyint(double);
 /* Define an ncptl_int conversion specifier for printf() format strings. */
 #define NICS @NICS@
 
-/* Define as the minimum (i.e., most negative) number an ncptl_int can store. */
+/* Define as the minimum (i.e., most negative) and maximum numbers an
+ * ncptl_int can store. */
 #undef NCPTL_INT_MIN
+#undef NCPTL_INT_MAX
 
 /* Define an enumerated type for the various aggregations we can
  * perform on log data. */
@@ -486,6 +488,9 @@ extern void ncptl_log_compute_aggregates (NCPTL_LOG_FILE_STATE *);
 /* Complete the current table and begin a new one. */
 extern void ncptl_log_commit_data (NCPTL_LOG_FILE_STATE *);
 
+/* Return the current contents of the log file as a string. */
+extern const char *ncptl_log_get_contents (NCPTL_LOG_FILE_STATE *);
+
 /* Flush and close the log file. */
 extern void ncptl_log_close (NCPTL_LOG_FILE_STATE *);
 
@@ -629,18 +634,28 @@ extern ncptl_int ncptl_func_tree_child (ncptl_int, ncptl_int, ncptl_int);
 extern double ncptl_dfunc_tree_child (double, double, double);
 
 /* Return a task's x, y, or z coordinate on a 3-D mesh (or torus). */
-extern ncptl_int ncptl_func_grid_coord (ncptl_int, ncptl_int,
+extern ncptl_int ncptl_func_mesh_coord (ncptl_int, ncptl_int,
                                         ncptl_int, ncptl_int, ncptl_int);
-extern double ncptl_dfunc_grid_coord (double, double,
+extern double ncptl_dfunc_mesh_coord (double, double,
                                       double, double, double);
 
-/* Return a task's neighbor on a 3D mesh or torus. */
-extern ncptl_int ncptl_func_grid_neighbor (ncptl_int, ncptl_int,
+/* Return a task's neighbor on a 3-D mesh or torus. */
+extern ncptl_int ncptl_func_mesh_neighbor (ncptl_int, ncptl_int, ncptl_int,
                                            ncptl_int, ncptl_int, ncptl_int,
+                                           ncptl_int,
                                            ncptl_int, ncptl_int, ncptl_int);
-extern double ncptl_dfunc_grid_neighbor (double, double,
+extern double ncptl_dfunc_mesh_neighbor (double, double, double,
                                          double, double, double,
+                                         double,
                                          double, double, double);
+
+/* Return the Manhattan distance between two tasks on a 3-D mesh or torus. */
+extern ncptl_int ncptl_func_mesh_distance (ncptl_int, ncptl_int, ncptl_int,
+                                           ncptl_int, ncptl_int, ncptl_int,
+                                           ncptl_int, ncptl_int);
+extern double ncptl_dfunc_mesh_distance (double, double, double,
+					 double, double, double,
+					 double, double);
 
 /* Return a task's parent in an k-nomial tree. */
 extern ncptl_int ncptl_func_knomial_parent (ncptl_int, ncptl_int, ncptl_int);
@@ -674,6 +689,10 @@ extern double ncptl_dfunc_random_gaussian (double, double);
 /* Return a Poisson random number with a given mean. */
 extern ncptl_int ncptl_func_random_poisson (ncptl_int);
 extern double ncptl_dfunc_random_poisson (double);
+
+/* Return a Pareto random number with a given shape and given bounds. */
+extern ncptl_int ncptl_func_random_pareto (ncptl_int, ncptl_int, ncptl_int);
+extern double ncptl_dfunc_random_pareto (double, double, double);
 
 #ifdef __cplusplus
 }

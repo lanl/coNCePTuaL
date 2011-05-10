@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -88,6 +88,7 @@ class GUIPyInterface( java.lang.Object ):
     def process_node( self, node ):
         "@sig public java.lang.Object process_node( java.lang.Object node )"
         self.codegen.clear_events()
+        self.codegen.fake_semantic_analysis( node )
         return self.codegen.process_node( node )
 
     def get_eventlists( self ):

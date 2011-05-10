@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -77,7 +77,7 @@
  ************************************/
 
 extern char *ncptl_concatenate_strings (ncptl_int numstrings, ...);
-
+extern int ncptl_fork_works;
 
 /************************************
  * Internal variables and functions *
@@ -118,6 +118,37 @@ static char *extract_value (char *key_value)
   char *result = ncptl_strdup (colonptr+2);
   result[strlen(result)-1] = '\0';    /* Remove the newline character */
   return result;
+}
+
+
+/* Read and return the first NCPTL_MAX_LINE_LEN bytes of a given file
+ * or NULL on failure.  If is_binary is set, do no extra processing.
+ * If is_binary is not set, truncate the text at the first newline
+ * character. */
+static char *read_first_line (char *filename, int is_binary)
+{
+  FILE *fh;
+  char *oneline;
+  char *c;
+
+  if (!(fh = fopen(filename, is_binary ? "rb" : "r")))
+    return NULL;
+  oneline = ncptl_malloc(NCPTL_MAX_LINE_LEN+1, 0);
+  memset(oneline, 0, NCPTL_MAX_LINE_LEN+1);
+  if (fread(oneline, 1, NCPTL_MAX_LINE_LEN, fh) == 0) {
+    /* Treat a read of zero bytes as a failure. */
+    fclose(fh);
+    ncptl_free(oneline);
+    return NULL;
+  }
+  fclose(fh);
+  if (!is_binary) {
+    for (c=oneline; *c != '\n' && *c != '\r' && *c != '\0'; c++)
+      ;
+    *c = '\0';   /* Safe because we allocated N+1 bytes but read only N */
+    oneline = ncptl_realloc (oneline, c-oneline+1, 0);
+  }
+  return oneline;
 }
 
 
@@ -247,7 +278,50 @@ static void fill_in_sys_desc_hal (SYSTEM_INFORMATION *info)
 #endif
 
 
-/* Fill in the host, arch, os, and computer fields. */
+/* Fill in the name of the OS distribution if possible. */
+static void fill_in_osdist (SYSTEM_INFORMATION *info)
+{
+  /* Run the lsb_release script to determine the OS distribution. */
+#if defined(HAVE_POPEN)
+  /* popen() uses fork() which may not work properly. */
+  if (ncptl_fork_works) {
+    FILE *lsb_pipe;                     /* Pipe from "lsb_release" */
+    char oneline[NCPTL_MAX_LINE_LEN];   /* One line read from lsb_pipe */
+
+    if ((lsb_pipe=popen("lsb_release -d 2>&1", "r"))) {
+      while (fgets (oneline, NCPTL_MAX_LINE_LEN-1, lsb_pipe))
+        if (!strncmp (oneline, "Description:", 12)) {
+          ASSIGN (info->osdist, ncptl_strdup (oneline+13));
+          break;
+        }
+      pclose(lsb_pipe);
+    }
+  }
+  if (info->osdist)
+    return;
+#endif
+
+  /* Read the distribution from *-release (fedora-release,
+   * redhat-release, system-release, etc.).  This is of course a bit
+   * risky because there may happen to be a binary *-release file in
+   * /etc.  We simply take our chances and hope for the best. */
+#ifdef HAVE_GLOB
+  if (1) {
+    glob_t globinfo;       /* Information about the expanded pathname */
+    unsigned int i;
+
+    if (glob("/etc/*-release", 0, NULL, &globinfo) == 0) {
+      /* Iterate over each filename in turn. */
+      for (i=0; i<globinfo.gl_pathc && !info->osdist; i++)
+        ASSIGN (info->osdist, read_first_line(globinfo.gl_pathv[i], 0));
+      globfree(&globinfo);
+    }
+  }
+#endif
+}
+
+
+/* Fill in the host, arch, os, osdist, and computer fields. */
 static void fill_in_sys_desc (SYSTEM_INFORMATION *info)
 {
 #if defined(HAVE_UNAME) && defined(HAVE_SYS_UTSNAME_H)
@@ -256,21 +330,13 @@ static void fill_in_sys_desc (SYSTEM_INFORMATION *info)
 #ifdef HOST_NAME_MAX_VAR
   char thishostname[HOST_NAME_MAX_VAR+1];   /* Host name only */
 #endif
-  FILE *procver;           /* Handle to /proc/version */
 
   /* If we have /proc/version, try reading the OS version from there. */
-  if (!info->os && (procver=fopen ("/proc/version", "r"))) {
-    info->os = (char *) ncptl_malloc (NCPTL_MAX_LINE_LEN+1, 0);
-    if (fgets(info->os, NCPTL_MAX_LINE_LEN, procver)) {
-      char *lastchar = info->os + strlen(info->os) - 1;
+  if (!info->os)
+    info->os = read_first_line ("/proc/version", 0);
 
-      while (isspace((int)*lastchar))
-        lastchar--;
-      *(lastchar+1) = '\0';
-      info->os = (char *) ncptl_realloc (info->os, strlen(info->os)+1, 0);
-    }
-    fclose (procver);
-  }
+  /* Try to determine the name of the OS distribution. */
+  fill_in_osdist(info);
 
 #if defined(HAVE_SYSCTL) && defined(CTL_KERN) && defined(KERN_VERSION)
   /* sysctl() can return the full OS name at times when uname() can't. */
@@ -327,10 +393,10 @@ static void fill_in_cpu_info_PAPI (SYSTEM_INFORMATION *info)
   const PAPI_hw_info_t *hardwareinfo;   /* Hardware (mostly CPU) information */
 
   if ((hardwareinfo=PAPI_get_hardware_info())) {
-    ASSIGN (info->numcpus,    hardwareinfo->ncpu);
-    ASSIGN (info->cpu_vendor, ncptl_strdup (hardwareinfo->vendor_string));
-    ASSIGN (info->cpu_model,  ncptl_strdup (hardwareinfo->model_string));
-    ASSIGN (info->cpu_freq,   1.0e6 * hardwareinfo->mhz);
+    ASSIGN (info->contexts_per_node, hardwareinfo->ncpu);
+    ASSIGN (info->cpu_vendor,        ncptl_strdup (hardwareinfo->vendor_string));
+    ASSIGN (info->cpu_model,         ncptl_strdup (hardwareinfo->model_string));
+    ASSIGN (info->cpu_freq,          1.0e6 * hardwareinfo->mhz);
   }
 }
 #endif
@@ -342,7 +408,7 @@ static void fill_in_cpu_info_sysctl (SYSTEM_INFORMATION *info)
 {
   /* CPU speed */
 #ifdef HW_NCPU
-  ASSIGN (info->numcpus, (int) get_sysctl_int (CTL_HW, HW_NCPU));
+  ASSIGN (info->contexts_per_node, (int) get_sysctl_int (CTL_HW, HW_NCPU));
 #endif
 #ifdef HW_MODEL
   ASSIGN (info->cpu_model, get_sysctl_string (CTL_HW, HW_MODEL));
@@ -376,7 +442,7 @@ static void fill_in_cpu_info_sysconf (SYSTEM_INFORMATION *info)
    * performance caused by unexpected multiprogramming when a CPU is
    * offline. */
   if (sysconf(_SC_NPROCESSORS_ONLN) > 0)
-    ASSIGN (info->numcpus, (int) sysconf(_SC_NPROCESSORS_ONLN));
+    ASSIGN (info->contexts_per_node, (int) sysconf(_SC_NPROCESSORS_ONLN));
 #else
   /* Keep compilers from complaining about unused info */
   if (0)
@@ -414,12 +480,12 @@ static void fill_in_cpu_info_kstat (SYSTEM_INFORMATION *info)
   }
 
   /* Number of CPUs */
-  if (!info->numcpus &&
+  if (!info->contexts_per_node &&
       (thekstat=kstat_lookup(kcontrol, "unix", -1, "system_misc")) &&
       (kstat_read(kcontrol, thekstat, NULL) != -1)) {
     if ((kstatdata=(kstat_named_t *)kstat_data_lookup (thekstat, "ncpus")) &&
         kstatdata->data_type == KSTAT_DATA_UINT32)
-      ASSIGN (info->numcpus, (int)kstatdata->value.ui32);
+      ASSIGN (info->contexts_per_node, (int)kstatdata->value.ui32);
   }
 
   /* Close the kernel statistics. */
@@ -442,7 +508,7 @@ static void fill_in_cpu_info_bgp (SYSTEM_INFORMATION *info)
 static void fill_in_cpu_info_bgl (SYSTEM_INFORMATION *info)
 {
   ASSIGN (info->cpu_freq, (double) BGLPersonality_clockHz(&ncptl_bgl_personality));
-  ASSIGN (info->numcpus,
+  ASSIGN (info->contexts_per_node,
           BGLPersonality_virtualNodeMode(&ncptl_bgl_personality) ? 2 : 1);
 }
 #endif
@@ -466,7 +532,7 @@ static void fill_in_cpu_info_sysmp (SYSTEM_INFORMATION *info)
   int64_t numcpus = (int64_t) sysmp (MP_NPROCS);
 
   if (numcpus > 0)
-    ASSIGN (info->numcpus, numcpus);
+    ASSIGN (info->contexts_per_node, numcpus);
 }
 #endif
 
@@ -494,7 +560,7 @@ static void fill_in_cpu_info_getsysinfo (SYSTEM_INFORMATION *info)
 
   if (getsysinfo (GSI_CPU_INFO, (caddr_t)&CPU_information,
                   sizeof(CPU_information), &startloc, NULL, NULL) >= -1) {
-    ASSIGN (info->numcpus, CPU_information.cpus_in_box);
+    ASSIGN (info->contexts_per_node, CPU_information.cpus_in_box);
     ASSIGN (info->cpu_freq, 1e6 * (double) CPU_information.mhz);
   }
 }
@@ -514,6 +580,8 @@ static void fill_in_cpu_info_odm (SYSTEM_INFORMATION *info)
     sscanf (cuat_info->value, "%lf", &info->cpu_freq);
   if ((cuat_info=getattr ("proc0", "type", 0, &num_instances)))
     ASSIGN (info->cpu_model, ncptl_strdup (cuat_info->value));
+  if (!info->threads_per_core && (cuat_info=getattr ("proc0", "smt_threads", 0, &num_instances)))
+    sscanf (cuat_info->value, "%d", &info->threads_per_core);
   (void) odm_terminate();
 }
 #endif
@@ -552,7 +620,7 @@ static void fill_in_cpu_info_win32 (SYSTEM_INFORMATION *info)
   /* Get information about the CPU and memory system. */
   GetSystemInfo (&sysinfo);
   ASSIGN (info->pagesize, (uint64_t)sysinfo.dwPageSize);
-  ASSIGN (info->numcpus, (uint64_t)sysinfo.dwNumberOfProcessors);
+  ASSIGN (info->contexts_per_node, (uint64_t)sysinfo.dwNumberOfProcessors);
   if (!info->arch)
     switch (sysinfo.wProcessorArchitecture) {
       case PROCESSOR_ARCHITECTURE_INTEL:
@@ -659,8 +727,10 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
   FILE *procinfo;     /* Handle to /proc/cpuinfo */
   char oneline[NCPTL_MAX_LINE_LEN+1];   /* One line read from /proc/cpuinfo */
   double frequency;   /* CPU or timer frequency */
-  int cpucount;       /* Number of active CPUs */
-  int have_ncpus = info->numcpus!=0;  /* 1=already assigned the number of CPUs */
+  int cpucount;       /* Number of active CPU cores */
+  int have_ncpus = info->contexts_per_node!=0;  /* 1=already assigned the total number of CPU cores */
+  int cpu_cores;      /* Number of CPU cores per socket */
+  int physical_id;    /* Physical ID of the current socket */
   char *cpu_family = NULL;    /* CPU family name */
   char *cpu_model = NULL;     /* CPU model number */
   char *cpu_revision = NULL;  /* CPU revision number */
@@ -742,13 +812,13 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
         ASSIGN (info->cpu_vendor, extract_value (oneline));
     }
 
-    /* Number of CPUs */
+    /* Total number of CPU compute contexts (threads*cores*dies*sockets) */
     /* IA-32, IA-64, and PowerPC */
     if (!have_ncpus && !strcmp (keyname, "processor"))
-      info->numcpus++;
+      info->contexts_per_node++;
     /* Alpha */
     else if (sscanf (oneline, "cpus active : %d", &cpucount))
-      ASSIGN (info->numcpus, cpucount);
+      ASSIGN (info->contexts_per_node, cpucount);
 
     /* Cycle-counter speed */
     /* IA-64 */
@@ -757,6 +827,17 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
     /* PowerPC */
     else if (sscanf (oneline, "timebase : %lf", &frequency))
       ASSIGN (info->timer_freq, frequency);
+
+    /* Number of sockets and cores */
+    if (sscanf (oneline, "cpu cores : %d", &cpu_cores))
+      ASSIGN(info->cores_per_socket, cpu_cores);
+    if (sscanf (oneline, "physical id : %d", &physical_id)
+        && physical_id+1 > info->sockets_per_node)
+      info->sockets_per_node = physical_id + 1;
+
+    /* CPU flags */
+    if (!strcmp (keyname, "flags"))
+      ASSIGN (info->cpu_flags, extract_value (oneline));
 
     /* Clean up before the next iteration. */
     ncptl_free (keyname);
@@ -767,6 +848,28 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
   ncptl_free (cpu_family);
   ncptl_free (cpu_model);
   ncptl_free (cpu_revision);
+}
+
+
+/* Fill in the CPU-related fields by reading files under /sys. */
+static void fill_in_cpu_info_sysfs (SYSTEM_INFORMATION *info)
+{
+  char *maxfreq_str;   /* Maximum CPU frequency in KHz as a text string */
+  double maxfreq;      /* Maximum CPU frequency in KHz */
+
+  /* As a last-ditch effort to find the timebase frequency, use the
+   * highest frequency at which the CPU can run.  This is probably a
+   * decent guess but is not guaranteed to return the correct
+   * timebase.  Alas, reading the correct value from the x86 MSRs can
+   * currently be done only from kernel mode. */
+  if (info->timer_freq)
+    return;
+  maxfreq_str = read_first_line ("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", 0);
+  if (!maxfreq_str)
+    return;
+  if (sscanf (maxfreq_str, "%lf", &maxfreq) == 1)
+    ASSIGN (info->timer_freq, maxfreq*1000.0);
+  ncptl_free (maxfreq_str);
 }
 
 
@@ -816,16 +919,34 @@ static void fill_in_cpu_info (SYSTEM_INFORMATION *info)
 #endif
 #if defined(TIMEBASE_FREQUENCY_FILENAME)
   if (!info->timer_freq) {
-    FILE *timebase;        /* Handle to TIMEBASE_FREQUENCY_FILENAME */
-    uint32_t tb_freq;      /* Timebase frequency in hertz */
+    char *timebase_bits;
 
-    if ((timebase=fopen(TIMEBASE_FREQUENCY_FILENAME, "rb"))) {
-      if (fread ((void *)&tb_freq, sizeof(tb_freq), 1, timebase) == 1)
-        ASSIGN (info->timer_freq, (double) tb_freq);
-      fclose (timebase);
+    timebase_bits = read_first_line (TIMEBASE_FREQUENCY_FILENAME, 1);
+    if (timebase_bits) {
+      ASSIGN (info->timer_freq, *(double *)timebase_bits);
+      ncptl_free (timebase_bits);
     }
   }
 #endif
+  fill_in_cpu_info_sysfs (info);
+
+  /* If contexts_per_node is 1, then cores_per_socket,
+   * sockets_per_node, and threads_per_core must all also be 1. */
+  if (info->contexts_per_node == 1) {
+    ASSIGN(info->cores_per_socket, 1);
+    ASSIGN(info->sockets_per_node, 1);
+    ASSIGN(info->threads_per_core, 1);
+  }
+
+  /* If we know contexts_per_node, cores_per_socket, and
+   * sockets_per_node, we can easily compute threads_per_core if
+   * necessary. */
+  if (info->contexts_per_node
+      && info->cores_per_socket
+      && info->sockets_per_node
+      && !info->threads_per_core)
+    info->threads_per_core =
+      info->contexts_per_node / (info->cores_per_socket * info->sockets_per_node);
 }
 
 
@@ -993,9 +1114,21 @@ static void fill_in_network_info_pciutils (SYSTEM_INFORMATION *info)
 
     /* Determine if the device is a network device. */
     if (!((classID&0xFF00) == 0x0200  /* Network controller */
+#ifdef HAVE_STRCASESTR
+          || strcasestr(devicename, "net")   /* Anything with "net" in the name */
+          || strcasestr(devicename, "interconnect")   /* Anything with "interconnect" in the name */
+#else
+          || strstr(devicename, "net")
+          || strstr(devicename, "Net")
+          || strstr(devicename, "NET")
+          || strstr(devicename, "interconnect")
+          || strstr(devicename, "Interconnect")
+          || strstr(devicename, "INTERCONNECT")
+#endif
           || classID == 0x0C06))      /* Serial bus controller, InfiniBand */
+
       continue;
-    device_string = ncptl_malloc (strlen(devicename) + 14 + strlen(classname) + 2, 0);
+    device_string = ncptl_malloc (strlen(devicename) + 20 + strlen(classname), 0);
     if (revision)
       sprintf (device_string, "%s, revision 0x%02X (%s)", devicename, revision, classname);
     else

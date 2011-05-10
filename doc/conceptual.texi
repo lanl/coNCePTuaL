@@ -44,7 +44,7 @@
 @ifinfo
 This file describes the coNCePTuaL language and tool suite.
 
-Copyright (C) 2009, Los Alamos National Security, LLC
+Copyright (C) 2011, Los Alamos National Security, LLC
 @end ifinfo
 
 @c ===========================================================================
@@ -358,7 +358,7 @@ PLY
 @page
 @vskip 0pt plus 1filll
 @hfil
-Copyright @copyright{} 2009, Los Alamos National Security, LLC
+Copyright @copyright{} 2011, Los Alamos National Security, LLC
 @hfil
 @vskip 0pt plus 1filll
 This document describes @ncptl{} @w{version @value{VERSION}.}
@@ -399,6 +399,7 @@ This document describes @ncptl{} @w{version @value{VERSION}.}
 * Reserved Words::              Lists of token names not available as varaibles
 * Backend Developer's Reference::  Lists of importance to backend developers
 * Environment Variables::       List of environment variables honored
+* Cache Variables::             List of variables used by the configure script
 * Referenced Applications::     URLs for applications mentioned in this manual
 * License::                     The coNCePTuaL copyright and license agreement
 * Index::                       Index to terms used in this manual
@@ -510,7 +511,7 @@ master.  Such a communication pattern is not independent of the order
 in which messages happen to arrive from the workers.  Similarly,
 @ncptl{} cannot use run-time performance data to guide its operations.
 It is therefore not currently possible to express a communication
-benchmark which repeats until the standard error of some performance
+benchmark that repeats until the standard error of some performance
 metric drops below a given threshold.  These limitations may be lifted
 in a future release of the system.
 
@@ -948,7 +949,7 @@ the @file{doc} subdirectory.
 @item make ncptl-logextract.html
 
 @ncptl{} comes with a postprocessor called @filespec{ncptl-logextract}
-which facilitates extracting information from @ncptl{}-produced log
+that facilitates extracting information from @ncptl{}-produced log
 files.  The complete @filespec{ncptl-logextract} documentation is
 presented in @ref{ncptl-logextract}.  As is readily apparent from that
 documentation, @filespec{ncptl-logextract} supports an overwhelming
@@ -965,13 +966,16 @@ distracted by the documentation for the others.
 
 @item make empty.log
 
-Create an empty log file called @filespec{empty.log} which contains a
+Create an empty log file called @filespec{empty.log} that contains a
 complete prologue and epilogue but no data.  This is convenient for
 validating that the @ncptl{} run-time library was built using your
 preferred build options.
 
 @item make stylesheets
 
+@cindex syntax highlighting
+@cindex stylesheets
+@cindex coloring source listings
 @ncptl{} can automatically produce stylesheets for a variety of
 programs.  These stylesheets make keywords, comments, strings, and
 other terms in the language visually distinct from each other for a
@@ -987,13 +991,15 @@ La@TeX{}2e
 @end ifnottex
 package (@filespec{ncptl.sty}), an @cncp{a2ps} style sheet
 (@filespec{ncptl.ssh}), an @cncp{Emacs} major mode
-(@filespec{ncptl-mode.el}/@filespec{ncptl-mode.elc}), a @cncp{Vim}
-syntax file (@filespec{ncptl.vim}), and a @cncp{Source-highlight}
-language definition (@filespec{ncptl.lang}).  Note that the
-@filespec{Makefile} currently lacks provisions for installing these
-files so whichever stylesheets are desired will need to be installed
-manually.  Stylesheet installation is detailed in @ref{Installing
-stylesheets}.
+(@filespec{ncptl-mode.el} and @filespec{ncptl-mode.elc}), a @cncp{Vim}
+syntax file (@filespec{ncptl.vim}), a @cncp{Source-highlight} language
+definition (@filespec{ncptl.lang}), and a @cncp{GeSHi} language file
+(@filespec{ncptl.php}).  Each of these can be built individually if
+desired.  (For example, @kcmd{make ncptl-mode.vim} will create only
+@filespec{ncptl-mode.vim}.)  Note that the @filespec{Makefile}
+currently lacks provisions for installing these files so whichever
+stylesheets are desired will need to be installed manually.
+Stylesheet installation is detailed in @ref{Installing stylesheets}.
 
 @item make modulefile
 
@@ -1150,7 +1156,9 @@ third-party software packages.
 
 @node Installing stylesheets, SLOCCount, make install, make install
 @subheading Installing stylesheets
+@cindex syntax highlighting
 @cindex stylesheets
+@cindex coloring source listings
 
 The @kcmd{make stylesheets} command (@pxref{make}) produces a variety
 of stylesheets for presenting @ncptl{} code in a more pleasant format
@@ -1234,6 +1242,43 @@ ncptl = ncptl.lang
 @end example
 @end cartouche
 
+@item ncptl.php
+
+@cncp{GeSHi} stores all of its language files in a @file{geshi}
+subdirectory.  Simply put @filespec{ncptl.php} there, and it should be
+ready for use.  A quick way to convert @ncptl{} programs to
+color-coded HTML is to use the command-line version of the @cncp{PHP}
+interpreter with the following shell script.
+
+@cartouche
+@example
+#!/usr/bin/env php
+
+<html>
+<head>
+<title><?php echo basename($argv[1]); ?></title>
+</head>
+<body>
+<?php
+include("@var{GeSHi_directory}/geshi.php");
+$ncptl_code = file_get_contents($argv[1]);
+geshi_highlight($ncptl_code, "ncptl");
+?>
+</body>
+</html>
+@end example
+@end cartouche
+
+@noindent
+Simply replace @var{GeSHi_directory} with the name of your top-level
+@cncp{GeSHi} directory and run the script with the name of a @ncptl{}
+file as its sole argument.
+
+A @cncp{GeSHi} extension for @cncp{Mediawiki} introduces a
+@samp{<syntaxhighlight>} tag for presenting color-coded program
+listings on a wiki.  @filespec{ncptl.php} makes it easy to use
+@ncptl{} code in this context.
+
 @end table
 
 @node SLOCCount, pkg-config, Installing stylesheets, make install
@@ -1302,7 +1347,7 @@ cc -o myprog myprog.o `pkg-config --libs ncptl`
 @node Usage, Grammar, Installation, Top
 @chapter Usage
 
-@ncptl{} is more than just a language; it is a complete toolset which
+@ncptl{} is more than just a language; it is a complete toolset that
 consists of the following components:
 
 @itemize @bullet
@@ -1768,6 +1813,10 @@ tallies, etc.
 Output in the @cncp{PICL} trace format a logical-time trace of a
 @ncptl{} program's communication pattern.
 
+@item paraver
+Output in the @cncp{Paraver} trace format a logical-time trace of a
+@ncptl{} program's communication pattern.
+
 @item latex_vis
 Use @latex{} to produce an Encapsulated @cncp{PostScript}
 visualization of a program's communication pattern.
@@ -1816,8 +1865,10 @@ providing the standard, backend-independent information.
 * The interpret backend::       Interpret coNCePTuaL programs
 * The stats backend::           Report statistics on a program's execution
 * The picl backend::            Trace a coNCePTuaL program's logical execution
+* The paraver backend::         Trace a coNCePTuaL program's logical execution
 * The latex_vis backend::       Visualize a communication pattern
 * The dot_ast backend::         Graphviz DOT format (show abstract-syntax tree)
+* The libsea_ast backend::      CAIDA LibSea format (show abstract-syntax tree)
 @end menu
 
 
@@ -1858,20 +1909,23 @@ the value of @envvar{CC}; @envvar{MPICFLAGS} defaults to the value of
 
 The following is a complete list of @MPI{} functions employed by the
 @backend{c_mpi} backend: @ocodecf{MPI_Allreduce},
-@ocodecf{MPI_Barrier}, @ocodecf{MPI_Bcast}, @ocodecf{MPI_Comm_rank},
+@ocodecf{MPI_Alltoallv}, @ocodecf{MPI_Barrier}, @ocodecf{MPI_Bcast},
+@ocodecf{MPI_Comm_group}, @ocodecf{MPI_Comm_rank},
 @ocodecf{MPI_Comm_size}, @ocodecf{MPI_Comm_split},
 @ocodecf{MPI_Errhandler_create}, @ocodecf{MPI_Errhandler_set},
-@ocodecf{MPI_Finalize}, @ocodecf{MPI_Init}, @ocodecf{MPI_Irecv},
-@ocodecf{MPI_Isend}, @ocodecf{MPI_Recv}, @ocodecf{MPI_Reduce},
-@ocodecf{MPI_Send}, @ocodecf{MPI_Ssend}, @ocodecf{MPI_Waitall}.  In
-addition, if @configure{} is passed the @copt{with-mpi-wtime} option
-as described in @ref{configure}, then @emph{all} backends that utilize
-the @ncptl{} run-time library, including @backend{c_mpi}, will use
+@ocodecf{MPI_Finalize}, @ocodecf{MPI_Group_translate_ranks},
+@ocodecf{MPI_Init}, @ocodecf{MPI_Irecv}, @ocodecf{MPI_Isend},
+@ocodecf{MPI_Recv}, @ocodecf{MPI_Reduce}, @ocodecf{MPI_Send},
+@ocodecf{MPI_Ssend}, @ocodecf{MPI_Waitall}.  In addition, if
+@configure{} is passed the @copt{with-mpi-wtime} option as described
+in @ref{configure}, then @emph{all} backends that utilize the @ncptl{}
+run-time library, including @backend{c_mpi}, will use
 @ocodecf{MPI_Wtime} for taking performance measurements.
 
 @menu
 * Command-line options for c_mpi::  Control over the generated C+MPI code
 * Implementation of reductions::  How c_mpi implements the REDUCE statement
+* Implementation of multicasts::  How c_mpi implements the MULTICAST statement
 @end menu
 
 
@@ -1902,7 +1956,7 @@ reduction operation that was used.
 @end table
 
 
-@node Implementation of reductions,  , Command-line options for c_mpi, The c_mpi backend
+@node Implementation of reductions, Implementation of multicasts, Command-line options for c_mpi, The c_mpi backend
 @subsubheading Implementation of reductions
 
 The @backend{c_mpi} backend implements the @ncptl{} @keyw{REDUCE}
@@ -1920,6 +1974,45 @@ Because @MPI{} requires that the source and target buffers in an
 (@pxref{Unique messages}) is specified.  It utilizes two
 @emph{adjacent} buffers when @keyw{FROM BUFFER} or @keyw{INTO BUFFER}
 (@pxref{Buffer control}) is specified.
+
+
+@node Implementation of multicasts,  , Implementation of reductions, The c_mpi backend
+@subsubheading Implementation of multicasts
+
+The @keyw{MULTICAST} statement (@pxref{Multicasting}) enables any set
+of tasks to transmit data to any other set of tasks.  The
+@backend{c_mpi} backend implements @keyw{MULTICAST} using the simpler
+@ocodecf{MPI_Bcast} when there is a single initiator (determined
+dynamically at run time) and @ocodecf{MPI_Alltoallv} otherwise.  In
+all cases, @backend{c_mpi} creates an @MPI{} communicator that
+contains exactly the tasks involved in the multicast (as senders
+and/or receivers).
+
+@MPI{} requires that all tasks involved in an @ocodecf{MPI_Bcast}
+belong to the same @MPI{} communicator.  Hence, in the @ncptl{}
+statement
+
+@example
+TASK 4 MULTICASTS A 64 KILOBYTE MESSAGE TO TASKS r SUCH THAT r
+IS IN @{1, 3, 5, 7, 9@}
+@end example
+
+@noindent
+the generated communicator contains @w{tasks 1,} 3, 4, 5, 7, @w{and
+9,} even though @w{task 4} transmits but does not receive any data.
+
+Rather than repeatedly call @ocodecf{MPI_Bcast}, many-to-one and
+many-to-many multicasts such as
+
+@example
+TASKS from_tasks SUCH THAT from_tasks < 8 MULTICAST 3 2-KILOBYTE
+MESSAGES to TASKS to_tasks SUCH THAT 3 DIVIDES to_tasks
+@end example
+
+@noindent
+perform a single @ocodecf{MPI_Alltoallv}.  Two message buffers are
+used in this case, one for all outgoing data and one for all incoming
+data.
 
 
 @node The c_udgram backend, The c_trace backend, The c_mpi backend, Supplied backends
@@ -1965,6 +2058,24 @@ directory named @samp{c_udgram_@nonterm{tag}}.  These are
 automatically deleted if the program exits cleanly but will need to be
 removed manually in the case that the program is killed by an
 non-trappable signal.
+
+@menu
+* Implementation of collectives::  How c_udgram implements collective operations
+@end menu
+
+
+@node Implementation of collectives,  , The c_udgram backend, The c_udgram backend
+@subsubheading Implementation of collectives
+
+The @backend{c_udgram} normally uses logarithmic-time algorithms for
+multicasts (@pxref{Multicasting}), reductions (@pxref{Reducing}), and
+barriers (@pxref{Synchronizing}).  One-to-many multicasts disperse
+data in a binary-tree pattern.  Reductions reduce data in a
+binary-tree pattern to the root, which then disperses the data in a
+binary-tree pattern in the many-to-many case.  Barriers synchronize in
+a butterfly pattern.  The only non-logarithmic-time algorithm is for
+many-to-many multicasts, which are implemented as one
+logarithmic-time, one-to-many multicast for each sender.
 
 
 @node The c_trace backend, The c_profile backend, The c_udgram backend, Supplied backends
@@ -2207,7 +2318,7 @@ description.
 @subsection The @code{c_profile} backend
 
 Profiling communication events can help explain surprising performance
-measurements.  A profiling tool which automatically instruments
+measurements.  A profiling tool that automatically instruments
 @ncptl{} programs is simpler than manually adding @keyw{LOGS} or
 @keyw{OUTPUTS} statements to an existing program.
 
@@ -2232,7 +2343,7 @@ numbers.  In addition, the amount of memory used to store the event
 list is also logged.
 
 For example, the following extract from a log file indicates that the
-process which wrote it spent a total of 6.7@dmn{s} processing 22,000
+process that wrote it spent a total of 6.7@dmn{s} processing 22,000
 @samp{RECV} events (which includes waiting time) for an average of
 303.5@dmn{@texmath{\mu{}, u}s} per @samp{RECV} event:
 
@@ -2322,13 +2433,15 @@ correctness of @ncptl{} programs.
 
 The @backend{interpret} backend accepts all of the command-line
 options described in @ref{Running coNCePTuaL programs}, plus the
-following three options:
+following four options:
 
 @cartouche
 @example
   -H, --hierarchy=<string>     Latency hierarchy as a comma-separated list
                                of task_factor:latency_delta pairs [default:
                                "tasks:1"]
+  -K, --kill-reps=<number>     If nonzero, perform FOR...REPETITIONS loop
+                               bodies exactly once [default: 0]
   -M, --mcastsync=<number>     Perform an implicit synchronization after a
                                multicast (0=no; 1=yes) [default: 0]
   -T, --tasks=<number>         Number of tasks to use [default: 1]
@@ -2340,6 +2453,12 @@ every communication operation.  The @copt{hierarchy} option can make
 communication with distant tasks observe more latency than
 communication with nearby tasks.  An explanation of the argument to
 @copt{hierarchy} is presented in @ref{Task latency hierarchies}.
+
+To save execution time, the @copt{kill-reps} option alters the
+behavior of all @keyw{FOR}@dots{}@keyw{REPETITIONS} statements in the
+program, treating them as if they read, @samp{FOR 1 REPETITION}.  That
+is, it ignores warmup repetitions, synchronizations, and the specified
+number of repetitions, always using @samp{1} instead.
 
 A multicast operation (@pxref{Multicasting}) is normally treated as
 multiple point-to-point operations with the same send time.  The
@@ -2615,11 +2734,11 @@ Per-processor event tallies
 
 @backend{stats} is derived from @backend{interpret} (@pxref{The
 interpret backend}) and therefore supports the @backend{interpret}
-backend's @copt{tasks} and @copt{mcastsync} options as well as the
-standard options described in @ref{Running coNCePTuaL programs}.
-However, because @backend{stats} does not produce log files, the
-@copt{logfile} option is absent.  @backend{stats} additionally
-supports the following three command-line options:
+backend's options as well as the standard options described in
+@ref{Running coNCePTuaL programs}.  However, because @backend{stats}
+does not produce log files, the @copt{logfile} option is absent.
+@backend{stats} additionally supports the following three command-line
+options:
 
 @cartouche
 @example
@@ -2679,7 +2798,7 @@ control over which output to suppress.  For example,
 category of information.
 
 
-@node The picl backend, The latex_vis backend, The stats backend, Supplied backends
+@node The picl backend, The paraver backend, The stats backend, Supplied backends
 @subsection The @code{picl} backend
 
 @cncp{PICL}, the Portable Instrumented Communication Library, defines
@@ -2692,7 +2811,7 @@ which renders the trace data using any of a number of graphical views.
 
 Although @cncp{MPICL} is compatible with the @backend{c_mpi} backend
 (@pxref{The c_mpi backend}), @ncptl{} provides a @backend{picl}
-backend which produces @cncp{PICL} files directly.  The intention is
+backend that produces @cncp{PICL} files directly.  The intention is
 to use the @cncp{PICL} format to represent an idealized view of a
 communication pattern rather than to store a time-sensitive execution
 trace.  For example, timing events recorded by @backend{picl} occur at
@@ -2777,7 +2896,132 @@ explanation by making it easy to show graphically how tasks
 communicate with each other in an arbitrary @ncptl{} program.
 
 
-@node The latex_vis backend, The dot_ast backend, The picl backend, Supplied backends
+@node The paraver backend, The latex_vis backend, The picl backend, Supplied backends
+@subsection The @code{paraver} backend
+
+The @cncp{Paraver} trace visualizer accepts a trace file format that
+records an execution trace of a message-passing (or other) application
+and uses that to display application timelines and statistical data.
+Normally, one uses an application-instrumentation tool such as
+@cncp{Extrae} to generate @cncp{Paraver} traces, and @cncp{Extrae} is,
+in fact, compatible with programs generated using the @ncptl{}
+@backend{c_mpi} backend (@pxref{The c_mpi backend}).  However, the
+@backend{paraver} backend produces @cncp{Paraver} files directly.  The
+intention is to use the @cncp{Paraver} format to represent an
+idealized view of a communication pattern rather than to store a
+time-sensitive execution trace.  For example, timing events recorded
+by @backend{paraver} occur at logical times instead of physical times
+and statements such as @keyw{COMPUTES}/@keyw{SLEEPS} (@pxref{Delaying
+execution}) and @keyw{TOUCHES} (@pxref{Touching memory}) take either
+zero time or unit time, depending upon a command-line option.  By
+providing an idealized view of a communication pattern,
+@backend{paraver} abstracts away timing artifacts so events that one
+would expect to occur simultaneously are written to the trace file as
+being exactly simultaneous.
+
+As an example, the following is the @cncp{Paraver} output produced by
+passing the @backend{paraver} backend the @ncptl{} program, @samp{TASK
+0 SENDS A 32 KILOBYTE MESSAGE TO TASK 1 THEN TASK 1 SENDS A 256 BYTE
+MESSAGE TO TASK 0.}:
+
+@example
+#Paraver (06/01/2011 at 11:22):2001_ns:2(1,1):1:2(1:1,1:2),0
+3:1:1:1:1:0:0:2:1:2:1:1000:1000:32768:0
+2:1:1:1:1:0:1000000:6
+2:1:1:1:1:0:1000000:13
+2:2:1:2:1:0:1000000:6
+2:2:1:2:1:0:1000000:9
+1:1:1:1:1:0:1000:4
+1:2:1:2:1:0:1000:3
+3:2:1:2:1:1000:1000:1:1:1:1:2000:2000:256:0
+2:1:1:1:1:1000:1000000:9
+2:2:1:2:1:1000:1000000:13
+1:1:1:1:1:1000:2000:3
+1:2:1:2:1:1000:2000:4
+@end example
+
+@noindent
+The @backend{paraver} backend also generates an associated
+configuration file that maps program state and event numbers to names
+and colors.  For example, @w{state 4} represents ``blocking send'' and
+is colored a neon fuchsia in @cncp{Paraver}'s graphical interface;
+@w{event 1000000} represents ``@ncptl{},'' and @w{event 1000000},
+@w{value 13} represents a @ncptl{} @samp{SEND} event.  See the manual,
+@cite{Paraver Parallel Program Visualization and Analysis Tool:
+Tracefile Description}, for a detailed description of the various
+fields used in the preceding trace file.
+
+@backend{paraver} is derived from @backend{interpret} (@pxref{The
+interpret backend}) and therefore supports the @backend{interpret}
+backend's @copt{tasks} and @copt{mcastsync} options as well as the
+standard options described in @ref{Running coNCePTuaL programs}.
+However, because @backend{paraver} does not produce log files, the
+@copt{logfile} option is absent.  @backend{paraver} additionally supports
+the following two command-line options:
+
+@cartouche
+@example
+  -D, --dimemas-events=<number> 0=no Dimemas events; 1=extra events for
+                                Dimemas simulator [default: 0]
+  -E, --conc-events=<number>    0=exclude names of coNCePTuaL event types;
+                                1=include them [default: 0]
+  -O, --comp-time=<number>      Time spent in each non-communication event (ns)
+                                [default: 0]
+  -P, --event-time=<number>     Paraver event time (ns) [default: 1000]
+  -R, --conc-source=<number>    0=exclude references to coNCePTuaL source
+                                lines; 1=include them [default: 1]
+@end example
+@end cartouche
+
+By default, only @ncptl{} communication events are written to the
+trace file.  If @copt{comp-time} is set to a positive integer then all
+events are written to the trace file, and all non-communication events
+take the specified amount of time.  Because @cncp{Paraver} events are
+marked with physical time (a integral number of nanoseconds) but
+@backend{paraver} uses exclusively logical time, @backend{paraver}
+needs to associate a (fabricated) physical time with each logical
+time.  The @copt{event-time} option specifies that mapping.  By
+default, @backend{paraver} pretends that each unit of logical time
+corresponds to @w{1 microsecond} @w{(i.e, 1000 nanoseconds)} of
+physical time.  In addition to @ncptl{}, @cncp{Paraver} also has a
+notion of an ``event.''  The @copt{conc-source} and @copt{conc-events}
+options tell the @backend{paraver} backend which Paraver events to
+include in the trace file.  If @copt{conc-source} is @samp{1} (the
+default), Paraver will display text like the following in its Info
+panel:
+
+@example
+User Event at 529,000 ns  myfile.ncptl source line Unknown value 203
+@end example
+
+@noindent
+which indicates that the most recently clicked time in the
+@cncp{Paraver} timeline represents logical @w{time 529} and
+corresponds to @w{line 203} of @file{myfile.ncptl}.  If
+@copt{conc-events} is @samp{1}, Paraver will display text like the
+following in its Info panel:
+
+@example
+User Event at 529,000 ns  coNCePTuaL event RECEIVE
+@end example
+
+@noindent
+which indicates that the most recently clicked time in the
+@cncp{Paraver} timeline represents logical @w{time 529} and represents
+a @ncptl{} interpreter @samp{RECEIVE} event (@pxref{The interpret
+backend}).  The @cncp{Dimemas} network simulator accepts the same
+traces as the @cncp{Paraver} visualizer but expects to see a number of
+additional events in the trace file.  If @copt{dimemas-events} is
+@samp{1}, the @backend{paraver} backend will generate those extra
+events.
+
+One of the goals of @ncptl{} is to facilitate the explanation of
+network performance tests.  The @backend{paraver} backend aids in the
+explanation by making it easy to show graphically how tasks
+communicate with each other in an arbitrary @ncptl{} program.
+
+
+@node The latex_vis backend, The dot_ast backend, The paraver backend, Supplied backends
 @subsection The @code{latex_vis} backend
 @cindex communication diagrams
 @cindex diagrams, communication
@@ -2788,27 +3032,28 @@ communicate with each other in an arbitrary @ncptl{} program.
 The @backend{latex_vis} backend visualizes a program's communication
 pattern as an Encapsulated @cncp{PostScript} time-space diagram.  The
 backend thereby provides a static counterpart to the animated
-visualizations made possible by the @backend{picl} backend and the
-@cncp{ParaGraph} tool (@pxref{The picl backend}).  @backend{latex_vis}
-outputs @latex{} code with calls to the @cncp{PSTricks} package
-(available from @uref{http://www.tug.org/applications/PSTricks/} but
-shipped with most @latex{} distributions) to draw the figure, then
-runs @kcmd{latex} (or whatever the @envvar{LATEX} environment variable
-is set to) to convert the @file{.tex} file to DVI format and
-@kcmd{dvips} (or whatever the @envvar{DVIPS} environment variable is
-set to) to convert the @file{.dvi} file into EPS format.  Finally,
-@backend{latex_vis} runs the graphic through @cncp{Ghostscript}
-(@kcmd{gs} or whatever the @envvar{GS} environment variable is set to)
-to tighten the graphic's @cncp{bounding box}.@footnote{If
-@cncp{Ghostscript} is not installed or fails to run,
-@backend{latex_vis} issues a warning message, not an error message.
-The figure is still usable without a tight bounding box and a loose
-@cncp{bounding box} can be corrected manually by editing the
-@samp{%%BoundingBox:} line in the generated EPS file.}
+visualizations made possible by the @backend{picl} and
+@backend{paraver} backends and the @cncp{ParaGraph} and @cncp{Paraver}
+trace visualizers (@pxref{The picl backend}, and @ref{The paraver
+backend}).  @backend{latex_vis} outputs @latex{} code with calls to
+the @cncp{PSTricks} package (available from
+@uref{http://www.tug.org/applications/PSTricks/} but shipped with most
+@latex{} distributions) to draw the figure, then runs @kcmd{latex} (or
+whatever the @envvar{LATEX} environment variable is set to) to convert
+the @file{.tex} file to DVI format and @kcmd{dvips} (or whatever the
+@envvar{DVIPS} environment variable is set to) to convert the
+@file{.dvi} file into EPS format.  Finally, @backend{latex_vis} runs
+the graphic through @cncp{Ghostscript} (@kcmd{gs} or whatever the
+@envvar{GS} environment variable is set to) to tighten the graphic's
+@cncp{bounding box}.@footnote{If @cncp{Ghostscript} is not installed
+or fails to run, @backend{latex_vis} issues a warning message, not an
+error message.  The figure is still usable without a tight bounding
+box and a loose @cncp{bounding box} can be corrected manually by
+editing the @samp{%%BoundingBox:} line in the generated EPS file.}
 @backend{latex_vis} requires that @latex{} and @cncp{PSTricks} be
 installed in order to produce its visualizations.  However, it can
 still run with @copt{no-compile} (@pxref{Compiling coNCePTuaL
-programs}) to produce a @file{.tex} file which can later be run
+programs}) to produce a @file{.tex} file that can later be run
 manually through @kcmd{latex}.
 
 As an example, the following is the default @backend{latex_vis} output
@@ -2835,10 +3080,12 @@ performing the expected communication operations.
 @backend{latex_vis} is derived from @backend{interpret} (@pxref{The
 interpret backend}) and therefore supports the @backend{interpret}
 backend's @copt{tasks} and @copt{mcastsync} options as well as the
-standard options described in @ref{Running coNCePTuaL programs}.
-However, because @backend{latex_vis} does not produce log files, the
+standard options described in @ref{Running coNCePTuaL programs}.  (The
+@backend{interpret} backend's @copt{kill-reps} option can be handy for
+reducing the picture's size by showing only a single iteration of each
+loop.)  Because @backend{latex_vis} does not produce log files, the
 @copt{logfile} option is absent.  @backend{latex_vis} additionally
-supports the following five command-line options:
+supports the following command-line options:
 
 @cartouche
 @example
@@ -2872,7 +3119,7 @@ In the preceding list a ``point'' refers to a @cncp{PostScript} point.
 @texmath{\equiv, =}} 1/72")
 
 The @copt{annotate} option places adjacent to appropriate nodes in the
-output diagram a list of textual annotations which indicate the
+output diagram a list of textual annotations that indicate the
 communication operations that were posted or completed and the
 non-communication operations that were executed by the corresponding
 task at the corresponding time.  Some sample annotations are
@@ -2887,7 +3134,7 @@ otherwise, a list of specific events can be annotated.  For example,
 @samp{MCAST} events to be annotated.  Compiling a @ncptl{} program
 with the @backend{latex_vis} backend and the @copt{keep-ints} options
 (@pxref{Compiling coNCePTuaL programs}) produces a @file{.tex} file
-which contains in the prologue comments a list of all events used by a
+that contains in the prologue comments a list of all events used by a
 program that were and were not annotated.
 
 Task numbers are normally shown in @w{base ten.}  The
@@ -2913,11 +3160,11 @@ arrows to drift less from their associated nodes.
 
 The @copt{source-lines} option, when used with @copt{annotate},
 augments each event annotation with the corresponding line(s) of
-source code which produced that event.  This feature improves the
+source code that produced that event.  This feature improves the
 utility of @backend{latex_vis} as a debugging aid for @ncptl{}
 programs.
 
-By default, all arrows which indicate message transmissions are drawn
+By default, all arrows that indicate message transmissions are drawn
 with equally thick line widths.  The @copt{arrow-width} option lets
 you specify a @cncp{Python} function to map a message size in bytes,
 @math{m}, to a line width in @cncp{PostScript} points, with the
@@ -2961,7 +3208,7 @@ To facilitate the use of @copt{filter}, the @backend{latex_vis}
 backend uses a helper macro (@code{\viscolor}) to define colors.
 @code{\viscolor} takes an argument of the form
 @samp{@var{name}=@var{color}} and defines a macro
-@code{\}@var{name}@code{color} which expands to @var{color}.  To
+@code{\}@var{name}@code{color} that expands to @var{color}.  To
 further facilitate the use of @copt{filter}, the @latex{} code
 generated by the @backend{latex_vis} backend contains a number of
 strategically placed placeholder comments of the form @samp{%
@@ -2987,14 +3234,13 @@ PSTricks documentation}, the predefined colors are @code{red},
 @code{yellow}, and the predefined grayscales are @code{black},
 @code{darkgray}, @code{gray}, @code{lightgray}, and @code{white}.)
 
-Tasks which are active at a given time are drawn using the
-@code{\task} macro, which takes the task number as an argument.  Tasks
-which are idle at a given time are drawn using the @code{\idle} macro,
-which is initially defined to be the same as @code{\task}.  The
-following ``cookbook'' examples showcase some of the ways that the
-power of @latex{} and @cncp{PSTricks} can be exploited to display idle
-tasks in a variety of different styles (best used with
-@kbd{--annotate=2}):
+Tasks that are active at a given time are drawn using the @code{\task}
+macro, which takes the task number as an argument.  Tasks that are
+idle at a given time are drawn using the @code{\idle} macro, which is
+initially defined to be the same as @code{\task}.  The following
+``cookbook'' examples showcase some of the ways that the power of
+@latex{} and @cncp{PSTricks} can be exploited to display idle tasks in
+a variety of different styles (best used with @kbd{--annotate=2}):
 
 @table @asis
 @item omitting idle tasks
@@ -3025,7 +3271,7 @@ command-line options is easily performed by compiling with
 the generated @latex{} code.
 
 
-@node The dot_ast backend,  , The latex_vis backend, Supplied backends
+@node The dot_ast backend, The libsea_ast backend, The latex_vis backend, Supplied backends
 @subsection The @code{dot_ast} backend
 
 @cncp{dot} is a format for describing graphs in terms of their edges
@@ -3071,10 +3317,10 @@ To facilitate associating nodes in the @AST{} with fragments of the
 a @copt{node-code} option that labels each node with the fragment of
 code to which it corresponds.  The argument to @copt{node-code} is a
 number of characters at which to truncate the code fragment or
-@samp{-1} to inhibit truncation.  (The purpose of truncation is to
+@samp{-1} to inhibit truncation.  The purpose of truncation is to
 prevent excessively large nodes from disturbing the graph layout.  The
-@samp{program} node, for example, includes the complete program source
-code if not truncated.)
+@nonterm{program} node (@pxref{Complete programs}), for example,
+includes the complete program source code if not truncated.
 
 @item @kbd{@copt{extra-dot}=@var{dot_code}}
 The @backend{dot_ast} backend's @copt{extra-dot} option enables the
@@ -3116,6 +3362,68 @@ whatever format is named by the @copt{format} option).  If
 @copt{no-compile} options, it produces a @cncp{dot} file that should
 be run manually through @filespec{dot} or another @cncp{Graphviz}
 tool.
+
+
+@node The libsea_ast backend,  , The dot_ast backend, Supplied backends
+@subsection The @code{libsea_ast} backend
+
+Like the @backend{dot_ast} backend (@pxref{The dot_ast backend}), the
+@backend{libsea_ast} backend visualizes a @ncptl{} parse tree.  This
+capability is primarily useful to backend developers to help
+prioritize the methods that need to be implemented (i.e., implementing
+first the @AST{} node types needed by in a trivial program, then those
+needed by successively more complex programs).
+
+The @backend{libsea_ast} backend specifies a @ncptl{} program's parse
+tree in the @cncp{LibSea} graph file format, which can then be
+visualized and manipulated interactively using the @cncp{Walrus}
+visualization tool.  The primary advantage of @backend{libsea_ast}
+over @backend{dot_ast} is that @backend{libsea_ast} can handle much
+larger parse trees than @backend{dot_ast}.  For example, the following
+image illustrates the @cncp{Walrus} GUI displaying a 702,985-node
+@ncptl{} parse tree:@footnote{The original source program contained
+over 6000 lines of @ncptl{} code.}
+
+@vskip 2ex
+
+@c The following TeX trickery is needed because of the way epsf.tex
+@c operates differently in DVI and PDF modes.
+@iftex
+@tex
+\ifpdf
+  @center @image{walrus, @pagewidth}
+\else
+  @center @image{walrus, 6in}
+\fi
+@end tex
+@end iftex
+@ifnottex
+@center @image{walrus, , , Image of the Walrus GUI displaying a large coNCePTuaL parse tree}
+@end ifnottex
+
+@noindent
+A secondary advantage of @backend{libsea_ast} is that @cncp{Walrus}
+lets a user selectively view information.  For example, in the
+preceding image, only @nonterm{simple_stmt} nodes (@pxref{Complex
+statements}) are highlighted; the source code for only certain nodes
+is displayed; and all node type and node attribute information is
+hidden.
+
+The @backend{libsea_ast} backend accepts the following option from the
+@filespec{ncptl} command line:
+
+@table @asis
+@item @kbd{@copt{node-code}=@var{characters}}
+Every node in the generated @cncp{LibSea} graph lists the fragment of
+@ncptl{} code to which it corresponds.  For large @ncptl{} programs,
+these strings can get large.  The @nonterm{program} node
+(@pxref{Complete programs}), for example, includes the complete
+program source code.  Because the @cncp{Walrus} visualizer does not
+currently wrap long lines, most of a long string is never even
+presented to the user and therefore serves no practical purpose.  The
+argument to @copt{node-code} is a number of characters at which to
+truncate the code fragment or @samp{-1} to inhibit truncation.
+@end table
 
 
 @node Running coNCePTuaL programs, Interpreting coNCePTuaL log files, Supplied backends, Usage
@@ -3252,7 +3560,7 @@ of handling newlines output by a backquoted command.  In some shells
 output with embedded newlines as a single argument; in others
 @w{(e.g., @filespec{tcsh}),} each line of output constitutes a
 separate command-line argument.  Because @ncptl{} programs currently
-ignore arguments which do not begin with @samp{-@w{}-}, the comment
+ignore arguments that do not begin with @samp{-@w{}-}, the comment
 written to the log file in the latter case terminates at the first
 newline.  In virtually all shells, the double quotes around the
 backquoted command are needed to prevent the shell from splitting
@@ -3264,7 +3572,7 @@ arguments at word boundaries.  As a consequence, @coptargs{comment,
 maintains a log file based on the template name but with @samp{%p}
 replaced with the processor number, @samp{%r} replaced with the run
 number (the smallest nonnegative integer that produces a filename
-which does not already exist), and @samp{%%} replaced with a literal
+that does not already exist), and @samp{%%} replaced with a literal
 ``%'' character.  The program outputs an error message and aborts if
 the log-file template does not contain at least one @samp{%p}.  The
 only exception is that an empty template @w{(i.e.,
@@ -3307,18 +3615,18 @@ used in any program that utilizes the @keyw{RANDOM TASK} construct
 
 If the @keyw{LOGS} statement (@pxref{Writing to a log file}) is used
 anywhere in a @ncptl{} program, then @emph{all} processes write a log
-file.  This is done because @ncptl{} log files---even those which
+file.  This is done because @ncptl{} log files---even those that
 contain no measurement data---include a wealth of important
 information in prologue comments, as described @ref{Interpreting
 coNCePTuaL log files}.  As a consequence, a program run with thousands
 of processes produces thousands of log files.  If @w{process 0} is the
-only process which logs actual data, the @filespec{ncptl-logmerge}
+only process that logs actual data, the @filespec{ncptl-logmerge}
 script (@pxref{ncptl-logmerge}) can merge these log files into a
 single, more manageable, file.  For situations in which it is
 unreasonable for every process to write a log file @w{(e.g., if} the
 filesystem is unable to handle large numbers of simultaneous file
 creations, the @envvar{NCPTL_LOG_ONLY} environment variable lets the
-user limit the set of processes which produce log files.
+user limit the set of processes that produce log files.
 @envvar{NCPTL_LOG_ONLY} accepts a comma-separated list of
 dash-separated process ranges such as @samp{0-3,12-16,24,25,32-48}.
 Only processes included in the list produce log files.
@@ -3585,7 +3893,7 @@ of error in the measurement data.
 
 @item Process CPU-time increment
 @itemx Process CPU usage (user+system)
-Log files end with an epilogue section which includes @samp{Process
+Log files end with an epilogue section that includes @samp{Process
 CPU usage (user+system)}, which indicates the subset of total
 wall-clock time for which the program was running (@samp{user}) or for
 which the operating system was running on the program's behalf
@@ -3612,7 +3920,7 @@ from accessing that file.
 @ncptl{} programs heap-allocate memory for a variety of purposes:
 message buffers, event lists (@pxref{Generated code}), unaggregated
 performance data (@pxref{Computing aggregates}), etc.  Allocated
-memory which is no longer needed is returned to the heap.  The total
+memory that is no longer needed is returned to the heap.  The total
 amount of allocated memory the program is holding therefore increases
 and decreases over time.  The @samp{Peak memory allocation} comment
 reports the maximum amount of memory the program held at any given
@@ -3898,7 +4206,7 @@ In addition, a multiplier can be @samp{E} (exponent) followed by a
 positive integer.  An @samp{E} multiplier multiplies the base integer
 by 10 raised to the power of the alternate integer.
 
-Some examples of valid integers include @samp{2009}, @samp{-42},
+Some examples of valid integers include @samp{2010}, @samp{-42},
 @samp{64K} @w{(@math{=} 65,536),} and @samp{8E3} @w{(@math{=} 8,000).}
 
 
@@ -4064,8 +4372,8 @@ evaluates to 4.8, which is a number that can't be entered directly in
 a @ncptl{} program.  (The language supports only integral constants,
 as mentioned in @ref{Primitives}.)
 
-The @ncptl{} language provides a special form called @keyw{REAL} which
-resembles a single-argument function.  When evaluated in
+The @ncptl{} language provides a special form called @keyw{REAL},
+which resembles a single-argument function.  When evaluated in
 floating-point context, @keyw{REAL} returns its argument evaluated
 normally, as if @samp{REAL} were absent.  When evaluated in integer
 context, however, @keyw{REAL} evalutes its argument in floating-point
@@ -4221,26 +4529,25 @@ following functions:
 @tab @keyw{KNOMIAL_PARENT} | @keyw{KNOMIAL_CHILD} | @keyw{KNOMIAL_CHILDREN}
 @item
 @tab |
-@tab @keyw{MESH_NEIGHBOR} | @keyw{MESH_COORDINATE}
+@tab @keyw{MESH_NEIGHBOR} | @keyw{MESH_COORDINATE} | @keyw{MESH_DISTANCE}
 @item
 @tab |
-@tab @keyw{TORUS_NEIGHBOR} | @keyw{TORUS_COORDINATE}
+@tab @keyw{RANDOM_UNIFORM} | @keyw{RANDOM_GAUSSIAN}
 @item
 @tab |
-@tab @keyw{RANDOM_UNIFORM} | @keyw{RANDOM_GAUSSIAN} | @keyw{RANDOM_POISSON}
+@tab @keyw{RANDOM_POISSON} | @keyw{RANDOM_PARETO}
 @end multitable
 
-All of the above take as an argument one or more integers (which may
-be the result of an arithmetic expression).  The following sections
-describe each function in turn.
+All of the above take as an argument one or more numeric values (which
+may be the result of an arithmetic expression).  The following
+sections describe each function in turn.
 
 @menu
 * Integer functions::           Map one integer to another
 * Floating-point functions::    Map one floating-point value to another
 * n-ary tree functions::        Find parents and children in n-ary trees
 * k-nomial tree functions::     Find parents and children in k-nomial trees
-* Mesh functions::              Find neighbors in 1-D, 2-D, and 3-D meshes
-* Torus functions::             Find neighbors in 1-D, 2-D, and 3-D tori
+* Mesh/torus functions::        Find neighbors in 1-D, 2-D, and 3-D meshes/tori
 * Random-number functions::     Generate unsynchronized pseudorandom numbers
 @end menu
 
@@ -4299,14 +4606,13 @@ arguments (but at least one).  For example, @samp{MIN(8,6,7,5,3,0,9)}
 @end iftex
 the @math{n}th root of @math{x}.  More precisely, it returns the
 largest integer @math{r} such that @texmath{r^n \leq x, r^n <= x}.
-@keyw{ROOT} is not currently defined on negative values of @math{x}
-but this may change in a future release of @ncptl{}@.  As an example
-of @keyw{ROOT} usage, @samp{ROOT(5, 245)} is @samp{3} because
-@texmath{3^5 = 243 \leq 245, 3^5 = 243 <= 245} but @math{4^5 = 1024 >
-245}.  Similarly, @w{@samp{ROOT(2, 16)} =} @samp{4}; @w{@samp{ROOT(3,
-27)} =} @samp{3}; @samp{ROOT(0, 0)} and @samp{ROOT(4, -245)} each
-return a run-time error; and, @w{@samp{ROOT(-3, 8)} =} @samp{0}
-(because @w{@samp{ROOT(-3, 8)} =} @w{@samp{1/ROOT(3, 8)} =}
+@keyw{ROOT} is not currently defined on negative values of @math{x}.
+As an example of @keyw{ROOT} usage, @samp{ROOT(5, 245)} is @samp{3}
+because @texmath{3^5 = 243 \leq 245, 3^5 = 243 <= 245} while @math{4^5
+= 1024 > 245}.  Similarly, @w{@samp{ROOT(2, 16)} =} @samp{4};
+@w{@samp{ROOT(3, 27)} =} @samp{3}; @samp{ROOT(0, 0)} and @samp{ROOT(4,
+-245)} each return a run-time error; and, @w{@samp{ROOT(-3, 8)} =}
+@samp{0} (because @w{@samp{ROOT(-3, 8)} =} @w{@samp{1/ROOT(3, 8)} =}
 @w{@samp{1/2} = @samp{0}).}
 
 @keyw{SQRT} is an integer square root function.  It is essentially
@@ -4323,10 +4629,10 @@ just syntactic sugar for the more general @keyw{ROOT} function:
 As stated in @ref{Arithmetic expressions}, there are certain
 constructs in which expressions are evaluated in floating-point
 context instead of integer context.  In such constructs, all of
-@ncptl{}'s built-in functions return floating-point values.
+@ncptl{}'s built-in functions accept and return floating-point values.
 Furthermore, the @keyw{CBRT}, @keyw{LOG10}, @keyw{ROOT}, and
 @keyw{SQRT} functions (@pxref{Integer functions}) compute
-floating-point results, not integer results which are coerced into
+floating-point results, not integer results that are coerced into
 floating-point format.
 
 The following functions are not meaningful in integer context but are
@@ -4410,7 +4716,7 @@ each task has three children.  Hence, the following expressions hold:
 @end itemize
 
 
-@node k-nomial tree functions, Mesh functions, n-ary tree functions, Built-in functions
+@node k-nomial tree functions, Mesh/torus functions, n-ary tree functions, Built-in functions
 @subsubheading @var{k}-nomial tree functions
 @cindex tree functions
 @cindex functions, tree
@@ -4489,7 +4795,7 @@ bandwidth to send two messages simultaneously.  The following
 illustration shows how @ncptl{} constructs a 27-task trinomial tree:
 
 @sp 1
-@center @image{3nomial}
+@center @image{3nomial,6in}
 @sp 1
 
 @noindent
@@ -4513,216 +4819,250 @@ evaluations, assuming @keyw{num_tasks} is @samp{27}:
 @end itemize
 
 
-@node Mesh functions, Torus functions, k-nomial tree functions, Built-in functions
-@subsubheading Mesh functions
+@node Mesh/torus functions, Random-number functions, k-nomial tree functions, Built-in functions
+@subsubheading Mesh/torus functions
 @cindex mesh functions
 @cindex functions, mesh
+@cindex torus functions
+@cindex functions, torus
 
-@ncptl{} provides two functions, @keyw{MESH_NEIGHBOR} and
-@keyw{MESH_COORDINATE}, that help treat (linear) @w{task IDs} as
-positions on a multidimensional mesh.  Each of these functions takes a
-variable number of arguments, determined by the dimensionality of the
-mesh (1-D, 2-D, or 3-D).
+@ncptl{} provides three functions---@keyw{MESH_NEIGHBOR},
+@keyw{MESH_COORDINATE}, and @keyw{MESH_DISTANCE}---that help treat
+(linear) @w{task IDs} as positions on a multidimensional mesh or
+torus.  Each of these functions takes a variable number of arguments,
+determined by the dimensionality of the mesh (1-D, 2-D, or 3-D).
 
-@defun MESH_NEIGHBOR (@var{task_ID}, @var{width}, @var{x_offset} @w{[, @var{height}}, @var{y_offset} @w{[, @var{depth}, @var{z_offset}]])}
+@quotation
+@emph{Terminology note}: In the context of network topologies in
+general and @keyw{MESH_NEIGHBOR}, @keyw{MESH_COORDINATE}, and
+@keyw{MESH_DISTANCE} in particular, ``torus'' refers to a mesh
+topology, of any number of dimensions, that contains wraparound links.
+That is, nodes on the right side of the mesh are directly connected to
+nodes on the left side of the mesh, nodes on the top of the mesh are
+directly connected to nodes on the bottom of the mesh, and so forth.
+A ``partial torus'' refers to a mesh topology of two or more
+dimensions in which at least one dimension contains wraparound links
+and at least one dimension does not.
+@end quotation
+
+@defun MESH_NEIGHBOR (@samp{(} @var{width} @samp{*}? @w{[, @var{height} @samp{*}?} @w{[, @var{depth} @samp{*}?]]} @samp{)}, @var{task_ID}, @samp{(} @var{x_offset} @w{[, @var{y_offset}} @w{[, @var{z_offset}]]} @samp{)})
 @keyw{MESH_NEIGHBOR} returns a task's neighbor on a 1-D, 2-D, or 3-D
-mesh.  It always takes a task number, the mesh's width, and the
-desired @math{x} offset from the given task.  For a 2-D or 3-D mesh,
-the next two arguments are the mesh's height and the desired @math{y}
-offset from the given task.  For a 3-D mesh only, the next two
-arguments are the mesh's depth and the desired @math{z} offset from
-the given task.  Offsets that move off the mesh cause
+mesh or torus.  It takes exactly three arguments: a list of the
+mesh/torus's dimensions, a task number, and a list of the neighbor's
+offset in each dimension from the given task.  The two list arguments
+must be parenthesized, even if they contain only a single element.
+Each dimension in the dimension list may be followed by an asterisk to
+indicate that the mesh wraps around in that dimension.  If not
+specified, @var{height} and @var{depth} default to @samp{1}, and
+@var{y_offset} and @var{z_offset} default to @samp{0}.  In the absence
+of wraparound links, offsets that move off the mesh cause
 @keyw{MESH_NEIGHBOR} to return the value @samp{-1}.
 @end defun
 
-@defun MESH_COORDINATE (@var{task_ID}, @var{coordinate}, @var{width} @w{[, @var{height}} @w{[, @var{depth}]])}
+@defun MESH_COORDINATE (@samp{(} @var{width} @samp{*}? @w{[, @var{height} @samp{*}?} @w{[, @var{depth} @samp{*}?]]} @samp{)}, @var{task_ID}, @var{coordinate})
 @keyw{MESH_COORDINATE} returns a task's @var{x}, @var{y}, or @var{z}
-coordinate on a 1-D, 2-D, or 3-D mesh.  The first argument to
-@keyw{MESH_COORDINATE} is a task number.  The second argument should
-be @samp{0} to calculate an @var{x} coordinate, @samp{1} to calculate
-a @var{y} coordinate, or @samp{2} to calculate a @var{z} coordinate.
-The remaining arguments are the mesh's width, height, and depth,
-respectively.  The height can be omitted for a 1-D mesh and the depth
-can be omitted for a 2-D mesh.  (Both default to @samp{1}.)
+coordinate on a 1-D, 2-D, or 3-D mesh/torus.  The first argument to
+@keyw{MESH_COORDINATE} is a list of the mesh/torus's dimensions.  The
+second argument is a task number.  The third argument should be
+@samp{0} to calculate an @var{x} coordinate, @samp{1} to calculate a
+@var{y} coordinate, or @samp{2} to calculate a @var{z} coordinate.
+Coordinates are zero-origined.  Each dimension in the dimension list
+may be followed by an asterisk to indicate that the mesh wraps around
+in that dimension, but this has no impact on the result.  (Asterisks
+are allowed solely for consistency with the other mesh functions.)
 @end defun
 
-@keyw{MESH_NEIGHBOR} and @keyw{MESH_COORDINATE} number tasks following
-the right-hand rule: left-to-right, then top-to-bottom, and finally
-back-to-front, as shown in the following illustrations of a 4-element
-(1-D) mesh, a @texmath{4 \times 3, 4x3} (2-D) mesh, and a @texmath{4
-\times 3 \times 2, 4x3x2} (3-D) mesh.  Examples of
-@keyw{MESH_NEIGHBOR} and @keyw{MESH_COORDINATE} for 1-D, 2-D, and 3-D
-meshes follow the corresponding illustration.
+@defun MESH_DISTANCE (@samp{(} @var{width} @samp{*}? @w{[, @var{height} @samp{*}?} @w{[, @var{depth} @samp{*}?]]} @samp{)}, @var{task_ID_1}, @var{task_ID_2})
+@keyw{MESH_DISTANCE} returns the shortest Manhattan distance between
+two tasks on a 1-D, 2-D, or 3-D mesh or torus.  It takes exactly three
+arguments: a list of the mesh/torus's dimensions and two task numbers.
+The list argument must be parenthesized, even if it contains only a
+single element.  Each dimension in the dimension list may be followed
+by an asterisk to indicate that the mesh wraps around in that
+dimension.  If not specified, @var{height} and @var{depth} default to
+@samp{1}.
+@end defun
+
+@keyw{MESH_NEIGHBOR}, @keyw{MESH_COORDINATE}, and @keyw{MESH_DISTANCE}
+number tasks following the right-hand rule: left-to-right, then
+top-to-bottom, and finally back-to-front, as shown in the following
+illustrations of a 4-element (1-D) mesh, a @texmath{4 \times 3, 4x3}
+(2-D) mesh, and a @texmath{4 \times 3 \times 2, 4x3x2} (3-D) mesh.
+Examples of @keyw{MESH_NEIGHBOR}, @keyw{MESH_COORDINATE}, and
+@keyw{MESH_DISTANCE} for 1-D, 2-D, and 3-D meshes follow the
+corresponding illustration.
 
 @sp 1
 @center @image{mesh1D}
 @sp 1
 
+The following examples show how to use @keyw{MESH_NEIGHBOR} and
+@keyw{MESH_COORDINATE} to calculate neighbors and coordinates on the
+1-D mesh shown above:
+
 @itemize @bullet
-@item @samp{MESH_NEIGHBOR(0, 4, -1)} @result{} @samp{-1}
-@item @samp{MESH_NEIGHBOR(0, 4, +1)} @result{} @samp{1}
-@item @samp{MESH_NEIGHBOR(1, 4, -1)} @result{} @samp{0}
-@item @samp{MESH_NEIGHBOR(1, 4, +1)} @result{} @samp{2}
-@item @samp{MESH_NEIGHBOR(2, 4, -1)} @result{} @samp{1}
-@item @samp{MESH_NEIGHBOR(2, 4, +1)} @result{} @samp{3}
-@item @samp{MESH_NEIGHBOR(3, 4, -1)} @result{} @samp{2}
-@item @samp{MESH_NEIGHBOR(3, 4, +1)} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4), 0, (-1))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4), 0, (+1))} @result{} @samp{1}
+@item @samp{MESH_NEIGHBOR((4), 1, (-1))} @result{} @samp{0}
+@item @samp{MESH_NEIGHBOR((4), 1, (+1))} @result{} @samp{2}
+@item @samp{MESH_NEIGHBOR((4), 2, (-1))} @result{} @samp{1}
+@item @samp{MESH_NEIGHBOR((4), 2, (+1))} @result{} @samp{3}
+@item @samp{MESH_NEIGHBOR((4), 3, (-1))} @result{} @samp{2}
+@item @samp{MESH_NEIGHBOR((4), 3, (+1))} @result{} @samp{-1}
 
 @sp 1
 
-@item @samp{MESH_COORDINATE(-1, 0, 4)} @result{} @samp{-1}
-@item @samp{MESH_COORDINATE( 0, 0, 4)} @result{} @samp{0}
-@item @samp{MESH_COORDINATE( 1, 0, 4)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE( 2, 0, 4)} @result{} @samp{2}
-@item @samp{MESH_COORDINATE( 3, 0, 4)} @result{} @samp{3}
-@item @samp{MESH_COORDINATE( 4, 0, 4)} @result{} @samp{-1}
-@item @samp{MESH_COORDINATE( 2, 1, 4)} @result{} @samp{0}
-@item @samp{MESH_COORDINATE( 2, 2, 4)} @result{} @samp{0}
+@item @samp{MESH_COORDINATE((4), -1, 0)} @result{} @samp{-1}
+@item @samp{MESH_COORDINATE((4), 0, 0)} @result{} @samp{0}
+@item @samp{MESH_COORDINATE((4), 1, 0)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4), 2, 0)} @result{} @samp{2}
+@item @samp{MESH_COORDINATE((4), 3, 0)} @result{} @samp{3}
+@item @samp{MESH_COORDINATE((4), 4, 0)} @result{} @samp{-1}
+@item @samp{MESH_COORDINATE((4), 2, 1)} @result{} @samp{0}
+@item @samp{MESH_COORDINATE((4), 2, 2)} @result{} @samp{0}
+
+@sp 1
+
+@item @samp{MESH_DISTANCE((4), -1, 0)} @result{} @samp{-1}
+@item @samp{MESH_DISTANCE((4), 1, 2)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4), 0, 3)} @result{} @samp{3}
 @end itemize
+
+We can treat the 1-D mesh as a 1-D torus (a ring) by putting a
+@samp{*} after the length of the @math{x} dimension:
+
+@itemize @bullet
+@item @samp{MESH_NEIGHBOR((4*), 0, (-1))} @result{} @samp{3}
+@item @samp{MESH_NEIGHBOR((4*), 3, (+1))} @result{} @samp{0}
+@sp 1
+
+@item @samp{MESH_DISTANCE((4*), -1, 0)} @result{} @samp{-1}
+@item @samp{MESH_DISTANCE((4*), 1, 2)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4*), 0, 3)} @result{} @samp{1}
+@end itemize
+
+@noindent
+The remaining @keyw{MESH_NEIGHBOR} examples return the same value as
+before.  @keyw{MESH_COORDINATE} @emph{always} returns the same value
+regardless of the presence or absence of wraparound links.
 
 @sp 1
 @center @image{mesh2D}
 @sp 1
 
+The next set of examples shows how to use @keyw{MESH_NEIGHBOR},
+@keyw{MESH_COORDINATE}, and @keyw{MESH_DISTANCE} to calculate
+neighbors, coordinates, and distances on the 2-D mesh shown above:
+
 @itemize @bullet
-@item @samp{MESH_NEIGHBOR(5, 4, -1, 3, -1)} @result{} @samp{0}
-@item @samp{MESH_NEIGHBOR(5, 4,  0, 3, -1)} @result{} @samp{1}
-@item @samp{MESH_NEIGHBOR(5, 4, +1, 3, -1)} @result{} @samp{2}
-@item @samp{MESH_NEIGHBOR(5, 4, -1, 3,  0)} @result{} @samp{4}
-@item @samp{MESH_NEIGHBOR(5, 4,  0, 3,  0)} @result{} @samp{5}
-@item @samp{MESH_NEIGHBOR(5, 4, +1, 3,  0)} @result{} @samp{6}
-@item @samp{MESH_NEIGHBOR(5, 4, -1, 3, +1)} @result{} @samp{8}
-@item @samp{MESH_NEIGHBOR(5, 4,  0, 3, +1)} @result{} @samp{9}
-@item @samp{MESH_NEIGHBOR(5, 4, +1, 3, +1)} @result{} @samp{10}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (-1, -1))} @result{} @samp{0}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, ( 0, -1))} @result{} @samp{1}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (+1, -1))} @result{} @samp{2}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (-1,  0))} @result{} @samp{4}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, ( 0,  0))} @result{} @samp{5}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (+1,  0))} @result{} @samp{6}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (-1, +1))} @result{} @samp{8}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, ( 0, +1))} @result{} @samp{9}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (+1, +1))} @result{} @samp{10}
 
 @sp 1
 
-@item @samp{MESH_COORDINATE( 1, 0, 4, 3)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE( 6, 0, 4, 3)} @result{} @samp{2}
-@item @samp{MESH_COORDINATE( 6, 1, 4, 3)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE( 6, 2, 4, 3)} @result{} @samp{0}
-@item @samp{MESH_COORDINATE( 8, 0, 4, 3)} @result{} @samp{0}
-@item @samp{MESH_COORDINATE( 8, 1, 4, 3)} @result{} @samp{2}
-@item @samp{MESH_COORDINATE(12, 0, 4, 3)} @result{} @samp{-1}
+@item @samp{MESH_COORDINATE((4, 3), 1, 0)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4, 3), 6, 0)} @result{} @samp{2}
+@item @samp{MESH_COORDINATE((4, 3), 6, 1)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4, 3), 6, 2)} @result{} @samp{0}
+@item @samp{MESH_COORDINATE((4, 3), 8, 0)} @result{} @samp{0}
+@item @samp{MESH_COORDINATE((4, 3), 8, 1)} @result{} @samp{2}
+@item @samp{MESH_COORDINATE((4, 3), 12, 0)} @result{} @samp{-1}
+
+@sp 1
+
+@item @samp{MESH_DISTANCE((4, 3),  1, 2)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4, 3),  2, 6)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4, 3),  0, 5)} @result{} @samp{2}
+@item @samp{MESH_DISTANCE((4, 3),  3, 9)} @result{} @samp{4}
+@item @samp{MESH_DISTANCE((4, 3), 11, 0)} @result{} @samp{5}
 @end itemize
 
+Wraparound links turn some out-of-bounds (@samp{-1}) neighbor values
+into in-bounds values and reduce some of the shortest-path distances
+between tasks:
+
+@itemize @bullet
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (-2,  0))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4, 3), 5, (-2, -2))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4, 3*), 5, (-2,  0))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4, 3*), 5, (-2, -2))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4*, 3), 5, (-2,  0))} @result{} @samp{7}
+@item @samp{MESH_NEIGHBOR((4*, 3), 5, (-2, -2))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4*, 3*), 5, (-2,  0))} @result{} @samp{7}
+@item @samp{MESH_NEIGHBOR((4*, 3*), 5, (-2, -2))} @result{} @samp{11}
+
+@sp 1
+
+@item @samp{MESH_DISTANCE((4*, 3*),  1, 2)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4*, 3*),  2, 6)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4*, 3*),  0, 5)} @result{} @samp{2}
+@item @samp{MESH_DISTANCE((4*, 3*),  3, 9)} @result{} @samp{3}
+@item @samp{MESH_DISTANCE((4*, 3*), 11, 0)} @result{} @samp{2}
+@end itemize
 
 @sp 1
 @center @image{mesh3D}
 @sp 1
 
+The final set of examples in this section shows how to use
+@keyw{MESH_NEIGHBOR}, @keyw{MESH_COORDINATE}, and @keyw{MESH_DISTANCE}
+to calculate neighbors, coordinates, and distances on the 3-D mesh
+shown above:
+
 @itemize @bullet
-@item @samp{MESH_NEIGHBOR(0, 4,  0, 3,  0, 2, +1)} @result{} @samp{12}
-@item @samp{MESH_NEIGHBOR(0, 4,  0, 3, +1, 2,  0)} @result{} @samp{4}
-@item @samp{MESH_NEIGHBOR(0, 4, +1, 3,  0, 2,  0)} @result{} @samp{1}
-@item @samp{MESH_NEIGHBOR(0, 4, +1, 3, +1, 2, +1)} @result{} @samp{17}
-@item @samp{MESH_NEIGHBOR(17, 4, +2, 3, -1, 2, -1)} @result{} @samp{3}
-@item @samp{MESH_NEIGHBOR(23, 4, +1, 3, +1, 2, +1)} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4, 3, 2),  0, (0, 0, +1))} @result{} @samp{12}
+@item @samp{MESH_NEIGHBOR((4, 3, 2),  0, (0, +1, 0))} @result{} @samp{4}
+@item @samp{MESH_NEIGHBOR((4, 3, 2),  0, (+1, 0, 0))} @result{} @samp{1}
+@item @samp{MESH_NEIGHBOR((4, 3, 2),  0, (+1, +1, +1))} @result{} @samp{17}
+@item @samp{MESH_NEIGHBOR((4, 3, 2), 17, (+2, -1, -1))} @result{} @samp{3}
+@item @samp{MESH_NEIGHBOR((4, 3, 2), 23, (+1, +1, +1))} @result{} @samp{-1}
+@item @samp{MESH_NEIGHBOR((4, 3, 2),  7, (+100, -200, +300))} @result{} @samp{-1}
 
 @sp 1
 
-@item @samp{MESH_COORDINATE(-5, 0, 4, 3, 2)} @result{} @samp{-1}
-@item @samp{MESH_COORDINATE( 1, 0, 4, 3, 2)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE( 6, 0, 4, 3, 2)} @result{} @samp{2}
-@item @samp{MESH_COORDINATE( 6, 1, 4, 3, 2)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE( 6, 2, 4, 3, 2)} @result{} @samp{0}
-@item @samp{MESH_COORDINATE(18, 0, 4, 3, 2)} @result{} @samp{2}
-@item @samp{MESH_COORDINATE(18, 1, 4, 3, 2)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE(18, 2, 4, 3, 2)} @result{} @samp{1}
-@item @samp{MESH_COORDINATE(18, 3, 4, 3, 2)} @result{} @error{} Invalid coordinate
+@item @samp{MESH_COORDINATE((4, 3, 2), -5, 0)} @result{} @samp{-1}
+@item @samp{MESH_COORDINATE((4, 3, 2),  1, 0)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4, 3, 2),  6, 0)} @result{} @samp{2}
+@item @samp{MESH_COORDINATE((4, 3, 2),  6, 1)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4, 3, 2),  6, 2)} @result{} @samp{0}
+@item @samp{MESH_COORDINATE((4, 3, 2), 18, 0)} @result{} @samp{2}
+@item @samp{MESH_COORDINATE((4, 3, 2), 18, 1)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4, 3, 2), 18, 2)} @result{} @samp{1}
+@item @samp{MESH_COORDINATE((4, 3, 2), 18, 3)} @result{} @error{} Invalid coordinate
+
+@sp 1
+
+@item @samp{MESH_DISTANCE((4, 3, 2), 23, 24)} @result{} @samp{-1}
+@item @samp{MESH_DISTANCE((4, 3, 2),  5, 17)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4, 3, 2),  1, 16)} @result{} @samp{3}
+@item @samp{MESH_DISTANCE((4, 3, 2), 14,  8)} @result{} @samp{5}
+@item @samp{MESH_DISTANCE((4, 3, 2),  0, 23)} @result{} @samp{6}
+@end itemize
+
+As before, wraparound links affect some of the return values:
+
+@itemize @bullet
+@item @samp{MESH_NEIGHBOR((4*, 3*, 2*), 23, (+1, +1, +1))} @result{} @samp{0}
+@item @samp{MESH_NEIGHBOR((4*, 3*, 2*),  7, (+100, -200, +300))} @result{} @samp{11}
+
+@sp 1
+
+@item @samp{MESH_DISTANCE((4*, 3*, 2*), 23, 24)} @result{} @samp{-1}
+@item @samp{MESH_DISTANCE((4*, 3*, 2*),  5, 17)} @result{} @samp{1}
+@item @samp{MESH_DISTANCE((4*, 3*, 2*),  1, 16)} @result{} @samp{3}
+@item @samp{MESH_DISTANCE((4*, 3*, 2*), 14,  8)} @result{} @samp{4}
+@item @samp{MESH_DISTANCE((4*, 3*, 2*),  0, 23)} @result{} @samp{3}
 @end itemize
 
 
-@node Torus functions, Random-number functions, Mesh functions, Built-in functions
-@subsubheading Torus functions
-@cindex torus functions
-@cindex functions, torus
-
-A torus is a mesh with wraparound edges.  @ncptl{} provides analogues
-to @keyw{MESH_NEIGHBOR} and @keyw{MESH_COORDINATE} called
-@keyw{TORUS_NEIGHBOR} and @keyw{TORUS_COORDINATE} which enable
-(linear) @w{task IDs} to be treated as positions on a 1-D, 2-D, or 3-D
-torus.
-
-@defun TORUS_NEIGHBOR (@var{task_ID}, @var{width}, @var{x_offset} @w{[, @var{height}}, @var{y_offset} @w{[, @var{depth}, @var{z_offset}]])}
-@keyw{TORUS_NEIGHBOR} takes the same arguments as @keyw{MESH_NEIGHBOR}
-but calculates neighbors on a torus instead of a mesh.  @xref{Mesh
-functions}, for explanations of the arguments.  While task offsets
-that go out-of-bounds on a mesh return @samp{-1}, such offsets merely
-wrap around a torus.
-@end defun
-
-@defun TORUS_COORDINATE (@var{task_ID}, @var{coordinate}, @var{width} @w{[, @var{height}} @w{[, @var{depth}]])}
-@keyw{TORUS_COORDINATE} returns a task's @var{x}, @var{y}, or @var{z}
-coordinate on a 1-D, 2-D, or 3-D torus.  It performs exactly the same
-function as @keyw{MESH_COORDINATE} and is aliased in the language
-merely for symmetry.  @xref{Mesh functions}, for details.
-@end defun
-
-@itemize @bullet
-@item @samp{TORUS_NEIGHBOR(0, 4, -1)} @result{} @samp{3}
-@item @samp{TORUS_NEIGHBOR(0, 4, +1)} @result{} @samp{1}
-@item @samp{TORUS_NEIGHBOR(1, 4, -1)} @result{} @samp{0}
-@item @samp{TORUS_NEIGHBOR(1, 4, +1)} @result{} @samp{2}
-@item @samp{TORUS_NEIGHBOR(2, 4, -1)} @result{} @samp{1}
-@item @samp{TORUS_NEIGHBOR(2, 4, +1)} @result{} @samp{3}
-@item @samp{TORUS_NEIGHBOR(3, 4, -1)} @result{} @samp{2}
-@item @samp{TORUS_NEIGHBOR(3, 4, +1)} @result{} @samp{0}
-
-@sp 1
-
-@item @samp{TORUS_COORDINATE(-1, 0, 4)} @result{} @samp{-1}
-@item @samp{TORUS_COORDINATE( 0, 0, 4)} @result{} @samp{0}
-@item @samp{TORUS_COORDINATE( 1, 0, 4)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE( 2, 0, 4)} @result{} @samp{2}
-@item @samp{TORUS_COORDINATE( 3, 0, 4)} @result{} @samp{3}
-@item @samp{TORUS_COORDINATE( 4, 0, 4)} @result{} @samp{-1}
-@item @samp{TORUS_COORDINATE( 2, 1, 4)} @result{} @samp{0}
-@item @samp{TORUS_COORDINATE( 2, 2, 4)} @result{} @samp{0}
-
-@sp 1
-
-@item @samp{TORUS_NEIGHBOR(0, 4, -1, 3, -1)} @result{} @samp{11}
-@item @samp{TORUS_NEIGHBOR(0, 4,  0, 3, -1)} @result{} @samp{8}
-@item @samp{TORUS_NEIGHBOR(0, 4, +1, 3, -1)} @result{} @samp{9}
-@item @samp{TORUS_NEIGHBOR(0, 4, -1, 3,  0)} @result{} @samp{3}
-@item @samp{TORUS_NEIGHBOR(0, 4,  0, 3,  0)} @result{} @samp{0}
-@item @samp{TORUS_NEIGHBOR(0, 4, +1, 3,  0)} @result{} @samp{1}
-@item @samp{TORUS_NEIGHBOR(0, 4, -1, 3, +1)} @result{} @samp{7}
-@item @samp{TORUS_NEIGHBOR(0, 4,  0, 3, +1)} @result{} @samp{4}
-@item @samp{TORUS_NEIGHBOR(0, 4, +1, 3, +1)} @result{} @samp{5}
-
-@sp 1
-
-@item @samp{TORUS_NEIGHBOR(23, 4, +1, 3, +1, 2, +1)} @result{} @samp{0}
-@item @samp{TORUS_NEIGHBOR(23, 4, +2, 3, +2, 2, +2)} @result{} @samp{17}
-@item @samp{TORUS_NEIGHBOR(23, 4, +3, 3, +3, 2, +3)} @result{} @samp{10}
-
-@sp 1
-
-@item @samp{TORUS_COORDINATE( 1, 0, 4, 3)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE( 6, 0, 4, 3)} @result{} @samp{2}
-@item @samp{TORUS_COORDINATE( 6, 1, 4, 3)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE( 6, 2, 4, 3)} @result{} @samp{0}
-@item @samp{TORUS_COORDINATE( 8, 0, 4, 3)} @result{} @samp{0}
-@item @samp{TORUS_COORDINATE( 8, 1, 4, 3)} @result{} @samp{2}
-@item @samp{TORUS_COORDINATE(12, 0, 4, 3)} @result{} @samp{-1}
-
-@sp 1
-
-@item @samp{TORUS_COORDINATE(-5, 0, 4, 3, 2)} @result{} @samp{-1}
-@item @samp{TORUS_COORDINATE( 1, 0, 4, 3, 2)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE( 6, 0, 4, 3, 2)} @result{} @samp{2}
-@item @samp{TORUS_COORDINATE( 6, 1, 4, 3, 2)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE( 6, 2, 4, 3, 2)} @result{} @samp{0}
-@item @samp{TORUS_COORDINATE(18, 0, 4, 3, 2)} @result{} @samp{2}
-@item @samp{TORUS_COORDINATE(18, 1, 4, 3, 2)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE(18, 2, 4, 3, 2)} @result{} @samp{1}
-@item @samp{TORUS_COORDINATE(18, 3, 4, 3, 2)} @result{} @error{} Invalid coordinate
-@end itemize
-
-
-@node Random-number functions,  , Torus functions, Built-in functions
+@node Random-number functions,  , Mesh/torus functions, Built-in functions
 @subsubheading Random-number functions
 @cindex random numbers
 @cindex functions, random-number
@@ -4755,6 +5095,16 @@ mean @var{mean} and standard deviation @var{stddev}.
 Return an integer selected at random from a Poisson distribution with
 mean @var{mean} and standard deviation @texmath{\sqrt{@var{mean}},
 sqrt(@var{mean})}.
+@end defun
+
+@defun RANDOM_PARETO (@var{shape}, @var{scale})
+@defunx RANDOM_PARETO (@var{shape}, @var{lower_bound}, @var{upper_bound})
+@kwindex RANDOM_PARETO
+With the two-argument form, return an integer selected at random from
+a Pareto distribution with shape @var{shape} and scale @var{scale}.
+With the three-argument form, return an integer selected at random
+from a bounded Pareto distribution with shape @var{shape} and bounded
+by the range [@var{lower_bound}, @var{upper_bound}].
 @end defun
 
 
@@ -5084,7 +5434,7 @@ cases described in @ref{Sending} and @ref{Reordering task IDs}),
 @subsection Source tasks
 @cindex tasks
 
-A @nonterm{source_task} specification takes one of four forms:
+A @nonterm{source_task} specification takes one of five forms:
 
 @multitable {@nonterm{source_task}} {::=} {@keyw{TASKS} @nonterm{restricted_ident}}
 @item @nonterm{source_task}
@@ -5099,6 +5449,9 @@ A @nonterm{source_task} specification takes one of four forms:
 @item
 @tab |
 @tab @keyw{TASKS} @nonterm{restricted_ident}
+@item
+@tab |
+@tab @keyw{TASK} @keyw{GROUP} @nonterm{ident}
 @end multitable
 
 @keyw{ALL TASKS} specifies that each task will perform a given
@@ -5125,6 +5478,10 @@ undefined on @w{task 0}, @samp{1} on @w{task 1}, @samp{2} on @w{task
 2}, and so forth up to task @samp{num_tasks-1}, on which @samp{x} will
 again be undefined.
 
+@samp{@keyw{TASK GROUP} @nonterm{ident}} specifies that a previously
+defined group of tasks will perform a given operation.  This form of
+@nonterm{source_task} is described further in @ref{Binding variables}.
+
 As per the definitions in @ref{Primitives} and @ref{Restricted
 identifiers}, respectively, @nonterm{ident}s and
 @nonterm{restricted_ident}s do not accept parentheses.  Hence,
@@ -5142,7 +5499,7 @@ in scope to the surrounding statement.
 @subsection Target tasks
 @cindex tasks
 
-A @nonterm{target_tasks} specification takes one of three forms:
+A @nonterm{target_tasks} specification takes one of four forms:
 
 @multitable {@nonterm{target_tasks}} {::=} {@keyw{TASKS} @nonterm{restricted_ident}}
 @item @nonterm{target_tasks}
@@ -5154,6 +5511,9 @@ A @nonterm{target_tasks} specification takes one of three forms:
 @item
 @tab |
 @tab @keyw{TASKS} @nonterm{restricted_ident}
+@item
+@tab |
+@tab @keyw{TASK} @keyw{GROUP} @nonterm{ident}
 @end multitable
 
 @keyw{ALL OTHER TASKS} is just like @keyw{ALL TASKS} in a
@@ -5178,6 +5538,11 @@ scope is limited to the relational expression within the
 @nonterm{restricted_ident}.  As an example, @samp{TASKS dst SUCH THAT
 dst>src} refers to all tasks @samp{dst} with a greater ID than a
 (previously declared) task @samp{src}.
+
+@samp{TASK GROUP @nonterm{ident}} specifies that a previously defined
+group of tasks will perform a given operation.  This form of
+@nonterm{target_tasks} is described further in @ref{Binding
+variables}.
 
 
 @node Communication statements, I/O statements, Task descriptions, Grammar
@@ -5243,8 +5608,8 @@ following is a formal definition:
 @item @tab @tab @keyw{MESSAGES}
 @item @tab @tab [@keyw{WITH VERIFICATION} | @keyw{WITH DATA TOUCHING} |
 @item @tab @tab @ @keyw{WITHOUT VERIFICATION} | @keyw{WITHOUT DATA TOUCHING}]
-@item @tab @tab [@keyw{FROM} @keyw{BUFFER} @nonterm{expr} |
-@item @tab @tab @ @keyw{FROM} @keyw{THE DEFAULT BUFFER}]
+@item @tab @tab [@keyw{FROM} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
+@item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
 
 Within a @keyw{RECEIVE} statement (@pxref{Receiving}), a
@@ -5267,8 +5632,8 @@ which is referred to here as a @nonterm{recv_message_spec}:
 @item @tab @tab @ @keyw{MESSAGES}]
 @item @tab @tab [@keyw{WITH VERIFICATION} | @keyw{WITH DATA TOUCHING} |
 @item @tab @tab @ @keyw{WITHOUT VERIFICATION} | @keyw{WITHOUT DATA TOUCHING}]
-@item @tab @tab [@keyw{FROM} @keyw{BUFFER} @nonterm{expr} |
-@item @tab @tab @ @keyw{FROM} @keyw{THE DEFAULT BUFFER}]
+@item @tab @tab [@keyw{INTO} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
+@item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
 
 Although not indicated by the preceding grammatical rule, a
@@ -5289,8 +5654,8 @@ respectively:
 @item @tab @tab @ @nonterm{message_alignment} @keyw{MISALIGNED}]
 @item @tab @tab @keyw{INTEGERS} | @keyw{DOUBLEWORDS}
 @item @tab @tab [@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]
-@item @tab @tab [@keyw{FROM} @keyw{BUFFER} @nonterm{expr} |
-@item @tab @tab @ @keyw{FROM} @keyw{THE DEFAULT BUFFER}]
+@item @tab @tab [@keyw{FROM} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
+@item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
 
 @multitable {@nonterm{reduce_target_message_spec}} {::=} {[@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]}
@@ -5302,8 +5667,8 @@ respectively:
 @item @tab @tab @ @ @nonterm{message_alignment} @keyw{MISALIGNED}]
 @item @tab @tab @ @keyw{INTEGERS} | @keyw{DOUBLEWORDS}]
 @item @tab @tab [@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]
-@item @tab @tab [@keyw{INTO} @keyw{BUFFER} @nonterm{expr} |
-@item @tab @tab @ @keyw{INTO} @keyw{THE DEFAULT BUFFER}]
+@item @tab @tab [@keyw{INTO} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
+@item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
 
 @sp 1
@@ -5366,8 +5731,8 @@ It can be empty or expressed in one of two other ways:
 
 A @nonterm{data_multiplier} is a scaling factor that converts a
 unitless number into a number of bytes.  The following are the valid
-possibilities for @nonterm{data_multiplier} and the number of bytes
-which which they multiply @nonterm{expr}:
+possibilities for @nonterm{data_multiplier} and the number of bytes by
+which they multiply @nonterm{expr}:
 
 @multitable {@nonterm{data_multiplier}} {::=} {@keyw{BIT} | @keyw{BYTE} | @keyw{HALFWORD} | @keyw{WORD} | @keyw{INTEGER} | @keyw{DOUBLEWORD} |}
 @item @nonterm{data_multiplier}
@@ -5584,6 +5949,11 @@ specified.  @keyw{FROM THE DEFAULT BUFFER} and
 @keyw{INTO THE DEFAULT BUFFER} also explicitly specify the default
 buffer-allocation behavior.
 
+It is also possible to specify byte offsets into a buffer.  For
+example, a message sent @samp{FROM 4 WORDS INTO BUFFER 3} will be sent
+from @w{4 words} @w{(12 bytes)} past @w{buffer 3}'s normal starting
+memory address.
+
 
 @node Blocking semantics,  , Buffer control, Message specifications
 @subsubheading Blocking semantics
@@ -5669,6 +6039,74 @@ BYTE MESSAGE TO TASK upper/2}
 TO UNSUSPECTING TASK 0}
 @end itemize
 
+There are a number of attributes associated with every message
+transmission:
+
+@itemize @bullet
+@item
+synchronous vs.@: asynchronous operation
+
+@item
+unique vs.@: recycled message buffers
+
+@item
+unaligned vs.@: aligned vs.@: misaligned message buffers
+
+@item
+no data touching vs.@: data touching vs.@: data verification
+
+@item
+implicit vs.@: explicit message-buffer selection
+
+@item
+explicit byte offsets into message buffers
+@end itemize
+
+@noindent
+A few of those appear in the preceding examples.
+
+When @keyw{UNSUSPECTING} is omitted, the implicit @keyw{RECEIVE}
+statement normally inherits all of the attributes of the corresponding
+@keyw{SEND}@.  However, the second form of a @nonterm{send_stmt},
+which contains a @keyw{WHO RECEIVES IT} (or @keyw{WHO RECEIVES THEM})
+clause, enables the receiver's attributes to be overridden on a
+per-attribute basis.  For instance, consider the following @keyw{SEND}
+statement:
+
+@example
+TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 WHO RECEIVES IT
+ASYNCHRONOUSLY
+@end example
+
+@noindent
+The alternative sequence of statements that does not use @keyw{WHO
+RECEIVES IT} is less straightforward to read because it splits a
+single message transmission into two statements:
+
+@enumerate
+@item
+@code{TASK 1 ASYNCHRONOUSLY RECEIVES A 1 MEGABYTE MESSAGE FROM TASK 0}
+
+@item
+@code{TASK 0 SENDS A 1 MEGABYTE MESSAGE TO UNSUSPECTING TASK 1}
+@end enumerate
+
+Some further examples of @keyw{WHO RECEIVES IT} follow:
+
+@example
+TASKS left SUCH THAT left IS EVEN SEND 5 2 KILOBYTE 64 BYTE ALIGNED
+MESSAGES TO TASKS left+1 WHO RECEIVE THEM AS UNALIGNED MESSAGES WITH
+DATA TOUCHING
+
+TASK num_tasks-1 ASYNCHRONOUSLY SENDS A 1E5 BYTE MESSAGE WITH
+VERIFICATION TO TASK 0 WHO RECEIVES IT SYNCHRONOUSLY
+
+TASK leaf SUCH THAT KNOMIAL_CHILDREN(leaf,2)=0 SENDS A UNIQUE 1536
+BYTE MESSAGE WITH DATA TOUCHING TO TASK KNOMIAL_PARENT(leaf,2) WHO
+RECEIVES IT ASYNCHRONOUSLY AS A NONUNIQUE QUADWORD ALIGNED MESSAGE
+WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
+@end example
+
 One subtlety of the @keyw{SEND} statement when used without
 @keyw{UNSUSPECTING} involves the orderings of the sends and receives.
 The rule is that receives are posted before sends.  Furthermore,
@@ -5701,66 +6139,31 @@ the original @ncptl{} statement encapsulates multiple communication
 operations, the component communications proceed sequentially because
 of data dependences and because the operations are blocking.
 
-As should now be apparent, there are a number of attributes associated
-with every message transmission:
+As another example of send/receive ordering, consider the statement,
+@samp{TASKS x SUCH THAT x IS IN @{1,4,5@} SEND A 768 BYTE MESSAGE FROM
+4 DOUBLEWORDS INTO THE DEFAULT BUFFER TO TASKS y SUCH THAT y IS IN
+@{6,2,3@}}.  This statement causes nine messages to be sent and
+received and in the following order: @w{1 @result{} 2}, @w{1 @result{}
+3}, @w{1 @result{} 6}, @w{4 @result{} 2}, @w{4 @result{} 3}, @w{4
+@result{} 6}, @w{5 @result{} 2}, @w{5 @result{} 3}, @w{5 @result{} 6}.
+The reason that @w{task 6} receives from each sender @emph{after}
+@w{tasks 2} @w{and 3} relates to the comment above that
+@nonterm{restricted_ident}s are evaluated in order @w{from 0} @w{to
+@math{@var{num_tasks}-1}}.  One can therefore think of the preceding
+@ncptl{} statement as being implemented with the following pseudocode:
 
-@itemize @bullet
-@item
-synchronous vs.@: asynchronous operation
-
-@item
-unique vs.@: recycled message buffers
-
-@item
-unaligned vs.@: aligned vs.@: misaligned message buffers
-
-@item
-no data touching vs.@: data touching vs.@: data verification
-
-@item
-implicit vs.@: explicit message-buffer selection
-@end itemize
-
-When @keyw{UNSUSPECTING} is omitted, the implicit @keyw{RECEIVE}
-statement normally inherits all of the attributes of the corresponding
-@keyw{SEND}@.  However, the second form of a @nonterm{send_stmt},
-which contains a @keyw{WHO RECEIVES IT} (or @keyw{WHO RECEIVES THEM})
-clause, enables the receiver's attributes to be overridden on a
-per-attribute basis.  For instance, consider the following @keyw{SEND}
-statement:
-
-@example
-TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 WHO RECEIVES IT
-ASYNCHRONOUSLY
-@end example
-
-@noindent
-The alternative sequence of statements that does not use
-@keyw{WHO RECEIVES IT} is less straightforward:
-
-@enumerate
-@item
-@code{TASK 1 ASYNCHRONOUSLY RECEIVES A 1 MEGABYTE MESSAGE FROM TASK 0}
-
-@item
-@code{TASK 0 SENDS A 1 MEGABYTE MESSAGE TO UNSUSPECTING TASK 1}
-@end enumerate
-
-Some further examples of @keyw{WHO RECEIVES IT} follow:
-
-@example
-TASKS left SUCH THAT left IS EVEN SEND 5 2 KILOBYTE 64 BYTE ALIGNED
-MESSAGES TO TASKS left+1 WHO RECEIVE THEM AS UNALIGNED MESSAGES WITH
-DATA TOUCHING
-
-TASK num_tasks-1 ASYNCHRONOUSLY SENDS A 1E5 BYTE MESSAGE WITH
-VERIFICATION TO TASK 0 WHO RECEIVES IT SYNCHRONOUSLY
-
-TASK leaf SUCH THAT KNOMIAL_CHILDREN(leaf,2)=0 SENDS A UNIQUE 1536
-BYTE MESSAGE WITH DATA TOUCHING TO TASK KNOMIAL_PARENT(leaf,2) WHO
-RECEIVES IT ASYNCHRONOUSLY AS A NONUNIQUE QUADWORD ALIGNED MESSAGE
-WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
-@end example
+@display
+@b{for} s := 0 @b{to} num_tasks-1 @b{do}
+@ @ @b{if} s @b{is in} @{1, 4, 5@} @b{then}
+@ @ @ @ @b{for} r := 0 @b{to} num_tasks-1 @b{do}
+@ @ @ @ @ @ @b{if} r @b{is in} @{6, 2, 3@} @b{then}
+@ @ @ @ @ @ @ @ r @b{receives from} s
+@b{for} s := 0 @b{to} num_tasks-1 @b{do}
+@ @ @b{if} s @b{is in} @{1, 4, 5@} @b{then}
+@ @ @ @ @b{for} r := 0 @b{to} num_tasks-1 @b{do}
+@ @ @ @ @ @ @b{if} r @b{is in} @{6, 2, 3@} @b{then}
+@ @ @ @ @ @ @ @ s @b{sends to} r
+@end display
 
 
 @node Receiving, Awaiting completion, Sending, Communication statements
@@ -5769,7 +6172,7 @@ WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
 @ref{Sending}, mentioned the @nonterm{send_stmt}'s @keyw{UNSUSPECTING}
 keyword, which specifies that the targets should not implicitly
 perform a receive operation.  Because every send must have a matching
-receive, @ncptl{} offers a @keyw{RECEIVE} statement which explicitly
+receive, @ncptl{} offers a @keyw{RECEIVE} statement that explicitly
 receives a set of messages.  A @nonterm{receive_stmt} is much like a
 @nonterm{send_stmt} (@pxref{Sending}) with the @nonterm{source_task}
 and @nonterm{target_tasks} in the reverse order:
@@ -5787,6 +6190,45 @@ and @nonterm{target_tasks} in the reverse order:
 @nonterm{target_tasks} is described in @ref{Target tasks};
 @nonterm{message_spec} is described in @ref{Message specifications};
 and, @nonterm{source_task} is described in @ref{Source tasks}.
+
+Like other statements that contain both a @nonterm{source_task} and a
+@nonterm{target_tasks}, the @keyw{RECEIVE} statement propagates all
+variables declared by the @nonterm{source_task} to the
+@nonterm{target_tasks}, as in
+
+@example
+TASKS src-1 RECEIVE A 1 MEGABYTE MESSAGE FROM ALL TASKS src.
+@end example
+
+@noindent
+However, the @keyw{RECEIVE} statement is unique among @ncptl{}
+statements in that it can alternatively propagate all variables
+declared by the @nonterm{target_tasks} to the @nonterm{source_task},
+as in
+
+@example
+ALL TASKS dst RECEIVE A 1 MEGABYTE MESSAGE FROM TASKS dst+1.
+@end example
+
+@cindex ambiguous @code{RECEIVE} statements
+@noindent
+The @keyw{RECEIVE} statement automatically determines the direction in
+which variables should be propagated.  If the direction cannot
+unambiguously be determined, the @ncptl{} compiler aborts with an
+error message.  For example, the @keyw{RECEIVE} statement in the
+following code is ambiguous because the @samp{bbb} in the expression
+@w{@samp{aaa < bbb}} can refer to either the one in the @keyw{LET}
+statement or the one in the @samp{TASKS bbb SUCH THAT bbb > 3}
+expression:
+
+@example
+LET bbb BE 5 WHILE @{
+  TASKS aaa SUCH THAT aaa < bbb RECEIVE A MESSAGE FROM TASKS bbb SUCH
+  THAT bbb > 3 THEN
+  TASKS ccc SUCH THAT ccc > 3 SEND A MESSAGE TO UNSUSPECTING TASKS
+  ddd SUCH THAT ddd < ccc
+@}
+@end example
 
 For each message sent via a @keyw{SEND}@dots{}@keyw{TO UNSUSPECTING}
 statement there must be a @keyw{RECEIVE} statement that receives a
@@ -5884,6 +6326,32 @@ TASK 0 MULTICASTS A 16 BYTE MESSAGE TO TASKS recip SUCH THAT recip>=4
 Note that in the first @nonterm{mcast_stmt}, @w{task 0} both sends and
 receives a message, while in the second @nonterm{mcast_stmt}, @w{task
 0} sends but does not receive.
+
+The @keyw{MULTICASTS} statement supports not only traditional
+one-to-many multicasting as shown in the preceding example but also
+many-to-many multicasting---and the less interesting but still valid
+many-to-one and one-to-one multicasting.  The constituent pairs of
+communicating tasks are identical to those induced by the @keyw{SENDS}
+statement (@pxref{Sending}).  For example, the statement
+
+@example
+TASKS s SUCH THAT s<3 MULTICAST A 1 KILOBYTE MESSAGE TO TASKS s SUCH
+THAT s>6
+@end example
+
+@noindent
+performs the collective analogue of
+
+@example
+TASKS s SUCH THAT s<3 SEND A 1 KILOBYTE MESSAGE TO TASKS s SUCH
+THAT s>6
+@end example
+
+@noindent
+Specifically, @w{task 0} will send a message to each of @w{tasks 7,}
+8, @w{9, @dots{}}; @w{task 1} will send a message to each of @w{tasks
+7,} 8, @w{9, @dots{}}; and @w{task 2} will send a message to each of
+@w{tasks 7,} 8, @w{9, @enddots{}}
 
 
 @node Reducing, Synchronizing, Multicasting, Communication statements
@@ -6815,19 +7283,58 @@ The @keyw{LET} statement has the following form:
 @noindent
 where @nonterm{let_binding} is defined as follows:
 
-@need 969
-@multitable {@nonterm{let_binding}} {::=} {@nonterm{expr} | @keyw{A RANDOM TASK} [} {|} {@keyw{LESS THAN} @nonterm{expr} [@keyw{BUT NOT} @nonterm{expr}]]}
+@multitable {@nonterm{let_binding}} {::=} {@nonterm{ident} @keyw{BE}} {|} {@keyw{A RANDOM TASK} [@nonterm{random_task_constraints}]}
 @item @nonterm{let_binding}
 @tab ::=
-@tab @nonterm{ident}
-@item @tab @tab @keyw{BE}
-@item @tab @tab @nonterm{expr} | @keyw{A RANDOM TASK} [ @tab @tab @keyw{OTHER THAN} @nonterm{expr}
-@item @tab @tab @tab | @tab @keyw{LESS THAN} @nonterm{expr} [@keyw{BUT NOT} @nonterm{expr}]
-@item @tab @tab @tab | @tab @keyw{GREATER THAN} @nonterm{expr} [@keyw{BUT NOT} @nonterm{expr}]
-@item @tab @tab @tab | @tab @keyw{IN} @samp{[} @nonterm{expr} @samp{,} @nonterm{expr} @samp{]} [@keyw{BUT NOT} @nonterm{expr}]]
+@tab @nonterm{ident} @keyw{BE}
+@tab @tab expr
+@item @tab @tab @tab | @tab @nonterm{source_task}
+@item @tab @tab @tab | @tab @keyw{A RANDOM TASK} [@nonterm{random_task_constraints}]
 @end multitable
 
-Here are some examples of @keyw{LET}:
+The optional @nonterm{random_task_constraints} limits the set of tasks
+from which @keyw{A RANDOM TASK} selects:
+
+@multitable {@nonterm{random_task_constraints}} {::=} {@keyw{IN} @samp{[} @nonterm{expr} @samp{,} @nonterm{expr} @samp{]} [@keyw{BUT NOT} @nonterm{expr}]}
+@item @nonterm{random_task_constraints}
+@tab ::=
+@tab @keyw{OTHER THAN} @nonterm{expr}
+@item @tab | @tab @keyw{LESS THAN} @nonterm{expr} [@keyw{BUT NOT} @nonterm{expr}]
+@item @tab | @tab @keyw{GREATER THAN} @nonterm{expr} [@keyw{BUT NOT} @nonterm{expr}]
+@item @tab | @tab @keyw{IN} @samp{[} @nonterm{expr} @samp{,} @nonterm{expr} @samp{]} [@keyw{BUT NOT} @nonterm{expr}]
+@end multitable
+
+An @nonterm{ident} bound using the form @samp{@keyw{LET}
+@nonterm{ident} @keyw{BE} @nonterm{source_task}} represents a group of
+tasks and must therefore be accessed using the @keyw{TASK GROUP}
+construct (@pxref{Source tasks}).  For example, in the @ncptl{}
+program
+
+@example
+LET left BE TASKS t SUCH THAT t < num_tasks/2 WHILE TASK GROUP left
+SENDS A 1 KILOBYTE MESSAGE TO TASK num_tasks - left - 1
+@end example
+
+@noindent
+the @samp{@keyw{TASK GROUP} left} expression defines @samp{left} as
+the group of tasks described by @samp{@keyw{TASKS} t @keyw{SUCH THAT}
+t < num_tasks/2}.  The @samp{left} in @samp{num_tasks - left - 1}
+refers back to @emph{that} definition of @samp{left}, not the
+let-bound @samp{left}.  The @samp{t} in the let-binding is used only
+to specify the group of tasks that will be bound to @samp{left}.  Its
+scope is limited to the expression @samp{t < num_tasks/2}.  In other
+words, the preceding example is equivalent to
+
+@example
+TASKS left SUCH THAT left < num_tasks/2 SEND A 1 KILOBYTE MESSAGE TO
+TASK num_tasks - left - 1
+@end example
+
+The advantage of using @keyw{LET} to define a task group is that the
+same---possible complex---description of a set of tasks can be reused
+in multiple statements without having to type it repeatedly.
+
+Here are some further examples of @keyw{LET}:
 
 @example
 LET reps BE 3 WHILE FOR reps REPETITIONS TASK 0 OUTPUTS "Laissez les
@@ -6857,13 +7364,13 @@ LET num BE 1000 AND num BE num*2 WHILE TASK 0 OUTPUTS num
 @print{} 2000
 @end example
 
-The last example demonstrates that @keyw{LET} can bind a variable to a
-function of its previous value.  It is important to remember, though,
-that variables in @ncptl{} cannot be assigned, only bound to a value
-for the duration of the current scope.  They can, however, be bound to
-a different value for the duration of a child scope.  The following
-example is an attempt to clarify the distinction between binding and
-assignment:
+That last example demonstrates that @keyw{LET} can bind a variable to
+a function of its previous value.  It is important to remember,
+though, that variables in @ncptl{} cannot be assigned, only bound to a
+value for the duration of the current scope.  They can, however, be
+bound to a different value for the duration of a child scope.  The
+following example is an attempt to clarify the distinction between
+binding and assignment:
 
 @example
 LET var BE 123 WHILE FOR 5 REPETITIONS LET var BE var+1 WHILE TASK 0
@@ -7284,7 +7791,7 @@ may be lifted in a later release of @ncptl{}@.
 
 The second form of the @nonterm{touch_buffer_stmt} statement,
 @samp{MESSAGE BUFFER @nonterm{expr}}, touches a specific message
-buffer.  It is expected to be used in programs which send @samp{FROM
+buffer.  It is expected to be used in programs that send @samp{FROM
 BUFFER @nonterm{expr}} or receive @samp{INTO BUFFER @nonterm{expr}}.
 
 @samp{THE CURRENT MESSAGE BUFFER}, the third and final form of the
@@ -8306,7 +8813,7 @@ Implementation chapter is devoted to explaining.
 Multiple code generators for the same language but different
 communication libraries are apt to contain much code in common.
 Because C is a popular language, @ncptl{} provides a
-@backendpy{c_generic} module which implements a virtual
+@backendpy{c_generic} module that implements a virtual
 @ocode{NCPTL_CodeGen} base class.  This base class implements all of
 the methods listed in @ref{Method calls}.  However, rather than
 support a particular communication library, the
@@ -8533,7 +9040,7 @@ for (i=0; i<numevents; i++) @{
 @end cartouche
 
 Programs generated by @backendpy{c_generic} define a number of event
-types which are summarized in @ref{Event types}.  The @ocode{EV_CODE}
+types that are summarized in @ref{Event types}.  The @ocode{EV_CODE}
 event is used, for example, by the @keyw{BACKEND EXECUTES}
 (@pxref{Injecting arbitrary code}), @keyw{LOGS} (@pxref{Writing to a
 log file}), and @keyw{OUTPUTS} (@pxref{Writing to standard output})
@@ -8820,14 +9327,14 @@ ncptl_fatal ("My variable contains a negative value (%" NICS ")",
 
 @noindent
 @ocode{ncptl_int} constants declared by backends derived from
-@backendpy{c_generic} are given an explicit suffix which
+@backendpy{c_generic} are given an explicit suffix that
 defaults to @samp{LL} but can be overridden at configuration time
 using the @copt{with-const-suffix} option.
 @end deftp
 
 @defvr {Constant} NCPTL_INT_MIN
 @olindex NCPTL_INT_MIN
-@ocode{NCPTL_INT_MIN} is a @cpreproc{} macro which represents the
+@ocode{NCPTL_INT_MIN} is a @cpreproc{} macro that represents the
 smallest @w{(i.e., most} negative) number that can be assigned to an
 @ocode{ncptl_int}.  For example, if @ocode{ncptl_int} is a 64-bit
 signed integer type, then @ocode{NCPTL_INT_MIN} will be the value
@@ -8839,7 +9346,7 @@ signed integer type, then @ocode{NCPTL_INT_MIN} will be the value
 The @ocode{NCPTL_CMDLINE} structure describes an acceptable
 command-line option.  It contains a type, which is either
 @ocode{NCPTL_TYPE_INT} for an @ocode{ncptl_int} or
-@ocode{NCPTL_TYPE_STRING} for a @w{@ocode{char *},} a pointer to a
+@ocode{NCPTL_TYPE_STRING} for a @w{@code{char *},} a pointer to a
 variable that will receive the value specified on the command line,
 the long name of the argument (without the @samp{--}), the one-letter
 short name of the argument (without the @samp{-}), a textual
@@ -8861,7 +9368,7 @@ Every @ncptl{} log file is backed by a unique
 @ocode{NCPTL_LOG_FILE_STATE} opaque data type.  An
 @ocode{NCPTL_LOG_FILE_STATE} data type represents all of the state
 needed to maintain that file, such as file descriptors, prologue
-comments, and data which has not yet been aggregated.
+comments, and data that has not yet been aggregated.
 @end deftp
 
 @deftypevar int ncptl_pagesize
@@ -8879,7 +9386,7 @@ The @ocodecf{ncptl_init} function (@pxref{Initialization functions})
 can take many seconds to complete.  Much of this time is spent
 calibrating and measuring the quality of the various timers the
 run-time library uses.  For backends such as @backend{picl}
-(@pxref{The picl backend}) which do not measure real time there is
+(@pxref{The picl backend}) that do not measure real time there is
 little need to have an accurate timer.  Setting
 @ocode{ncptl_fast_init} to @samp{1} before invoking
 @ocodecf{ncptl_init} skips the timer calibration and measurement
@@ -9341,8 +9848,8 @@ backend-specific @texmath{\langle\hbox{\var{key}:\var{value}}\rangle,
 <@var{key}:@var{value}>} pairs to the set of prologue or epilogue
 comments that get written to a log file (@pxref{Log-file format}).
 @ocodecf{ncptl_log_add_comment} can be called repeatedly.  All calls
-which precede @ocodecf{ncptl_log_open} are included in the log-file
-prologue.  All calls which follow @ocodecf{ncptl_log_open} are included
+that precede @ocodecf{ncptl_log_open} are included in the log-file
+prologue.  All calls that follow @ocodecf{ncptl_log_open} are included
 in the log-file epilogue.  Note that @ocodecf{ncptl_log_add_comment}
 makes a copy of @var{key} and @var{value}, so these need not be
 heap-allocated.
@@ -9365,11 +9872,14 @@ backend will need to pass this pointer to nearly all of the other
 log-file functions described in this section.
 
 @iindent
-There are two special cases of @var{template}.  First, if
+There are three special cases for @var{template}.  First, if
 @var{template} points to an empty string, all log-file output is sent
 to the null device (i.e., @file{/dev/null} on Unix and Unix-like
-operating systems).  Second, if @var{template} is a null pointer, all
-log-file output is sent to the standard output device.
+operating systems).  Second, if @var{template} is a single dash
+(@samp{-}), all log-file output is sent to the standard output device.
+Third, if @var{template} is a single dollar sign (@samp{$}), all
+log-file output is buffered in a library-internal string.  The string
+can be retrieved using @ocodecf{ncptl_log_get_contents}.
 @end deftypefun
 
 @deftypefun {char *} ncptl_log_generate_uuid (void)
@@ -9453,6 +9963,17 @@ of a new statement in a @ncptl{} program.  For instance, the
 @deftypefun void ncptl_log_write_epilogue (NCPTL_LOG_FILE_STATE *@var{logstate})
 @olindex ncptl_log_write_epilogue
 Write a stock set of comments as an epilogue to the log file.
+@end deftypefun
+
+@deftypefun {const char *} ncptl_log_get_contents (NCPTL_LOG_FILE_STATE *@var{logstate})
+@olindex ncptl_log_get_contents
+Return the current contents of the log file as a string.  The caller
+must not use the string after the next run-time library call that
+modifies the log file, modify the string, or free the string.  The
+caller should copy the string (e.g., with @ocodecf{ncptl_strdup}) if
+any of those actions are necessary.  If the the log file does not
+support random access (because it goes to the standard-output device
+or the null device), @code{NULL} is returned.
 @end deftypefun
 
 @deftypefun void ncptl_log_close (NCPTL_LOG_FILE_STATE *@var{logstate})
@@ -9928,10 +10449,10 @@ Return task @var{task}'s parent in an @var{arity}-ary tree.
 Return child @var{child} of task @var{task} in an @var{arity}-ary tree.
 @end deftypefun
 
-@deftypefun ncptl_int ncptl_func_grid_coord (ncptl_int var{task}, ncptl_int @var{coord}, ncptl_int @var{width}, ncptl_int @var{height}, ncptl_int @var{depth})
-@deftypefunx double ncptl_dfunc_grid_coord (double var{task}, double @var{coord}, double @var{width}, double @var{height}, double @var{depth})
-@olindex ncptl_func_grid_coord
-@olindex ncptl_dfunc_grid_coord
+@deftypefun ncptl_int ncptl_func_mesh_coord (ncptl_int var{task}, ncptl_int @var{coord}, ncptl_int @var{width}, ncptl_int @var{height}, ncptl_int @var{depth})
+@deftypefunx double ncptl_dfunc_mesh_coord (double var{task}, double @var{coord}, double @var{width}, double @var{height}, double @var{depth})
+@olindex ncptl_func_mesh_coord
+@olindex ncptl_dfunc_mesh_coord
 Return task @var{task}'s @math{x} coordinate (@math{@var{coord}=0}),
 @math{y} coordinate (@math{@var{coord}=1}), or @math{z} coordinate
 (@math{@var{coord}=2}) on a @texmath{@var{width} \times @var{height}
@@ -9939,19 +10460,20 @@ Return task @var{task}'s @math{x} coordinate (@math{@var{coord}=0}),
 torus).
 @end deftypefun
 
-@deftypefun ncptl_int ncptl_func_grid_neighbor (ncptl_int @var{task}, ncptl_int @var{torus}, ncptl_int @var{width}, ncptl_int @var{height}, ncptl_int @var{depth}, ncptl_int @var{xdelta}, ncptl_int @var{ydelta}, ncptl_int @var{zdelta})
-@deftypefunx double ncptl_dfunc_grid_neighbor (double @var{task}, double @var{torus}, double @var{width}, double @var{height}, double @var{depth}, double @var{xdelta}, double @var{ydelta}, double @var{zdelta})
-@olindex ncptl_func_grid_neighbor
-@olindex ncptl_dfunc_grid_neighbor
+@deftypefun ncptl_int ncptl_func_mesh_neighbor (ncptl_int @var{width}, ncptl_int @var{height}, ncptl_int @var{depth}, ncptl_int @var{xtorus}, ncptl_int @var{ytorus}, ncptl_int @var{ztorus}, ncptl_int @var{task}, ncptl_int @var{xdelta}, ncptl_int @var{ydelta}, ncptl_int @var{zdelta})
+@deftypefunx double ncptl_dfunc_mesh_neighbor (double @var{width}, double @var{height}, double @var{depth}, double @var{xtorus}, double @var{ytorus}, double @var{ztorus}, double @var{task}, double @var{xdelta}, double @var{ydelta}, double @var{zdelta})
+@olindex ncptl_func_mesh_neighbor
+@olindex ncptl_dfunc_mesh_neighbor
 Return one of task @var{task}'s neighbors---not necessarily an
 immediate neighbor---on a 3-D mesh or torus.  For the following
 explanation, assume that task @var{task} lies at coordinates @math{(x,
 y, z)} on a @texmath{@var{width} \times @var{height} \times
 @var{depth}, @var{width}*@var{height}*@var{depth}} mesh or torus.  In
-the mesh case (@math{@var{torus}=0}), the value returned is the task
-ID corresponding to coordinates @math{(x+@var{xdelta}, y+@var{ydelta},
-z+@var{zdelta})}.  In the torus case (@math{@var{torus}=1}), the value
-returned is the task ID corresponding to coordinates
+the mesh case (@math{@var{xtorus}=@var{ytorus}=@var{ztorus}=0}), the
+value returned is the task ID corresponding to coordinates
+@math{(x+@var{xdelta}, y+@var{ydelta}, z+@var{zdelta})}.  In the
+full-torus case (@math{@var{xtorus}=@var{ytorus}=@var{ztorus}=1}), the
+value returned is the task ID corresponding to coordinates
 @iftex
 @math{\big((x+@var{xdelta}) \hbox{~mod~} @var{width}, (y+@var{ydelta})
 \hbox{~mod~} @var{height}, (z+@var{zdelta}) \hbox{~mod~}
@@ -10015,6 +10537,18 @@ mean @var{mean} and standard deviation @var{stddev}.
 Return an integer selected at random from a Poisson distribution with
 mean @var{mean} and standard deviation @texmath{\sqrt{@var{mean}},
 sqrt(@var{mean})}.
+@end deftypefun
+
+@deftypefun ncptl_int ncptl_func_random_pareto (ncptl_int @var{shape}, ncptl_int @var{lower_bound}, ncptl_int @var{upper_bound})
+@deftypefunx double ncptl_dfunc_random_pareto (double @var{shape}, double @var{lower_bound}, double @var{upper_bound})
+@olindex ncptl_func_random_pareto
+@olindex ncptl_dfunc_random_pareto
+If @var{lower_bound}@math{=}@var{upper_bound}, return a value selected
+at random from a Pareto distribution with shape @var{shape} and scale
+@var{lower_bound}.  If @var{lower_bound}@texmath{\neq,
+<>}@var{upper_bound}, return a value selected at random from a bounded
+Pareto distribution with shape @var{shape} and bounded by the range
+[@var{lower_bound}, @var{upper_bound}].
 @end deftypefun
 
 
@@ -10293,7 +10827,7 @@ compute nodes.  The CPUs in all three node types use the @cncp{x86-64}
 architecture but the compile server and execution server run @Linux{}
 while the compute nodes run the lightweight @cncp{Catamount} kernel.
 Cross-compilation is necessary to prevent the @configure{} script
-which runs on the compile server from attempting to execute small
+that runs on the compile server from attempting to execute small
 programs to test run-time features---these would be guaranteed to
 fail.
 
@@ -10641,7 +11175,7 @@ On a few systems, @configure{} has been observed to take an extremely
 long time to run.  A common source of the problem is a slow
 filesystem.  During the course of its execution the
 @filespec{configure} script creates and compiles a large number of
-small files.  If the current directory resides in a filesystem which
+small files.  If the current directory resides in a filesystem that
 exhibits poor small-file performance, then this may explain why
 @configure{} runs slowly.  Try to configure @ncptl{} from a local
 filesystem @w{(e.g., @file{/tmp})} and see if it runs faster.
@@ -10690,6 +11224,8 @@ backends can be built, either:
    coNCePTuaL interpreter
  * Not installing the PICL backend because it depends upon the
    coNCePTuaL interpreter
+ * Not installing the Paraver backend because it depends upon the
+   coNCePTuaL interpreter
  * Not installing the LaTeX visualization backend because it depends
    upon the coNCePTuaL interpreter
 @end example
@@ -10715,7 +11251,7 @@ the @samp{can't link} message will almost certainly appear.
 @cindex configuration, manual
 
 One of the most important by-products of running @configure{} is a
-@filespec{config.h} file which is used to build the @ncptl{} run-time
+@filespec{config.h} file that is used to build the @ncptl{} run-time
 library.  If the approach outlined in @ref{Interpreting configure
 warnings} proves unable to convince @ncptl{} to build the library or
 other component, it may be possible to address the failed tests
@@ -10728,13 +11264,28 @@ rules from the makefile in order to skip over unsalvageable parts of
 the build process.
 
 The @copt{with-header-code} option to @filespec{configure} lets you
-specify a single line of C code to insert into every test file which
+specify a single line of C code to insert into every test file that
 @filespec{configure} generates and also into the header files used to
 build the run-time library.  This extra line of code can be used to
 make up for missing functionality or to load nonstandard header files.
 If you need to inject more than one line of code use
 @configure{--with-header=code='#include "myheaders.h"'} and create an
 appropriate @file{myheaders.h} file.
+
+@cindex variables, @file{configure} cache
+@cindex @file{configure} cache variables
+@cindex cache variables
+Like all @cncp{Autoconf} scripts, @filespec{configure} runs a large
+number of small test programs to characterize the user's system.  It
+keeps track of the results of these tests in a set of @dfn{@cncp{cache
+variables}}.  If a cache variable is assigned a value on the command
+line, @filespec{configure} will skip the associated test and simply
+assume that the cache variable's value represents the test result.
+Thus, @cncp{cache variables} provide a fine level of control over the
+behavior of the @filespec{configure} script and are a useful mechanism
+for working around the idiosyncrasies of any given system.
+@xref{Cache Variables}, for a list of many of the @cncp{cache
+variables} recognized by the @ncptl{} @filespec{configure} script.
 
 It is highly unlikely that @configure{} will fail completely.  If it
 does, a working @ncptl{} system may still be possible.  Manually edit
@@ -10761,6 +11312,7 @@ components.  This section explains what to do if a compile fails or
 @kcmd{make} is otherwise unable to perform all of its operations.
 
 @menu
+* Failure following "missing" check::
 * Too many columns in multitable item::  Building Emacs info files
 * Can't find compiler_version.h::  Running `make install' properly
 * Could not read symbols::      Linking with the correct libraries
@@ -10771,8 +11323,36 @@ components.  This section explains what to do if a compile fails or
 * Building on problematic platforms::  Hacking makefiles by hand
 @end menu
 
+@node Failure following "missing" check, Too many columns in multitable item, Problems with make, Problems with make
+@subsection Failure following @file{missing} check
 
-@node Too many columns in multitable item, Can't find compiler_version.h, Problems with make, Problems with make
+The @filespec{Makefile} produced by @configure{} sometimes gets
+confused into thinking that it needs to recreate one or more of the
+@GNU{} Autotools build files such as @filespec{aclocal.m4},
+@filespec{config.h.in}, @filespec{configure}, or
+@filespec{Makefile.in}.  A symptom of this confusion is an error
+message following an invocation of the @filespec{missing} script:
+
+@cartouche
+@example
+$ make
+cd . && /bin/sh ./config.status ncptl.h
+config.status: creating ncptl.h
+config.status: ncptl.h is unchanged
+cd . && /bin/sh /home/me/conceptual-@value{VERSION}/missing --run autoheader
+@end example
+@center [@i{Error message appears here.}]
+@end cartouche
+
+The source of the problem is usually an incongruous timestamp on some
+file relative to that of some other file.  Unfortunately, identifying
+the files in question can be difficult.  The quick fix is to edit the
+@filespec{missing} script, putting @samp{exit 0} at the beginning of
+the file, right after the @samp{#! /bin/sh} line.  This tells the
+@filespec{Makefile} that none of the @GNU{} Autotools build files need
+to be recreated.
+
+@node Too many columns in multitable item, Can't find compiler_version.h, Failure following "missing" check, Problems with make
 @subsection @samp{Too many columns in multitable item}
 
 Very old versions of @kcmd{makeinfo} are unable to process
@@ -10962,7 +11542,7 @@ succeeds.
 @subsection @kbd{makehelper.py config} fails
 
 When @filespec{makehelper.py} is run with the @samp{config} option, it
-generates a temporary @file{.c} file which it runs through the @w{C
+generates a temporary @file{.c} file that it runs through the @w{C
 preprocessor}.  Problems @w{(e.g., a} @samp{gcc.exe: no input files}
 error message) may occur when running under @cncp{Cygwin} (a Unix-like
 user environment for Microsoft Windows) with a @cncp{Cygwin}
@@ -10996,7 +11576,7 @@ comfortable with @cncp{Automake} should edit
 @ncptl{} includes an alternate Makefile called
 @filespec{Makefile.simple} (generated at configuration time from
 @filespec{Makefile.simple.in}).  @filespec{Makefile.simple} is a
-stripped-down version of @filespec{Makefile} which is designed to be
+stripped-down version of @filespec{Makefile} that is designed to be
 easy to edit by hand.  @kcmdargs{make, -f Makefile.simple} builds a
 static version of the @ncptl{} run-time library in the current
 directory.  @kcmdargs{make, -f Makefile.simple clean} deletes the
@@ -11266,7 +11846,7 @@ neither call is available or functional the run-time library aborts
 with an @samp{Unable to determine the OS page size} error.
 
 As a workaround, @filespec{configure} provides a @copt{with-page-size}
-option which enables the user to manually specify the page size.
+option that enables the user to manually specify the page size.
 Because any manually specified value is prone to error, @ncptl{} log
 files include a @samp{Page size was specified manually at
 configuration time} warning if the run-time library was configured
@@ -11476,7 +12056,7 @@ backend from scratch.  They are invoked indirectly as part of @PLY{}'s
 
 To save the backend developer from having to implement @ncptl{}
 backends entirely from scratch, @ncptl{} provides a
-@backendpy{c_generic} module which defines a base class for
+@backendpy{c_generic} module that defines a base class for
 code generators that output C code.  The base class handles the
 features that are specific to C but independent of any messaging
 library.  Derived classes need only define those ``hook'' functions
@@ -11514,7 +12094,7 @@ The @ocode{LOG_AGGREGATE} enumerated type, defined in
 @include aggregates.texi
 
 
-@node Environment Variables, Referenced Applications, Backend Developer's Reference, Top
+@node Environment Variables, Cache Variables, Backend Developer's Reference, Top
 @appendix Environment Variables
 @cindex environment variables
 @cindex variables, environment
@@ -11557,7 +12137,7 @@ AS "Even numbers" THEN TASK 0 LOGS i AS "All numbers"@}
 Buffering data in memory enables that sort of ``two-dimensional''
 logging.  However, it is not robust to computer crashes or uncatchable
 signals @w{(e.g., @code{SIGKILL})}.  Consequently, every @keyw{LOGS}
-statement (@pxref{Writing to a log file}) which is executed at least
+statement (@pxref{Writing to a log file}) that is executed at least
 @envvar{NCPTL_CHECKPOINT} seconds after the previous one forces the
 @ncptl{} run-time library to write its partial data to the log file.
 Specifically, the library flushes its partial-data buffers then
@@ -11578,7 +12158,7 @@ consequence, all timing measurements will be meaningless.
 @envvar{NCPTL_FAST_INIT} may be useful during the development of a
 @ncptl{} program or compiler backend to enable shorter turnaround
 times.  If set to @samp{0}, @envvar{NCPTL_FAST_INIT} forces a thorough
-initialization even for backends which do not rely on timing
+initialization even for backends that do not rely on timing
 measurements, for instance the @backend{picl} backend (@pxref{The picl
 backend}).  @xref{Variables and data types}, for more information.
 
@@ -11591,14 +12171,14 @@ seconds)} will probabilistically ensure that a log-file creation
 request will be issued only once every @texmath{2000 \div 1000 = 2,
 2000/1000 = 2} milliseconds instead of all at once.
 @envvar{NCPTL_LOG_DELAY} is intended to help @ncptl{} programs run
-atop broken filesystems which are unable to handle large numbers of
+atop broken filesystems that are unable to handle large numbers of
 concurrent accesses---an all-too-common problem on large-scale
 workstation clusters and parallel computers in which hundreds or
 thousands of diskless compute nodes compete for access to the same
 filesystem.
 
 @item NCPTL_LOG_ONLY
-Limit the set of processes which produce log files.
+Limit the set of processes that produce log files.
 @envvar{NCPTL_LOG_ONLY} accepts a comma-separated list of
 dash-separated process ranges such as @samp{0-3,12-16,24,25,32-48}.
 Only processes included in the list produce log files.  @xref{Running
@@ -11614,7 +12194,33 @@ wreak other such havoc.
 @end table
 
 
-@node Referenced Applications, License, Environment Variables, Top
+@node Cache Variables, Referenced Applications, Environment Variables, Top
+@appendix @file{configure} Cache Variables
+@cindex variables, @file{configure} cache
+@cindex @file{configure} cache variables
+@cindex cache variables
+
+The @filespec{configure} script that is used to build @ncptl{}
+internally uses a number of @cncp{Autoconf} cache variables to store
+configuration information that it discovers while it runs.  If these
+variables are set on the @configure{} command line, the given value
+will be used instead of an automatically determined value.  This
+feature gives the user precise control over many aspects of @ncptl{}
+configuration.  For example, to prevent the @ncptl{} run-time library
+from using the @ocodecf{gethostbyname} function you can specify
+@samp{ac_cv_func_gethostbyname=no} on the @configure{} command line to
+convince @filespec{configure} that @ocodecf{gethostbyname} does not
+exist.
+
+The variables and descriptions in the following list were extracted
+mechanically from @filespec{configure.ac} and @filespec{config.log}.
+Consequently, some variables may be missing, and some descriptions may
+be inaccurate or hard to understand.
+
+@include cachevars.texi
+
+
+@node Referenced Applications, License, Cache Variables, Top
 @unnumbered Referenced Applications
 
 A number of third-party applications are mentioned throughout this
@@ -11625,14 +12231,23 @@ each application's home page.
 @item @cncp{a2ps}
 @uref{http://www.gnu.org/software/a2ps/}
 
+@item @cncp{Dimemas}
+See @cncp{Paraver}.
+
 @item @cncp{dot}
 See @cncp{Graphviz}.
 
 @item @cncp{Emacs}
 @uref{http://www.gnu.org/software/emacs/}
 
+@item @cncp{Extrae}
+See @cncp{Paraver}.
+
 @item Environment Modules
 @uref{http://modules.sourceforge.net/}
+
+@item @cncp{GeSHi}
+@uref{http://qbnz.com/highlighter/}
 
 @item @cncp{Graphviz}
 @uref{http://www.graphviz.org/}
@@ -11640,11 +12255,20 @@ See @cncp{Graphviz}.
 @item @latex{}
 @uref{http://www.latex-project.org/}
 
+@item @cncp{LibSea}
+@uref{http://www.caida.org/tools/visualization/libsea/}
+
+@item @cncp{Mediawiki}
+@uref{http://www.mediawiki.org/}
+
 @item @cncp{MPICL}
 @uref{http://www.csm.ornl.gov/picl/}
 
 @item @cncp{ParaGraph}
 @uref{http://www.csar.uiuc.edu/software/paragraph/}
+
+@item @cncp{Paraver}
+@uref{http://www.bsc.es/paraver}
 
 @item @cncp{PICL}
 See @cncp{MPICL}.
@@ -11669,6 +12293,9 @@ See @latex{}.
 
 @item @cncp{Vim}
 @uref{http://www.vim.org/}
+
+@item @cncp{Walrus}
+@uref{http://www.caida.org/tools/visualization/walrus/}
 @end table
 
 

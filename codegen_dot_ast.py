@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -107,12 +107,30 @@ class NCPTL_CodeGen:
                 self.show_lines = 0
             elif options[arg] == "--no-source":
                 self.show_source_code = 0
+            elif options[arg] == "--help":
+                self.show_help()
+                sys.exit(0)
+
+    def show_help(self):
+        "Output a help message."
+        print """\
+Usage: dot_ast [OPTION...]
+  --format=<string>          Output format for dot [default: "ps"]
+  --extra-dot=<string>       Extra dot code to process within the digraph
+  --node-code=<number>       Maximum number of characters of coNCePTuaL code
+                             to display within a dot node [default: infinity]
+  --no-attrs                 Don't display AST node attributes
+  --no-lines                 Don't display AST node line numbers
+  --no-source                Don't display the coNCePTuaL source program
+
+Help options:
+  --help                     Show this help message"""
 
     def generate(self, ast, filesource='<stdin>', filetarget="-", sourcecode=None):
         "Compile an AST into a list of lines of DOT code."
         self.filesource = filesource       # Input file
         self.sourcecode = sourcecode       # coNCePTuaL source code
-        self.backend_name = "dot"
+        self.backend_name = "dot_ast"
         self.backend_desc = "parse tree in AT&T's DOT language"
         self.errmsg = NCPTL_Error(filesource)
 

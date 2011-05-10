@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -77,7 +77,7 @@ except ImportError:
 _tabmodule = "ncptl_parse_table"
 
 class NCPTL_Parser:
-    language_version = "1.2"
+    language_version = "1.3"
 
     def __init__(self, lexer):
         "Initialize the coNCePTuaL parser."
@@ -112,6 +112,7 @@ class NCPTL_Parser:
     def parsetokens(self, tokenlist, filesource='<stdin>', start="program", write_tables=0):
         "Parse a list of tokens into an AST."
         self.tokenlist = tokenlist
+        self.tokidx = 0
         self.errmsg = NCPTL_Error(filesource)
         if not write_tables:
             # Suppress "yacc: Symbol '...' is unreachable" messages.
@@ -151,7 +152,9 @@ class NCPTL_Parser:
     def token(self):
         "Return the next token in the list."
         try:
-            return self.tokenlist.pop(0)
+            next_token = self.tokenlist[self.tokidx]
+            self.tokidx = self.tokidx + 1
+            return next_token
         except IndexError:
             return None
 
@@ -199,17 +202,13 @@ class NCPTL_Parser:
         # Determine the subset of args to use and the corresponding
         # line numbers.
         if kidofs == None:
-            numargs = len(args.slice)
-            if numargs == 1:
-                kidofs = []
-            elif numargs == 2:
-                kidofs = [1]
-            else:
-                kidofs = range(1, numargs)
-        try:
-            lineno0, lineno1 = self._linespan(args, first=min(kidofs), last=max(kidofs))
-        except ValueError:
+            kidofs = range(1, len(args.slice))
+        else:
+            kidofs.sort()
+        if kidofs == []:
             lineno0, lineno1 = args.linespan(0)
+        else:
+            lineno0, lineno1 = self._linespan(args, first=kidofs[0], last=kidofs[-1])
 
         # Create new ASTs for source and target tasks, if specified.
         args_copy = args
@@ -241,6 +240,14 @@ class NCPTL_Parser:
         outerAST = self._wrapAST(typestr1, args, kidofs, None, assign0state)
         outerAST.kids = [innerAST]
         return outerAST
+
+    def _hoist_buffer_offset(self, message_spec):
+        "Move a buffer_offset from a child of buffer_number to a child of message_spec."
+        buffer_offset = message_spec.kids[5].kids[0]
+        if buffer_offset.type != "buffer_offset":
+            self.errmsg.error_internal("Expected buffer_offset; found %s" % buffer_offset.type)
+        del message_spec.kids[5].kids[0]
+        message_spec.kids.insert(5, buffer_offset)
 
     def _apply2attr(self, func, astlist):
         "Apply a function to the (unique) leaf's attribute."
@@ -303,39 +310,42 @@ class NCPTL_Parser:
 
         # Assign printable text to the AST.
         printable = []
+        max_text_len = 2**30    # Truncate strings after this many characters.
         for argnum in kidofs:
             arg = args[argnum]
-            if type(arg) == types.StringType:
+            if isinstance(arg, AST):
+                # AST
+                if hasattr(arg, "printable"):
+                    printable.append(arg.printable)
+                else:
+                    printable_list = map(lambda k: k.printable, arg.kids)
+                    kidprintable = string.join(printable_list, "")
+                    arg.printable = kidprintable
+                    printable.append(kidprintable)
+            elif isinstance(arg, str):
                 # Token (string)
                 if arg in [".", ","] and argnum > 0:
                     # As a special case, don't put a space before "." or ",".
                     printable[-1] = printable[-1] + arg
                 else:
                     printable.append(arg)
-            elif type(arg) == types.TupleType:
+            elif isinstance(arg, tuple):
                 # Token (integer)
                 printable.append(arg[-1])
             else:
-                # AST
-                if hasattr(arg, "printable"):
-                    printable.append(arg.printable)
-                else:
-                    kidprintable = ""
-                    for kid in arg.kids:
-                        kidprintable = kidprintable + kid.printable
-                    arg.printable = kidprintable
-                    printable.append(kidprintable)
-        ast.printable = re.sub(r'\(\s+', "(",
-                               re.sub(r'\s+\)', ")",
-                                      string.join(filter(lambda s: s != "", printable), " ")))
+                self.errmsg.error_internal('Unexpected argument type "%s"' % str(type(arg)))
+        complete_text = string.join(filter(lambda s: s != "", printable), " ")
+        complete_text = string.replace(string.replace(complete_text, "( ", "("),
+                                       " )", ")")
+        if len(complete_text) > max_text_len:
+            complete_text = complete_text[:max_text_len] + " ..."
+        ast.printable = complete_text
 
     def _make_source_task(self, args, argnum):
         "Validate a source-style task_expr and return a source_task AST."
         ast = args[argnum]
         if ast.type != "task_expr":
             self.errmsg.error_internal('Expected an AST of type "task_expr" but found "%s"' % ast.type)
-        if ast.attr not in ["such_that", "expr", "task_all"]:
-            self.errmsg.error_parse(ast.printable, ast.lineno0, ast.lineno1)
         return self._wrapAST("source_task", args, kidofs=[argnum])
 
     def _make_target_tasks(self, args, argnum):
@@ -343,8 +353,6 @@ class NCPTL_Parser:
         ast = args[argnum]
         if ast.type != "task_expr":
             self.errmsg.error_internal('Expected an AST of type "task_expr" but found "%s"' % ast.type)
-        if ast.attr not in ["such_that", "expr", "all_others"]:
-            self.errmsg.error_parse(ast.printable, ast.lineno0, ast.lineno1)
         return self._wrapAST("target_tasks", args, kidofs=[argnum])
 
 
@@ -421,10 +429,10 @@ class NCPTL_Parser:
              top_level_stmt_list : top_level_stmt top_level_stmt_list
                                  | top_level_stmt period top_level_stmt_list
         '''
-        numentries = args[-1].attr + 1L
-        args[-1].attr = None
+        numentries = args[len(args)-1].attr + 1L
+        args[len(args)-1].attr = None
         args[0] = self._str2ast("top_level_stmt_list", attr=numentries,
-                                kids=[args[1]] + args[-1].kids)
+                                kids=[args[1]] + args[len(args)-1].kids)
         self._assign0state(args)
 
 
@@ -444,10 +452,10 @@ class NCPTL_Parser:
              header_decl_list : header_decl header_decl_list
                               | header_decl period header_decl_list
         '''
-        numentries = args[-1].attr + 1L
-        args[-1].attr = None
+        numentries = args[len(args)-1].attr + 1L
+        args[len(args)-1].attr = None
         args[0] = self._str2ast("header_decl_list", attr=numentries,
-                                kids=[args[1]] + args[-1].kids)
+                                kids=[args[1]] + args[len(args)-1].kids)
         self._assign0state(args)
 
     def p_header_decl(self, args):
@@ -588,9 +596,9 @@ class NCPTL_Parser:
         recv_attrAST = copy.deepcopy(attrAST)
         recv_attrAST.type = "receive_attrs"
         recv_message_spec = copy.deepcopy(msg_spec_arg)
-        recv_message_spec.kids[5].type = "recv_buffer_number"
-        if recv_message_spec.kids[5].attr == "from":
-            recv_message_spec.kids[5].attr = "into"
+        recv_message_spec.kids[6].type = "recv_buffer_number"
+        if recv_message_spec.kids[6].attr == "from":
+            recv_message_spec.kids[6].attr = "into"
 
         # Create and return an AST with all the information needed to
         # send and receive a set of messages.
@@ -646,7 +654,7 @@ class NCPTL_Parser:
         for arg in range(0, len(recv_info)):
             if recv_info[arg].is_fabricated:
                 recv_message_spec.kids[arg] = copy.deepcopy(msg_spec_arg.kids[arg])
-        recv_message_spec.kids[5].type = "recv_buffer_number"
+        recv_message_spec.kids[6].type = "recv_buffer_number"
         if recv_info[0].is_fabricated:
             # Copy the sender's attributes.
             recv_attributes = attributes
@@ -927,7 +935,7 @@ class NCPTL_Parser:
         funcAST = self._str2ast("aggregate_func", attr="HISTOGRAM",
                                 lineno0=lineno0, lineno1=lineno1)
         args[0] = self._str2ast("aggregate_expr",
-                                left=funcAST, right=args[-1])
+                                left=funcAST, right=args[len(args)-1])
         self._assign0state(args)
 
 
@@ -1054,6 +1062,41 @@ class NCPTL_Parser:
         args[0] = self._str2ast("primary_expr", left=integerAST)
         self._assign0state(args)
 
+    def p_primary_expr_6(self, args):
+        ' primary_expr : MESH_NEIGHBOR lparen lparen dimension_list rparen comma expr comma lparen expr_list rparen rparen '
+        lineno0, lineno1 = self._linespan(args)
+        funcAST = self._str2ast("func_call", attr=string.upper(args[1]),
+                                kids=[args[4], args[7], args[10]],
+                                lineno0=lineno0, lineno1=lineno1)
+        funcAST.printable = args[1]
+        args[0] = self._str2ast("primary_expr", left=funcAST)
+        self._assign0state(args)
+        if args[4].attr != args[10].attr:
+            self.errmsg.error_fatal("a MESH_NEIGHBOR's mesh and offset lists must have the same length",
+                                    args[0].lineno0, args[0].lineno1)
+
+
+    def p_primary_expr_7(self, args):
+        '''
+              primary_expr : MESH_COORDINATE lparen lparen dimension_list rparen comma expr comma expr rparen
+                           | MESH_DISTANCE lparen lparen dimension_list rparen comma expr comma expr rparen
+        '''
+        lineno0, lineno1 = self._linespan(args)
+        funcAST = self._str2ast("func_call", attr=string.upper(args[1]),
+                                kids=[args[4], args[7], args[9]],
+                                lineno0=lineno0, lineno1=lineno1)
+        funcAST.printable = args[1]
+        args[0] = self._str2ast("primary_expr", left=funcAST)
+        self._assign0state(args)
+
+    def p_primary_expr_8(self, args):
+        ' primary_expr : MY TASKS '
+        lineno0, lineno1 = self._linespan(args)
+        mytaskAST = self._str2ast("my_task", lineno0=lineno0, lineno1=lineno1)
+        mytaskAST.printable = args[1] + " " + args[2]
+        args[0] = self._str2ast("primary_expr", left=mytaskAST)
+        self._assign0state(args)
+
 
     #-------------------------#
     # Messaging-related rules #
@@ -1064,6 +1107,7 @@ class NCPTL_Parser:
         is_misaligned = args[4].is_misaligned
         delattr(args[4], "is_misaligned")
         args[0] = self._wrapAST("message_spec", args, attr=is_misaligned)
+        self._hoist_buffer_offset(args[0])
 
     def p_message_spec_2(self, args):
         ' message_spec : item_count unique message_alignment MESSAGES touching_type buffer_number '
@@ -1074,12 +1118,14 @@ class NCPTL_Parser:
         args[0] = self._wrapAST("message_spec", args, attr=is_misaligned)
         args[0].kids.insert(2, itemsizeAST)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_message_spec_into(self, args):
         ' message_spec_into : item_count unique item_size message_alignment MESSAGES touching_type recv_buffer_number '
         is_misaligned = args[4].is_misaligned
         delattr(args[4], "is_misaligned")
         args[0] = self._wrapAST("message_spec", args, attr=is_misaligned)
+        self._hoist_buffer_offset(args[0])
 
     def p_recv_message_spec_1(self, args):
         ' recv_message_spec : opt_async touching_type recv_buffer_number '
@@ -1102,6 +1148,7 @@ class NCPTL_Parser:
         # Return an AST with attribute -1 (fabricated alignment).
         args[0] = self._str2ast("message_spec", kids=kidlist, attr=-1)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_recv_message_spec_2(self, args):
         ' recv_message_spec : opt_async AS opt_an unique message_alignment MESSAGES touching_type recv_buffer_number '
@@ -1115,12 +1162,14 @@ class NCPTL_Parser:
             delattr(args[5], "is_misaligned")
         args[0] = self._str2ast("message_spec", kids=kidlist, attr=is_misaligned)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_reduce_message_spec_1(self, args):
         ' reduce_message_spec : item_count unique message_alignment data_type touching_type buffer_number '
         is_misaligned = args[3].is_misaligned
         delattr(args[3], "is_misaligned")
         args[0] = self._wrapAST("reduce_message_spec", args, attr=is_misaligned)
+        self._hoist_buffer_offset(args[0])
 
     def p_reduce_message_spec_2(self, args):
         ' reduce_message_spec : item_count unique data_type touching_type buffer_number '
@@ -1130,6 +1179,7 @@ class NCPTL_Parser:
         kidlist = [args[1], args[2], message_alignment, args[3], args[4], args[5]]
         args[0] = self._str2ast("reduce_message_spec", kids=kidlist, attr=0)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_reduce_target_message_spec_1(self, args):
         ' reduce_target_message_spec : touching_type recv_buffer_number '
@@ -1152,6 +1202,7 @@ class NCPTL_Parser:
         # Return an AST with attribute -1 (fabricated alignment).
         args[0] = self._str2ast("reduce_target_message_spec", kids=kidlist, attr=-1)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_reduce_target_message_spec_2(self, args):
         ' reduce_target_message_spec : AS item_count unique message_alignment data_type touching_type recv_buffer_number '
@@ -1165,6 +1216,7 @@ class NCPTL_Parser:
             delattr(args[4], "is_misaligned")
         args[0] = self._str2ast("reduce_target_message_spec", kids=kidlist, attr=is_misaligned)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_reduce_target_message_spec_3(self, args):
         ' reduce_target_message_spec : AS item_count unique data_type touching_type recv_buffer_number '
@@ -1177,19 +1229,20 @@ class NCPTL_Parser:
         kidlist.insert(2, message_alignment)
         args[0] = self._str2ast("reduce_target_message_spec", kids=kidlist, attr=-1)
         self._assign0state(args)
+        self._hoist_buffer_offset(args[0])
 
     def p_opt_an(self, args):
         '''
-             opt_an :
-                    | AN
+        opt_an :
+               | AN
         '''
         args[0] = self._wrapAST("opt_an", args, attr=len(args.slice)-1)
 
     def p_opt_async(self, args):
         '''
-             opt_async :
-                       | ASYNCHRONOUSLY
-                       | SYNCHRONOUSLY
+        opt_async :
+                  | ASYNCHRONOUSLY
+                  | SYNCHRONOUSLY
         '''
         if len(args.slice) == 2 and args.slice[1].type == "ASYNCHRONOUSLY":
             attr = 1
@@ -1199,67 +1252,83 @@ class NCPTL_Parser:
 
     def p_opt_unsusp(self, args):
         '''
-             opt_unsusp :
-                        | UNSUSPECTING
+        opt_unsusp :
+                   | UNSUSPECTING
         '''
         args[0] = self._wrapAST("opt_unsusp", args, attr=len(args.slice)-1)
 
     def p_unique(self, args):
         '''
-             unique :
-                    | UNIQUE
-                    | NONUNIQUE
+        unique :
+               | UNIQUE
+               | NONUNIQUE
         '''
         attr = int(len(args.slice) > 1 and args.slice[1].type == "UNIQUE")
         args[0] = self._wrapAST("unique", args, attr=attr)
 
+    def p_buffer_offset(self, args):
+        '''
+        buffer_offset :
+                      | expr data_multiplier INTO
+        '''
+        args[0] = self._wrapAST("buffer_offset", args)
+        args[0].is_fabricated = 0
+
     def p_buffer_number(self, args):
         '''
-             buffer_number :
-                           | FROM THE DEFAULT BUFFERS
-                           | FROM BUFFERS expr
+        buffer_number :
+                      | FROM buffer_offset THE DEFAULT BUFFERS
+                      | FROM buffer_offset BUFFERS expr
         '''
         if len(args.slice) == 1:
             args[0] = self._wrapAST("buffer_number", args, attr="implicit")
         else:
             args[0] = self._wrapAST("buffer_number", args, attr=string.lower(args.slice[1].type))
+        if args[0].kids == []:
+            buffer_offset = self._str2ast("buffer_offset", lineno=args[0].lineno0)
+            buffer_offset.is_fabricated = 1
+            args[0].kids.insert(0, buffer_offset)
 
     def p_recv_buffer_number(self, args):
         '''
-             recv_buffer_number :
-                                | INTO THE DEFAULT BUFFERS
-                                | INTO BUFFERS expr
+        recv_buffer_number :
+                           | INTO buffer_offset THE DEFAULT BUFFERS
+                           | INTO buffer_offset BUFFERS expr
         '''
         if len(args.slice) == 1:
             args[0] = self._wrapAST("recv_buffer_number", args, attr="implicit")
         else:
             args[0] = self._wrapAST("recv_buffer_number", args, attr=string.lower(args.slice[1].type))
+        if args[0].kids == []:
+            buffer_offset = self._str2ast("buffer_offset", lineno=args[0].lineno0)
+            buffer_offset.is_fabricated = 1
+            args[0].kids.insert(0, buffer_offset)
 
     def p_message_alignment_1(self, args):
         '''
-             message_alignment :
-                               | UNALIGNED
-                               | byte_count ALIGNED
-                               | data_type ALIGNED
+        message_alignment :
+                          | UNALIGNED
+                          | byte_count ALIGNED
+                          | data_type ALIGNED
         '''
         args[0] = self._wrapAST("message_alignment", args)
         args[0].is_misaligned = 0
 
     def p_message_alignment_2(self, args):
         '''
-             message_alignment : data_type MISALIGNED
-                               | byte_count MISALIGNED
+        message_alignment : data_type MISALIGNED
+                          | byte_count MISALIGNED
         '''
         args[0] = self._wrapAST("message_alignment", args)
         args[0].is_misaligned = 1
 
     def p_touching_type(self, args):
         '''
-             touching_type :
-                           | WITH DATA TOUCHING
-                           | WITHOUT DATA TOUCHING
-                           | WITH VERIFICATION
-                           | WITHOUT VERIFICATION
+        touching_type :
+                      | WITH DATA TOUCHING
+                      | WITHOUT DATA TOUCHING
+                      | WITH VERIFICATION
+                      | WITHOUT VERIFICATION
         '''
         if len(args.slice) == 1:
             operation = "no_touching"
@@ -1293,14 +1362,18 @@ class NCPTL_Parser:
 
     def p_task_expr_3(self, args):
         '''
-             task_expr : ALL TASKS
-                       | ALL TASKS ident
+        task_expr : ALL TASKS
+        | ALL TASKS ident
         '''
         args[0] = self._wrapAST("task_expr", args, attr="task_all")
 
     def p_task_expr_4(self, args):
         ' task_expr : ALL OTHER TASKS '
         args[0] = self._wrapAST("task_expr", args, attr="all_others")
+
+    def p_task_expr_5(self, args):
+        ' task_expr : TASKS GROUP ident '
+        args[0] = self._wrapAST("task_expr", args, attr="let_task")
 
     def p_restricted_ident(self, args):
         ' restricted_ident : ident SUCH THAT rel_expr '
@@ -1320,8 +1393,8 @@ class NCPTL_Parser:
 
     def p_range(self, args):
         '''
-             range : lbrace expr_list rbrace
-                   | lbrace expr_list comma ellipsis comma expr rbrace
+        range : lbrace expr_list rbrace
+        | lbrace expr_list comma ellipsis comma expr rbrace
         '''
         if len(args.slice) == 4:
             attr = None
@@ -1343,12 +1416,12 @@ class NCPTL_Parser:
 
     def p_time_unit(self, args):
         '''
-             time_unit : MICROSECONDS
-                       | MILLISECONDS
-                       | SECONDS
-                       | MINUTES
-                       | HOURS
-                       | DAYS
+        time_unit : MICROSECONDS
+        | MILLISECONDS
+        | SECONDS
+        | MINUTES
+        | HOURS
+        | DAYS
         '''
         args[0] = self._str2ast("time_unit", attr=string.lower(args.slice[1].type))
         self._assign0state(args)
@@ -1366,37 +1439,37 @@ class NCPTL_Parser:
 
     def p_item_size(self, args):
         '''
-             item_size :
-                       | expr data_multiplier
-                       | data_type SIZED
+        item_size :
+        | expr data_multiplier
+        | data_type SIZED
         '''
         args[0] = self._wrapAST("item_size", args)
 
     def p_data_multiplier(self, args):
         '''
-             data_multiplier : BITS
-                             | BYTES
-                             | KILOBYTE
-                             | MEGABYTE
-                             | GIGABYTE
-                             | HALFWORDS
-                             | WORDS
-                             | INTEGERS
-                             | DOUBLEWORDS
-                             | QUADWORDS
-                             | PAGES
+        data_multiplier : BITS
+        | BYTES
+        | KILOBYTE
+        | MEGABYTE
+        | GIGABYTE
+        | HALFWORDS
+        | WORDS
+        | INTEGERS
+        | DOUBLEWORDS
+        | QUADWORDS
+        | PAGES
         '''
         args[0] = self._wrapAST("data_multiplier", args, attr=string.lower(args.slice[1].type))
 
     def p_data_type(self, args):
         '''
-             data_type : BYTES
-                       | HALFWORDS
-                       | WORDS
-                       | INTEGERS
-                       | DOUBLEWORDS
-                       | QUADWORDS
-                       | PAGES
+        data_type : BYTES
+        | HALFWORDS
+        | WORDS
+        | INTEGERS
+        | DOUBLEWORDS
+        | QUADWORDS
+        | PAGES
         '''
         args[0] = self._wrapAST("data_type", args, attr=string.lower(args.slice[1].type))
 
@@ -1406,17 +1479,17 @@ class NCPTL_Parser:
 
     def p_aggregate_func(self, args):
         '''
-             aggregate_func : MEAN
-                            | ARITHMETIC MEAN
-                            | HARMONIC MEAN
-                            | GEOMETRIC MEAN
-                            | MEDIAN
-                            | STANDARD DEVIATION
-                            | VARIANCE
-                            | SUM
-                            | MINIMUM
-                            | MAXIMUM
-                            | FINAL
+        aggregate_func : MEAN
+        | ARITHMETIC MEAN
+        | HARMONIC MEAN
+        | GEOMETRIC MEAN
+        | MEDIAN
+        | STANDARD DEVIATION
+        | VARIANCE
+        | SUM
+        | MINIMUM
+        | MAXIMUM
+        | FINAL
         '''
         funcname = string.lower(args[1])
         if funcname == "standard":
@@ -1432,32 +1505,49 @@ class NCPTL_Parser:
 
     def p_func_name(self, args):
         '''
-             func_name : ABS
-                       | BITS
-                       | CBRT
-                       | CEILING
-                       | FACTOR10
-                       | FLOOR
-                       | LOG10
-                       | ROUND
-                       | SQRT
-                       | ROOT
-                       | MIN
-                       | MAX
-                       | TREE_PARENT
-                       | TREE_CHILD
-                       | MESH_NEIGHBOR
-                       | TORUS_NEIGHBOR
-                       | MESH_COORDINATE
-                       | TORUS_COORDINATE
-                       | KNOMIAL_PARENT
-                       | KNOMIAL_CHILD
-                       | KNOMIAL_CHILDREN
-                       | RANDOM_UNIFORM
-                       | RANDOM_GAUSSIAN
-                       | RANDOM_POISSON
+        func_name : ABS
+                  | BITS
+                  | CBRT
+                  | CEILING
+                  | FACTOR10
+                  | FLOOR
+                  | LOG10
+                  | ROUND
+                  | SQRT
+                  | ROOT
+                  | MIN
+                  | MAX
+                  | TREE_PARENT
+                  | TREE_CHILD
+                  | KNOMIAL_PARENT
+                  | KNOMIAL_CHILD
+                  | KNOMIAL_CHILDREN
+                  | RANDOM_UNIFORM
+                  | RANDOM_GAUSSIAN
+                  | RANDOM_PARETO
+                  | RANDOM_POISSON
         '''
         args[0] = self._lextoken2ast(args.slice[1])
+
+    def p_dimension(self, args):
+        '''
+        dimension : expr
+                  | expr star
+        '''
+        attr = len(args.slice) == 3
+        args[0] = self._wrapAST("dimension", args, attr=attr, kidofs=[1])
+
+    def p_dimension_list_1(self, args):
+        ' dimension_list : dimension '
+        args[0] = self._wrapAST("dimension_list", args, attr=1L)
+
+    def p_dimension_list_2(self, args):
+        ' dimension_list : dimension comma dimension_list '
+        numentries = args[3].attr + 1L
+        args[3].attr = None
+        args[0] = self._str2ast("dimension_list", attr=numentries,
+                                kids=[args[1]] + args[3].kids)
+        self._assign0state(args)
 
     def p_log_expr_list_1(self, args):
         ' log_expr_list : log_expr_list_elt '
@@ -1481,14 +1571,14 @@ class NCPTL_Parser:
 
     def p_let_binding_2(self, args):
         '''
-             let_binding : ident BE AN RANDOM TASKS
-                         | ident BE AN RANDOM TASKS OTHER THAN expr
-                         | ident BE AN RANDOM TASKS LESS THAN expr
-                         | ident BE AN RANDOM TASKS GREATER THAN expr
-                         | ident BE AN RANDOM TASKS IN lbracket expr comma expr rbracket
-                         | ident BE AN RANDOM TASKS LESS THAN expr BUT NOT expr
-                         | ident BE AN RANDOM TASKS GREATER THAN expr BUT NOT expr
-                         | ident BE AN RANDOM TASKS IN lbracket expr comma expr rbracket BUT NOT expr
+        let_binding : ident BE AN RANDOM TASKS
+        | ident BE AN RANDOM TASKS OTHER THAN expr
+        | ident BE AN RANDOM TASKS LESS THAN expr
+        | ident BE AN RANDOM TASKS GREATER THAN expr
+        | ident BE AN RANDOM TASKS IN lbracket expr comma expr rbracket
+        | ident BE AN RANDOM TASKS LESS THAN expr BUT NOT expr
+        | ident BE AN RANDOM TASKS GREATER THAN expr BUT NOT expr
+        | ident BE AN RANDOM TASKS IN lbracket expr comma expr rbracket BUT NOT expr
         '''
         # Construct a list of children and an attribute string
         # consisting of a sequence of the following letters, each
@@ -1524,6 +1614,11 @@ class NCPTL_Parser:
             nodeattrs = nodeattrs + "E"
         args[0] = self._str2ast("let_binding", attr=nodeattrs, kids=kidlist)
         self._assign0state(args)
+
+    def p_let_binding_3(self, args):
+        ' let_binding : ident BE task_expr '
+        args[1].attr = "GROUP " + args[1].attr   # Use a different namespace.
+        args[0] = self._wrapAST("let_binding", args)
 
     def p_let_binding_list_1(self, args):
         ' let_binding_list : let_binding '
@@ -1573,9 +1668,9 @@ class NCPTL_Parser:
 
     def p_stride(self, args):
         '''
-             stride :
-                    | WITH RANDOM STRIDE
-                    | WITH STRIDE expr data_type
+        stride :
+        | WITH RANDOM STRIDE
+        | WITH STRIDE expr data_type
         '''
         if len(args.slice) == 1:
             attr = "default"
@@ -1587,8 +1682,8 @@ class NCPTL_Parser:
 
     def p_touch_repeat_count(self, args):
         '''
-             touch_repeat_count :
-                                | expr TIMES
+        touch_repeat_count :
+        | expr TIMES
         '''
         args[0] = self._wrapAST("touch_repeat_count", args)
 

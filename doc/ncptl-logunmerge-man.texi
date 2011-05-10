@@ -2,10 +2,10 @@
 * ncptl-logunmerge manual page::   The result of running ``ncptl-logunmerge --man''
 @end menu
 
-@c Copyright (C) 2009, Los Alamos National Security, LLC
+@c Copyright (C) 2011, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2009).  Los Alamos National Security, LLC.  This software
+@c Copyright (2011).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -69,8 +69,8 @@ ncptl-logunmerge
 @subsubheading DESCRIPTION
 
 
-@file{ncptl-logmerge} merges a set of @ncptl{} log files into a more
-convenient, single file.  @file{ncptl-logunmerge} performs the inverse
+While @file{ncptl-logmerge} merges a set of @ncptl{} log files into a
+more convenient, single file, @file{ncptl-logunmerge} performs the inverse
 operation, splitting a merged file into separate @ncptl{} log files.
 Specifically, unadorned comment lines such as the following are
 written to all log files:
@@ -159,9 +159,13 @@ file from standard input.
 
 
 @table @asis
-@item @code{The input file does not look like a merged coNCePTuaL log file}
-Only the output from @file{ncptl-logmerge} is valid input to
-@file{ncptl-logunmerge}.
+@item @code{The input file does not look like a merged coNCePTuaL log file; assuming simple concatenation}
+@file{ncptl-logunmerge} expects its input file to contain the output from
+@file{ncptl-logmerge}.  However, @file{ncptl-logunmerge} can also accept an
+input file produced by concatenating a collection of @ncptl{} log
+files end-to-end @w{(e.g., by using} the @file{cat} command).  The
+preceding warning message serves merely to alert the user in case the
+wrong input file was provided to @file{ncptl-logunmerge}.
 
 @item @code{Unable to find a unique number of tasks in the input file}
 @file{ncptl-logunmerge} determines the number of files to generate from

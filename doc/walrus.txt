@@ -1,0 +1,24 @@
++--------------------------------------------------------------------+
+|                      Walrus 0.6.3 -- mg.graph                      |
++--------------------------------------------------------------------+
+| File  Rendering   Display  Spanning Tree  Color Scheme  Node Label |
++--------------------------------------------------------------------+
+|                                                                    |
+|                    o" " o" M M ooo o  o                            |
+|                 o" o"o"o"o"o M ooo"o o o                           |
+|                 o" o" o"o "o" o  o "o o                            |
+|                 o" M "o "o" o"  o o" o"o" o  o                     |
+|              " "o" o" o"o M M "o o o"  o" o                        |
+|             "" "o "o "o M "o"o"o" " "" "o" o <-- Tasks t5527 such t|
+|            " "o"  o  " o M o" M "o" " " " M                        |
+|             " o o o " o o M "o M o"o"""o""o" "                     |
+|              " o"  " " " "o""o" M oo"o"o M o                       |
+|                " o o  "  o " M "o" o <-- All tasks await completion|
+|                "  o o  o   "  M o" M M "o""o "                     |
+|                  " o  o  "  "o M M o"o"o M o                       |
+|                     " o o "  o o" " o"o" o                         |
+|                        o M " o "o" M M "o  o                       |
+|                            " o o M "o                              |
+|                             o   " <-- Tasks t8171 such that t8171 =|
+|                                                                    |
++--------------------------------------------------------------------+

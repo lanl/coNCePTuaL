@@ -6,10 +6,10 @@ dnl By Scott Pakin <pakin@lanl.gov>
 dnl
 dnl ----------------------------------------------------------------------
 dnl
-dnl Copyright (C) 2009, Los Alamos National Security, LLC
+dnl Copyright (C) 2011, Los Alamos National Security, LLC
 dnl All rights reserved.
 dnl 
-dnl Copyright (2009).  Los Alamos National Security, LLC.  This software
+dnl Copyright (2011).  Los Alamos National Security, LLC.  This software
 dnl was produced under U.S. Government contract DE-AC52-06NA25396
 dnl for Los Alamos National Laboratory (LANL), which is operated by
 dnl Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -73,7 +73,7 @@ dnl memory from any location so they #define CPU_MINIMUM_ALIGNMENT_BYTES
 dnl to 1.  The UltraSPARC, in contrast, can access only memory that is
 dnl 4-byte aligned, so it #defines CPU_MINIMUM_ALIGNMENT_BYTES to 4.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_CPU_MINIMUM_DATA_ALIGNMENT],
@@ -136,7 +136,7 @@ dnl @synopsis AX_APPEND_TO_FILE (FILENAME, BODY)
 dnl
 dnl Append BODY, which can contain multiple lines of text, to file FILENAME.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_APPEND_TO_FILE],
@@ -158,7 +158,7 @@ dnl
 dnl     AX_REQUIRE_ONE_FUNC([posix_memalign memalign valloc], ,
 dnl       [AC_MSG_ERROR([unable to allocate page-aligned memory])])
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_REQUIRE_ONE_FUNC],
@@ -171,7 +171,7 @@ AS_IF([test "$ax_1func_cv" = no],
   [$3],
   [ax_1func_cv=`echo $ax_1func_cv | sed 's/^no //'`
    for ax_1func in $ax_1func_cv ; do
-     AC_DEFINE_UNQUOTED([AS_TR_CPP([HAVE_$ax_1func])])
+     AC_DEFINE_UNQUOTED(AS_TR_CPP([HAVE_$ax_1func]))
    done
    $2])
 ])
@@ -206,7 +206,7 @@ dnl     #elif HAVE_SYS_TYPES_H
 dnl     # include <sys/types.h>
 dnl     #endif
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@uiuc.edu>
 dnl
 
@@ -251,7 +251,7 @@ dnl available.  If the USE_PAPI environment variable is "yes", we use the
 dnl PAPI library to read the timer.  Otherwise, we use a trial-and-error
 dnl approach.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_FIND_HI_RES_TIMER],
@@ -596,7 +596,7 @@ dnl range, "yes" if it has only a 32-bit range (and is therefore
 dnl susceptible to premature wraparounds).  This macro should not be
 dnl called if FORCE_GETTIMEOFDAY or FORCE_MPI_WTIME is set.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_CHECK_TIMER_WRAPAROUND],
@@ -636,7 +636,7 @@ dnl
 dnl Given a space-separated list of INCLUDE-FILEs, AX_AUTO_INCLUDE_HEADERS
 dnl will output a conditional #include for each INCLUDE-FILE.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_AUTO_INCLUDE_HEADERS], [dnl
@@ -657,7 +657,7 @@ dnl PROC_CMD_LINE_TYPE as 0 if PROC_CMD_LINE is not to be used; 1 if it's
 dnl a template that replaces %d with the process ID; or, 2 for a complete
 dnl filename.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_FILE_PROC_CMDLINE], [dnl
@@ -704,13 +704,13 @@ dnl Redefine the AC_MSG_WARN macro so that it not only outputs a
 dnl warning message to screen and to config.log but also to a new
 dnl config.warn file.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_SAVE_WARNINGS], [dnl
 AC_REQUIRE([AC_PROG_AWK])
 m4_copy([AC_MSG_WARN], [AX_MSG_WARN_ORIGINAL])
-m4_copy([AX_MSG_WARN], [AC_MSG_WARN])
+m4_copy_force([AX_MSG_WARN], [AC_MSG_WARN])
 rm -f config.warn
 ])
 
@@ -719,7 +719,7 @@ dnl
 dnl Do most of the work for AX_SAVE_WARNINGS.  This macro should not be
 dnl called directly but only through AC_MSG_WARN.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_MSG_WARN], [dnl
@@ -741,11 +741,11 @@ dnl When configure is finished, AX_SHOW_WARNINGS should be called to
 dnl output (and subsequently delete) the list of accumulated warning
 dnl messages.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_SHOW_WARNINGS], [dnl
-m4_copy([AX_MSG_WARN_ORIGINAL], [AC_MSG_WARN])
+m4_copy_force([AX_MSG_WARN_ORIGINAL], [AC_MSG_WARN])
 _AS_ECHO([===========================================================================])
 if test -e config.warn ; then
   _AS_ECHO([The following warning messages were issued during configuration:])
@@ -776,7 +776,7 @@ dnl is a list of #include lines to utilize.  ACTION-IF-FOUND is shell code
 dnl to execute if SYMBOL is defined.  ACTION-IF-NOT-FOUND is shell code to
 dnl execute if SYMBOL is not defined.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_CHECK_SYMBOLS], [dnl
@@ -812,7 +812,7 @@ dnl Autoconf.  If a sample extension module is invoked successfully, the
 dnl commands in ACTION-IF-COMPATIBLE are executed.  Otherwise, the
 dnl commands in ACTION-IF-NOT-COMPATIBLE are executed.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_PYTHON_C_COMPATIBILITY], [dnl
@@ -894,7 +894,7 @@ dnl
 dnl If stdarg.h defines va_copy(), define HAVE_VA_COPY.  Otherwise, if
 dnl stdarg.h defines __va_copy(), define HAVE___VA_COPY.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_FUNC_VA_COPY], [dnl
@@ -942,7 +942,7 @@ dnl Test if libtool is able to compile and link a simple library.  If it
 dnl can, the commands in ACTION-IF-TRUE are executed.  If not, the
 dnl commands in ACTION-IF-FALSE are executed.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_PROG_LIBTOOL_WORKS], [dnl
@@ -972,7 +972,7 @@ dnl @synopsis AX_CHECK_LIB (LIBRARY, FUNCTION, [ACTION-IF-FOUND], [ACTION-IF-NOT
 dnl
 dnl Modify AC_CHECK_LIB by subtracting off $ignored_libs from LIBRARY.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_CHECK_LIB], [dnl
@@ -1001,7 +1001,7 @@ dnl @synopsis AX_SEARCH_LIBS (FUNCTION, SEARCH-LIBS, [ACTION-IF-FOUND], [ACTION-
 dnl
 dnl Modify AC_SEARCH_LIBS by subtracting off $ignored_libs from SEARCH-LIBS.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_SEARCH_LIBS], [dnl
@@ -1014,7 +1014,7 @@ dnl @synopsis AX_CHECK_REQUIRES_LIBM (FUNCTION, STATEMENT)
 dnl
 dnl Append "-lm" to LIBS if required to link STATEMENT.
 dnl
-dnl @version $Id: acinclude.m4,v 3.31 2009-02-10 03:26:28 pakin Exp $
+dnl @version $Id: acinclude.m4,v 3.32 2010-08-10 03:06:25 pakin Exp $
 dnl @author Scott Pakin <pakin@lanl.gov>
 dnl
 AC_DEFUN([AX_CHECK_REQUIRES_LIBM], [dnl
@@ -1035,6 +1035,6 @@ AC_DEFUN([AX_CHECK_REQUIRES_LIBM], [dnl
       AC_CHECK_LIB([m], [$1])
     fi])
   if test "$ax_func_to_define" != no ; then
-    AC_DEFINE_UNQUOTED([AS_TR_CPP([HAVE_$ax_func_to_define])])
+    AC_DEFINE_UNQUOTED(AS_TR_CPP([HAVE_$ax_func_to_define]))
   fi
 ])

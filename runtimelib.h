@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -63,6 +63,9 @@
 
 #define NCPTL_LIBRARY_INTERNALS
 #include "config.h"
+/* Avoid redefining NCPTL_INT_MIN and NCPTL_INT_MAX. */
+#undef NCPTL_INT_MIN
+#undef NCPTL_INT_MAX
 #include "ncptl.h"
 
 
@@ -307,12 +310,17 @@ typedef struct {
   char *hostname;            /* Machine name */
   char *arch;                /* System architecture */
   char *os;                  /* Operating system */
+  char *osdist;              /* Operating system distribution */
   char *computer;            /* Computer make and model */
   char *bios;                /* BIOS vendor and version */
-  int numcpus;               /* Total number of CPUs */
+  int contexts_per_node;     /* Total number of compute contexts (threads*cores*dies*sockets) per node */
+  int threads_per_core;      /* Number of hardware threads per CPU core */
+  int cores_per_socket;      /* Number of cores in each CPU socket */
+  int sockets_per_node;      /* Number of sockets in the node */
   char *cpu_vendor;          /* Name of the CPU vendor */
   char *cpu_model;           /* Name of the CPU model */
   double cpu_freq;           /* CPU frequency in hertz */
+  char *cpu_flags;           /* CPU flags (hardwired or bios-settable) */
   double timer_freq;         /* Cycle-counter frequency in hertz */
   uint64_t pagesize;         /* OS page size in bytes */
   uint64_t physmem;          /* Physical memory size in bytes */

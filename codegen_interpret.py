@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -61,6 +61,7 @@ import re
 import math
 import types
 import random
+import copy
 from ncptl_ast import AST
 from ncptl_error import NCPTL_Error
 from ncptl_variables import Variables
@@ -108,6 +109,54 @@ class NCPTL_CodeGen:
         "expr",
         "primary_expr",
         "item_count"]
+    sub_statement_nodes = \
+        dict([(ntype, 1) for ntype in [
+                "rel_disj_expr",
+                "rel_conj_expr",
+                "eq_expr",
+                "ifelse_expr",
+                "add_expr",
+                "mult_expr",
+                "unary_expr",
+                "power_expr",
+                "integer",
+                "ident",
+                "my_task",
+                "real",
+                "dimension",
+                "dimension_list",
+                "func_call",
+                "item_size",
+                "data_type",
+                "byte_count",
+                "data_multiplier",
+                "time_unit",
+                "aggregate_func",
+                "an",
+                "message_alignment",
+                "touch_repeat_count",
+                "expr_list",
+                "task_expr",
+                "restricted_ident",
+                "string_or_expr_list",
+                "string_or_log_comment",
+                "string",
+                "such_that",
+                "comma",
+                "stride",
+                "range_list",
+                "range",
+                "aggregate_expr",
+                "log_expr_list",
+                "log_expr_list_elt",
+                "message_spec",
+                "touching_type",
+                "buffer_offset",
+                "buffer_number",
+                "recv_buffer_number",
+                "send_attrs",
+                "receive_attrs"]])
+
 
     #---------------------#
     # Helper class that   #
@@ -358,10 +407,12 @@ class NCPTL_CodeGen:
         self.random_seed = ncptl_seed_random_task(0L, 0L)   # Seed for the RNG
         self.mcastsync = 0L             # 1=synchronize after a multicast
         self.latency_list = [(1,1)]     # Hierarchy of message latencies
+        self.kill_reps = 0L             # 1=FOR...REPETITIONS limited to one iteration
         self.timing_flag = ncptl_allocate_timing_flag()  # Used by FOR <time>
         self.type2method = {}           # Map from a node type to a method that can handle it
         self.stuck_tasks = {}           # Set of deadlocked tasks
-        self.next_collective_id = 1000000   # Next available unique ID for a collective
+        self.applicable_tasks = {}      # Set of tasks that should execute the current statement
+        self.unique_id = 0L             # Unique identifier for a collective operation
         self.backend_name = "interpret"
         self.backend_desc = "coNCePTuaL interpreter"
 
@@ -401,6 +452,10 @@ class NCPTL_CodeGen:
         for mname in self.trivial_nodes:
             setattr(self, "n_" + mname, self.n_trivial_node)
 
+        # By default, all tasks perform every statement.
+        for task in range(0, self.numtasks):
+            self.applicable_tasks[task] = 1
+
     def clear_events(self):
         """Restart the interpreter by clearing all of top-level state
         (needed by the coNCePTuaL GUI)."""
@@ -411,6 +466,12 @@ class NCPTL_CodeGen:
         self.timer_start = [0] * int(self.numtasks)
         self.counters = []
         self.counter_stack = map(lambda t: [], range(0, self.numtasks))
+
+    def fake_semantic_analysis(self, node):
+        "Pretend we ran the semantic analyzer (needed by the coNCePTuaL GUI)."
+        node.sem = {"is_constant": False}
+        for kid in node.kids:
+            self.fake_semantic_analysis(kid)
 
     def generate(self, ast, filesource='<stdin>', filetarget="-", sourcecode=None):
         "Interpret an AST."
@@ -443,6 +504,26 @@ class NCPTL_CodeGen:
     # Internal utility #
     # functions        #
     #------------------#
+
+    def filter_task_list(self, tasklist):
+        """
+        Return only those tasks that are applicable to the current
+        statement.  As a side effect, convert all tasks to int type.
+        """
+        return map(int, filter(lambda t: self.applicable_tasks.has_key(t), tasklist))
+
+    def get_unique_id(self):
+        "Return the next available ID number."
+        unique_id = self.unique_id
+        self.unique_id += 1
+        return unique_id
+
+    def collectives_match(self, event1, event2):
+        "Return true if and only if two collective events match each other."
+        if event1.collective_id == None or event2.collective_id == None:
+            # At least one event is not a collective operation.
+            return False
+        return event1.collective_id == event2.collective_id
 
     def set_log_file_status(self, enable):
         "Force log-file usage on or off (intended to be called by derived classes)."
@@ -569,6 +650,9 @@ class NCPTL_CodeGen:
              "hierarchy", "H", "tasks:1"],
             ["random_seed", "Seed for the random-number generator",
              "seed", "S", self.random_seed],
+            ["kill_reps",
+             "If nonzero, perform FOR...REPETITIONS loop bodies exactly once",
+             "kill-reps", "K", 0L],
             ["logfiletmpl", "Log-file template", "logfile",
              "L", self.logfiletemplate]])
 
@@ -609,13 +693,29 @@ class NCPTL_CodeGen:
 
     def process_node(self, node):
         "Given a node, invoke a method that knows how to process it."
+        # If the node has a constant value and is an expression (as
+        # opposed to a statement), reuse its previously calculated
+        # value.
+        if node.sem["is_constant"] and self.sub_statement_nodes.has_key(node.type):
+            try:
+                # Return our previously calculated value.
+                return node.previous_value
+            except AttributeError:
+                # This is the first time we're called.  We'll need to
+                # calculate a value.
+                pass
+
+        # We need to compute a value for this node.
         try:
-            return self.type2method[node.type](node)
+            result = self.type2method[node.type](node)
         except KeyError:
             methodname = "n_" + node.type
             methodcode = getattr(self, methodname, self.n_undefined)
             self.type2method[node.type] = methodcode
-            return methodcode(node)
+            result = methodcode(node)
+        if node.sem["is_constant"]:
+            node.previous_value = result
+        return result
 
     def apply_binary_function(self, ffunc, node, ifunc=None):
         """
@@ -980,6 +1080,10 @@ class NCPTL_CodeGen:
         self.errmsg.error_fatal("Variable %s is not defined" % node.attr,
                                 lineno0=node.lineno0, lineno1=node.lineno1)
 
+    def n_my_task(self, node):
+        "Return the current value of virtrank."
+        return self.virtrank
+
     def n_real(self, node):
         "Evaluate an expression in floating-point context."
         prevcontext = self.context
@@ -990,14 +1094,28 @@ class NCPTL_CodeGen:
         self.context = prevcontext
         return result
 
+    def n_dimension_list(self, node):
+        "Return a list of (dimension length, torus?) pairs."
+        return map(self.process_node, node.kids)
+
+    def n_dimension(self, node):
+        "Return a dimension as an (length, torus?) pair."
+        return (self.process_node(node.kids[0]), node.attr)
+
     def n_func_call(self, node):
         "Invoke a run-time library function and return the result."
 
         # Acquire the function name and parameters.
         funcname = node.attr
-        funcparams = self.process_node(node.kids[0])
-        if type(funcparams) != types.ListType:
-            funcparams = [funcparams]
+        if funcname[:5] == "MESH_":
+            # Mesh functions store their parameters directly.
+            funcparams = map(self.process_node, node.kids)
+        else:
+            # All other functions store their parameters within a
+            # single expr_list.
+            funcparams = self.process_node(node.kids[0])
+            if type(funcparams) != types.ListType:
+                funcparams = [funcparams]
         num_params = len(funcparams)
         have_lazy_param = filter(lambda p: type(p)==types.TupleType, funcparams) != []
 
@@ -1020,28 +1138,28 @@ class NCPTL_CodeGen:
             "CEILING":          [1],
             "FACTOR10":         [1],
             "FLOOR":            [1],
+            "KNOMIAL_CHILD":    [2, 3, 4],
+            "KNOMIAL_CHILDREN": [1, 2, 3],
+            "KNOMIAL_PARENT":   [1, 2, 3],
             "LOG10":            [1],
+            "MESH_COORDINATE":  [3],
+            "MESH_DISTANCE":    [3],
+            "MESH_NEIGHBOR":    [3],
+            "RANDOM_GAUSSIAN":  [2],
+            "RANDOM_PARETO":    [2, 3],
+            "RANDOM_POISSON":   [1],
+            "RANDOM_UNIFORM":   [2],
+            "ROOT":             [2],
             "ROUND":            [1],
             "SQRT":             [1],
-            "ROOT":             [2],
-            "RANDOM_UNIFORM":   [2],
-            "RANDOM_GAUSSIAN":  [2],
-            "RANDOM_POISSON":   [1],
-            "TREE_PARENT":      [1, 2],
             "TREE_CHILD":       [2, 3],
-            "MESH_NEIGHBOR":    [3, 5, 7],
-            "TORUS_NEIGHBOR":   [3, 5, 7],
-            "MESH_COORDINATE":  [3, 4, 5],
-            "TORUS_COORDINATE": [3, 4, 5],
-            "KNOMIAL_PARENT":   [1, 2, 3],
-            "KNOMIAL_CHILD":    [2, 3, 4],
-            "KNOMIAL_CHILDREN": [1, 2, 3]
+            "TREE_PARENT":      [1, 2]
         }
         try:
             valid_num_params = function_arguments[funcname]
             if num_params not in valid_num_params:
                 if len(valid_num_params) == 1:
-                    expected_args = "%d argument(s)" % valid_num_params
+                    expected_args = "%d argument(s)" % valid_num_params[0]
                 else:
                     expected_args = string.join(map(str, valid_num_params[:-1]), ", ") + \
                                     " or %d arguments" % valid_num_params[-1]
@@ -1051,42 +1169,45 @@ class NCPTL_CodeGen:
         except KeyError:
             self.errmsg.error_internal("unknown number of arguments to %s" % funcname)
 
-        # All of the mesh and torus neighbor functions map to the same
-        # library call.  Patch the argument list accordingly.
-        if funcname=="MESH_NEIGHBOR" or funcname=="TORUS_NEIGHBOR":
-            gtask = funcparams[0]
-            gtorus = long(funcname=="TORUS_NEIGHBOR")
-            gwidth = funcparams[1]
-            gheight = 1L
-            gdepth = 1L
-            gdeltax = funcparams[2]
-            gdeltay = 0L
-            gdeltaz = 0L
-            if num_params >= 5:
-                gheight = funcparams[3]
-                gdeltay = funcparams[4]
-            if num_params >= 7:
-                gdepth = funcparams[5]
-                gdeltaz = funcparams[6]
-            funcname = "GRID_NEIGHBOR"
-            funcparams = [gtask, gtorus,
-                         gwidth, gheight, gdepth,
-                         gdeltax, gdeltay, gdeltaz]
-        # All of the mesh and torus coordinate functions map to the same
-        # library call.  Patch the argument list accordingly.
-        elif funcname=="MESH_COORDINATE" or funcname=="TORUS_COORDINATE":
-            gtask = funcparams[0]
-            gcoord = funcparams[1]
-            gwidth = funcparams[2]
-            gheight = 1L
-            gdepth = 1L
-            if num_params >= 4:
-                gheight = funcparams[3]
-            if num_params >= 5:
-                gdepth = funcparams[4]
-            funcname = "GRID_COORD"
-            funcparams = [gtask, gcoord,
-                         gwidth, gheight, gdepth]
+        # Regardless of dimensionality, all of the mesh and torus
+        # neighbor functions map to the same library call.  Patch the
+        # argument list accordingly.
+        if funcname == "MESH_NEIGHBOR":
+            # Extract the function's parameters.  Pad all lists to
+            # exactly three elements.
+            gdimens = [dim_wrap[0] for dim_wrap in funcparams[0]]
+            gdimens = (gdimens + [1L, 1L, 1L])[:3]
+            gtorus = [dim_wrap[1] for dim_wrap in funcparams[0]]
+            gtorus = (gtorus + [False, False, False])[:3]
+            gtask = funcparams[1]
+            gdeltas = funcparams[2]
+            gdeltas = (gdeltas + [0L, 0L, 0L])[:3]
+            funcparams = gdimens + map(long, gtorus) + [gtask] + gdeltas
+        # Regardless of dimensionality, all of the mesh and torus
+        # coordinate functions map to the same library call.  Patch
+        # the argument list accordingly.
+        elif funcname == "MESH_COORDINATE":
+            # Extract the function's parameters.  Pad all lists to
+            # exactly three elements.
+            gdimens = [dim_wrap[0] for dim_wrap in funcparams[0]]
+            gdimens = (gdimens + [1L, 1L, 1L])[:3]
+            gtask = funcparams[1]
+            gcoord = funcparams[2]
+            funcname = "MESH_COORD"
+            funcparams = gdimens + [gtask, gcoord]
+        # Regardless of dimensionality, all of the mesh and torus
+        # distance functions map to the same library call.  Patch the
+        # argument list accordingly.
+        elif funcname == "MESH_DISTANCE":
+            # Extract the function's parameters.  Pad all lists to
+            # exactly three elements.
+            gdimens = [dim_wrap[0] for dim_wrap in funcparams[0]]
+            gdimens = (gdimens + [1L, 1L, 1L])[:3]
+            gtorus = [dim_wrap[1] for dim_wrap in funcparams[0]]
+            gtorus = (gtorus + [False, False, False])[:3]
+            gtask1 = funcparams[1]
+            gtask2 = funcparams[2]
+            funcparams = gdimens + map(long, gtorus) + [gtask1, gtask2]
         # Tree arity defaults to 2.
         elif funcname=="TREE_PARENT" or funcname=="TREE_CHILD":
             if num_params == valid_num_params[0]:
@@ -1104,6 +1225,11 @@ class NCPTL_CodeGen:
                 funcparams.insert(1, 0L)
                 funcparams.append(1L)
                 funcname = "KNOMIAL_CHILD"
+        # Replicate the second argument of the two-argument Pareto
+        # distribution to notify ncptl_*_random_pareto() that this is
+        # the two-argument form.
+        elif funcname == "RANDOM_PARETO" and num_params == 2:
+            funcparams.append(funcparams[1])
 
         # Evaluate the function and return the result.
         funcname = string.lower(funcname)
@@ -1263,6 +1389,12 @@ class NCPTL_CodeGen:
             # ALL OTHER TASKS
             varname = None
             tasklist = range(0, self.virtrank) + range(self.virtrank+1, self.numtasks)
+        elif node.attr == "let_task":
+            # TASK GROUP <var>
+            varname = node.kids[0].attr
+            node.kids[0].attr = "GROUP " + varname
+            tasklist = self.process_node(node.kids[0])[1]
+            node.kids[0].attr = varname
         else:
             self.errmsg.error_internal('Unknown task_expr type "%s"' % node.attr)
         return (varname, tasklist)
@@ -1290,7 +1422,7 @@ class NCPTL_CodeGen:
     def n_string_or_log_comment(self, node):
         "Return the string defined by our child."
         stringval = self.process_node(node.kids[0])
-        if node.attr == ["value_of"]:
+        if node.attr == "value_of":
             if not self.program_can_use_log_file:
                 return ""
             self.program_uses_log_file = 1
@@ -1469,14 +1601,23 @@ class NCPTL_CodeGen:
         item_size = self.process_node(node.kids[2])
         alignment = self.process_node(node.kids[3])
         touching = self.process_node(node.kids[4])
-        buffer_num = self.process_node(node.kids[5])
+        buffer_ofs = self.process_node(node.kids[5])
+        buffer_num = self.process_node(node.kids[6])
         is_misaligned = long(node.attr)
         return (num_messages, is_unique, item_size, alignment, touching,
-                buffer_num, is_misaligned)
+                buffer_ofs, buffer_num, is_misaligned)
 
     def n_touching_type(self, node):
         "Return a string describing how message data should be touched."
         return node.kids[0].type
+
+    def n_buffer_offset(self, node):
+        "Return a byte offset into a given buffer."
+        if len(node.kids) == 0:
+            return 0L
+        else:
+            node.kids[1].basevalue = self.process_node(node.kids[0])
+            return self.process_node(node.kids[1])
 
     def n_buffer_number(self, node):
         'Return a buffer number to use or "auto" to use the next available.'
@@ -1575,6 +1716,8 @@ class NCPTL_CodeGen:
                     self.errmsg.error_fatal("the --%s option accepts only 0 or 1" % opt[2])
             elif opt[0] == "latency_list":
                 self.latency_list = self.parse_latency_hierarchy(opt[-1])
+            elif opt[0] == "kill_reps":
+                self.kill_reps = opt[-1]
             else:
                 self.scopes[0][opt[0]] = opt[-1]
 
@@ -1591,7 +1734,7 @@ class NCPTL_CodeGen:
         srclines = (node.lineno0, node.lineno1)
         self.context = "float"
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.scopes[0][varname] = self.virtrank
             event = self.Event("OUTPUT", task=self.virtrank, srclines=srclines,
                                attributes=self.process_node(node.kids[1]))
@@ -1640,7 +1783,7 @@ class NCPTL_CodeGen:
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             # Process the arguments to TOUCHES.
             self.scopes[0][varname] = self.virtrank
             if len(node.kids) == 4:
@@ -1708,21 +1851,21 @@ class NCPTL_CodeGen:
         "Reset all of the counters for a particular task."
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.push_event(self.Event("RESET", task=self.virtrank, srclines=srclines))
 
     def n_store_stmt(self, node):
         "Push all of the counters for a particular task."
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.push_event(self.Event("STORE", task=self.virtrank, srclines=srclines))
 
     def n_restore_stmt(self, node):
         "Pop all of the counters for a particular task."
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.push_event(self.Event("RESTORE", task=self.virtrank, srclines=srclines))
 
     def n_computes_for(self, node):
@@ -1730,7 +1873,7 @@ class NCPTL_CodeGen:
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.scopes[0][varname] = self.virtrank
             event = self.Event("COMPUTE", task=self.virtrank, srclines=srclines,
                                attributes=[self.process_node(node.kids[1])])
@@ -1742,7 +1885,7 @@ class NCPTL_CodeGen:
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.scopes[0][varname] = self.virtrank
             event = self.Event("SLEEP", task=self.virtrank, srclines=srclines,
                                attributes=[self.process_node(node.kids[1])])
@@ -1753,7 +1896,7 @@ class NCPTL_CodeGen:
         'Alter the mapping of task IDs to "processors".'
         varname, tasklist = self.process_node(node.kids[0])
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.scopes[0][varname] = self.virtrank
             if len(node.kids) > 1:
                 physrank = self.process_node(node.kids[1])
@@ -1768,6 +1911,13 @@ class NCPTL_CodeGen:
     def n_for_count(self, node):
         "Repeat a statement a given number of times."
 
+        # If kill_reps is set, ignore the warmup repetitions,
+        # synchronization, and trip count.
+        statement_node = node.kids[len(node.kids)-1]
+        if self.kill_reps:
+            self.process_node(statement_node)
+            return
+
         # Perform the warmup repetitions if any and optional synchronization.
         if len(node.kids) == 3:
             warmups = self.process_node(node.kids[1])
@@ -1780,15 +1930,13 @@ class NCPTL_CodeGen:
             if node.attr == "synchronized":
                 newevents = {}
                 tasklist = range(0, self.numtasks)
-                coll_id = self.next_collective_id
-                self.next_collective_id = self.next_collective_id + 1
+                unique_id = self.get_unique_id()
                 for task in tasklist:
                     self.push_event(self.Event("SYNC", task=task, peers=tasklist,
                                                srclines=(node.lineno0, node.lineno1),
-                                               collective_id=coll_id))
+                                               collective_id=unique_id))
 
         # Perform the regular repetitions.
-        statement_node = node.kids[len(node.kids)-1]
         for i in range(0L, self.process_node(node.kids[0])):
             self.process_node(statement_node)
 
@@ -1823,10 +1971,21 @@ class NCPTL_CodeGen:
 
     def n_if_stmt(self, node):
         "Execute a statement if a given condition is true."
-        if self.process_node(node.kids[0]):
+        truetasks = {}
+        falsetasks = {}
+        for self.virtrank in self.applicable_tasks.keys():
+            if self.process_node(node.kids[0]):
+                truetasks[self.virtrank] = 1
+            else:
+                falsetasks[self.virtrank] = 1
+        orig_applicable_tasks = self.applicable_tasks
+        if truetasks != {}:
+            self.applicable_tasks = truetasks
             self.process_node(node.kids[1])
-        elif len(node.kids) == 3:
+        if falsetasks != {} and len(node.kids) == 3:
+            self.applicable_tasks = falsetasks
             self.process_node(node.kids[2])
+        self.applicable_tasks = orig_applicable_tasks
 
     def n_backend_stmt(self, node):
         "Execute an arbitrary Python statement."
@@ -1834,7 +1993,7 @@ class NCPTL_CodeGen:
         srclines = (node.lineno0, node.lineno1)
         self.context = "float"
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.scopes[0][varname] = self.virtrank
             event = self.Event("BACKEND", task=self.virtrank, srclines=srclines,
                                attributes=self.process_node(node.kids[1]))
@@ -1856,7 +2015,7 @@ class NCPTL_CodeGen:
         srclines = (node.lineno0, node.lineno1)
         self.context = "float"
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, tasklist):
+        for self.virtrank in self.filter_task_list(tasklist):
             self.scopes[0][varname] = self.virtrank
             logdatalist = self.process_node(node.kids[1])
             event = self.Event("LOG", task=self.virtrank, srclines=srclines,
@@ -1879,7 +2038,7 @@ class NCPTL_CodeGen:
             return
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
-        for task in map(int, tasklist):
+        for task in self.filter_task_list(tasklist):
             self.push_event(self.Event("AGGREGATE", task=task, srclines=srclines))
 
 
@@ -1895,6 +2054,16 @@ class NCPTL_CodeGen:
 
     def n_send_stmt(self, node):
         "Send messages from one task to another."
+        try:
+            # If all of our arguments are constant, we can simply
+            # repeat whatever we did last time.
+            node.repeat_operation(self, node)
+            return
+        except AttributeError:
+            # We have at least one non-constant argument.
+            pass
+
+        # Process all of our simple parameters.
         svarname, stasklist = self.process_node(node.kids[0])
         sattribs = self.process_node(node.kids[2])
         sblocking = "asynchronously" not in sattribs
@@ -1907,7 +2076,7 @@ class NCPTL_CodeGen:
         newsends = {}
         newreceives = {}
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, stasklist):
+        for self.virtrank in self.filter_task_list(stasklist):
             sender = self.virtrank
             newsends[sender] = []
             self.scopes[0][svarname] = self.virtrank
@@ -1916,84 +2085,153 @@ class NCPTL_CodeGen:
             rvarname, rtasklist = self.process_node(node.kids[3])
             self.scopes.insert(0, {})
             for self.virtrank in map(int, rtasklist):
+                # Keep track of the new send events.
                 receiver = self.virtrank
-                self.scopes[0][rvarname] = self.virtrank
-                rmsgspec = list(self.process_node(node.kids[4]))
-                rmsgspec.append(rattribs)
-                if "unsuspecting" not in rattribs:
-                    for i in range(0, rmsgspec[0]):
-                        newevent = self.Event("RECEIVE", task=receiver, peers=[sender],
-                                              srclines=srclines, msgsize=rmsgspec[2],
-                                              blocking=rblocking, attributes=rattribs)
-                        try:
-                            newreceives[receiver].append(newevent)
-                        except KeyError:
-                            newreceives[receiver] = [newevent]
                 for i in range(0, smsgspec[0]):
                     newevent = self.Event("SEND", task=sender, peers=[receiver],
                                           srclines=srclines, msgsize=smsgspec[2],
                                           blocking=sblocking, attributes=sattribs)
                     newsends[sender].append(newevent)
+
+                # Keep track of the new receive events but only those
+                # in which the receiver is in the set of applicable
+                # tasks.
+                if self.applicable_tasks.has_key(self.virtrank):
+                    self.scopes[0][rvarname] = self.virtrank
+                    rmsgspec = list(self.process_node(node.kids[4]))
+                    rmsgspec.append(rattribs)
+                    if "unsuspecting" not in rattribs:
+                        for i in range(0, rmsgspec[0]):
+                            newevent = self.Event("RECEIVE", task=receiver, peers=[sender],
+                                                  srclines=srclines, msgsize=rmsgspec[2],
+                                                  blocking=rblocking, attributes=rattribs)
+                            try:
+                                newreceives[receiver].append(newevent)
+                            except KeyError:
+                                newreceives[receiver] = [newevent]
             self.scopes.pop(0)
         self.scopes.pop(0)
-        for receiver, eventlist in newreceives.items():
-            for event in eventlist:
-                self.push_event(event)
-        for sender, eventlist in newsends.items():
-            for event in eventlist:
-                self.push_event(event)
+
+        # Construct and evaluate a closure that pushes all of the new
+        # events on the appropriate event list.
+        def push_send_events(self, node, makecopy=1):
+            for receiver, eventlist in newreceives.items():
+                if makecopy:
+                    eventlist = copy.deepcopy(eventlist)
+                for event in eventlist:
+                    self.push_event(event)
+            for sender, eventlist in newsends.items():
+                if makecopy:
+                    eventlist = copy.deepcopy(eventlist)
+                for event in eventlist:
+                    self.push_event(event)
+        push_send_events(self, node, 0)
+
+        # If all of our arguments are constant, store the closure for
+        # next time.
+        if node.sem["is_constant"]:
+            node.repeat_operation = push_send_events
 
     def n_receive_stmt(self, node):
         "Receive messages from other tasks."
+        try:
+            # If all of our arguments are constant, we can simply
+            # repeat whatever we did last time.
+            node.repeat_operation(self, node)
+            return
+        except AttributeError:
+            # We have at least one non-constant argument.
+            pass
 
-        # Post a message to each receiver from each sender.  As in the
-        # SEND statement, the send scope is the outer scope and the
-        # receive scope is the inner scope.
-        activetasks = {}
-        svarname, stasklist = self.process_node(node.kids[2])
-        rattribs = self.process_node(node.kids[3])
+        # Determine who's sending to whom.
+        eventlist = []
         srclines = (node.lineno0, node.lineno1)
-        self.scopes.insert(0, {})
-        for self.virtrank in map(int, stasklist):
-            sender = self.virtrank
-            activetasks[sender] = 1
-            self.scopes[0][svarname] = self.virtrank
+        rattribs = self.process_node(node.kids[3])
+        try:
+            receive_dir = node.sem["receive_dir"]
+        except AttributeError:
+            # The coNCePTuaL GUI doesn't call the semantic analyzer
+            # and therefore doesn't define node.sem["receive_dir"].
+            receive_dir = "S2T"
+        if receive_dir == "S2T":
+            # Post a message to each receiver from each sender.  As in
+            # the SEND statement, the send scope is the outer scope
+            # and the receive scope is the inner scope.
+            svarname, stasklist = self.process_node(node.kids[2])
+            self.scopes.insert(0, {})
+            for self.virtrank in self.filter_task_list(stasklist):
+                sender = self.virtrank
+                self.scopes[0][svarname] = self.virtrank
+                rvarname, rtasklist = self.process_node(node.kids[0])
+                self.scopes.insert(0, {})
+                for self.virtrank in self.filter_task_list(rtasklist):
+                    receiver = self.virtrank
+                    self.scopes[0][rvarname] = self.virtrank
+                    rmsgspec = list(self.process_node(node.kids[1]))
+                    rmsgspec.append(rattribs)
+                    for i in range(0, rmsgspec[0]):
+                        event = self.Event("RECEIVE", task=receiver, peers=[sender],
+                                           srclines=srclines, msgsize=rmsgspec[2],
+                                           blocking="asynchronously" not in rattribs,
+                                           attributes=rattribs)
+                        eventlist.append(event)
+                self.scopes.pop(0)
+            self.scopes.pop(0)
+        else:
+            # Post a message to each receiver from each sender.
+            # Unlike the SEND statement, the send scope is the inner
+            # scope and the receive scope is the outer scope.
             rvarname, rtasklist = self.process_node(node.kids[0])
             self.scopes.insert(0, {})
-            for self.virtrank in map(int, rtasklist):
+            for self.virtrank in self.filter_task_list(rtasklist):
                 receiver = self.virtrank
-                activetasks[receiver] = 1
                 self.scopes[0][rvarname] = self.virtrank
                 rmsgspec = list(self.process_node(node.kids[1]))
                 rmsgspec.append(rattribs)
-                for i in range(0, rmsgspec[0]):
-                    event = self.Event("RECEIVE", task=receiver, peers=[sender],
-                                       srclines=srclines, msgsize=rmsgspec[2],
-                                       blocking="asynchronously" not in rattribs,
-                                       attributes=rattribs)
-                    self.push_event(event)
+                svarname, stasklist = self.process_node(node.kids[2])
+                self.scopes.insert(0, {})
+                for self.virtrank in self.filter_task_list(stasklist):
+                    sender = self.virtrank
+                    for i in range(0, rmsgspec[0]):
+                        event = self.Event("RECEIVE", task=receiver, peers=[sender],
+                                           srclines=srclines, msgsize=rmsgspec[2],
+                                           blocking="asynchronously" not in rattribs,
+                                           attributes=rattribs)
+                        eventlist.append(event)
+                self.scopes.pop(0)
             self.scopes.pop(0)
-        self.scopes.pop(0)
+
+        # Construct and evaluate a closure that pushes all of the new
+        # events on the appropriate event list.
+        def push_receive_events(self, node, makecopy=1, eventlist=eventlist):
+            if makecopy:
+                eventlist = copy.deepcopy(eventlist)
+            for event in eventlist:
+                self.push_event(event)
+        push_receive_events(self, node, 0)
+
+        # If all of our arguments are constant, store the closure for
+        # next time.
+        if node.sem["is_constant"]:
+            node.repeat_operation = push_receive_events
 
     def n_awaits_completion(self, node):
         "Wait until all asynchronous messages have completed."
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
-        tasklist = map(int, tasklist)
-        for task in tasklist:
+        for task in self.filter_task_list(tasklist):
             self.push_event(self.Event("WAIT_ALL", task=task, srclines=srclines))
 
     def n_sync_stmt(self, node):
         "Synchronize a subset of the tasks."
         varname, tasklist = self.process_node(node.kids[0])
         srclines = (node.lineno0, node.lineno1)
+        unique_id = self.get_unique_id()
         tasklist = map(int, tasklist)
         newevents = {}
-        coll_id = self.next_collective_id
-        self.next_collective_id = self.next_collective_id + 1
-        for task in tasklist:
+        for task in self.filter_task_list(tasklist):
             self.push_event(self.Event("SYNC", task=task, peers=tasklist,
-                                       srclines=srclines, collective_id=coll_id))
+                                       srclines=srclines, collective_id=unique_id))
 
     def n_mcast_stmt(self, node):
         "Multicast a message from one task to multiple others."
@@ -2003,8 +2241,9 @@ class NCPTL_CodeGen:
             self.errmsg.error_fatal("asynchronous multicasts are not yet implemented by the %s backend" % self.backend_name,
                                     lineno0=node.lineno0, lineno1=node.lineno1)
         srclines = (node.lineno0, node.lineno1)
+        unique_id = self.get_unique_id()
         self.scopes.insert(0, {})
-        for self.virtrank in map(int, stasklist):
+        for self.virtrank in self.filter_task_list(stasklist):
             self.scopes[0][svarname] = self.virtrank
             smsgspec = list(self.process_node(node.kids[1]))
             smsgspec.append(sattribs)
@@ -2013,12 +2252,10 @@ class NCPTL_CodeGen:
                 if self.virtrank in rtasklist:
                     rtasklist.remove(self.virtrank)
                 tasklist = map(int, [self.virtrank]+rtasklist)
-                coll_id = self.next_collective_id
-                self.next_collective_id = self.next_collective_id + 1
                 for task in tasklist:
                     event = self.Event("MCAST", task=task, peers=tasklist,
                                        srclines=srclines, msgsize=smsgspec[2],
-                                       attributes=sattribs, collective_id=coll_id)
+                                       attributes=sattribs, collective_id=unique_id)
                     self.push_event(event)
         self.scopes.pop(0)
 
@@ -2039,7 +2276,7 @@ class NCPTL_CodeGen:
             message_size = message_size * 4
         else:
             self.errmsg.error_internal('Unknown REDUCE datatype "%s"' % data_type)
-        for self.virtrank in map(int, stasklist):
+        for self.virtrank in self.filter_task_list(stasklist):
             self.scopes[0][svarname] = self.virtrank
             if "allreduce" in node.attr:
                 rvar, rtasks = self.process_node(node.kids[0])
@@ -2048,7 +2285,7 @@ class NCPTL_CodeGen:
             for r in rtasks:
                 rtasklist[r] = 1
         self.scopes.pop(0)
-        rtasklist = map(int, rtasklist.keys())
+        rtasklist = self.filter_task_list(rtasklist.keys())
         rtasklist.sort()
         tasklist = {}
         for task in stasklist + rtasklist:
@@ -2059,12 +2296,11 @@ class NCPTL_CodeGen:
         # Push a REDUCE event onto the queues of all senders and all receivers.
         srclines = (node.lineno0, node.lineno1)
         peerlist = [stasklist, rtasklist]
-        coll_id = self.next_collective_id
-        self.next_collective_id = self.next_collective_id + 1
+        unique_id = self.get_unique_id()
         for task in tasklist:
             event = self.Event("REDUCE", task=task, peers=peerlist,
                                srclines=srclines, msgsize=message_size,
-                               attributes=data_type, collective_id=coll_id)
+                               attributes=data_type, collective_id=unique_id)
             self.push_event(event)
 
 
@@ -2331,7 +2567,7 @@ class NCPTL_CodeGen:
         for peer in event.peers:
             self.eventlist[peer].try_posting_all()
             inc_ev = self.eventlist[peer].get_first_incomplete()
-            if inc_ev.collective_id != event.collective_id or inc_ev.posttime == None:
+            if inc_ev.posttime == None or not self.collectives_match(inc_ev, event):
                 return peer
             barrier_events.append(inc_ev)
 
@@ -2350,7 +2586,7 @@ class NCPTL_CodeGen:
             for peer in event.peers:
                 self.eventlist[peer].try_posting_all()
                 inc_ev = self.eventlist[peer].get_first_incomplete()
-                if inc_ev.collective_id != event.collective_id or inc_ev.posttime == None:
+                if inc_ev.posttime == None or not self.collectives_match(inc_ev, event):
                     return peer
                 mcast_events.append(inc_ev)
                 if inc_ev.msgsize != mcast_events[0].msgsize:
@@ -2415,7 +2651,7 @@ class NCPTL_CodeGen:
             for peer in allpeers:
                 self.eventlist[peer].try_posting_all()
                 inc_ev = self.eventlist[peer].get_first_incomplete()
-                if inc_ev.collective_id != event.collective_id or inc_ev.posttime == None:
+                if inc_ev.posttime == None or not self.collectives_match(inc_ev, event):
                     return peer
                 reduce_events.append(inc_ev)
                 if taskusage[peer][0] == 1:

@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -242,15 +242,19 @@ void ncptl_install_signal_handler (int signalnum,
 
 
 #ifdef HAVE_GETRUSAGE
-/* Return the process time (user + OS) in microseconds. */
-uint64_t ncptl_process_time (void)
+/* Return the process time (user or OS) in microseconds. */
+uint64_t ncptl_process_time (int user0sys1)
 {
   struct rusage usageinfo;
 
   if (getrusage (RUSAGE_SELF, &usageinfo) == -1)
     NCPTL_SYSTEM_ERROR ("getrusage() failed");
-  return (usageinfo.ru_utime.tv_sec*INT64_C(1000000) + usageinfo.ru_utime.tv_usec +
-          usageinfo.ru_stime.tv_sec*INT64_C(1000000) + usageinfo.ru_stime.tv_usec);
+  if (user0sys1 == 0)
+    return usageinfo.ru_utime.tv_sec*INT64_C(1000000) + usageinfo.ru_utime.tv_usec;
+  if (user0sys1 == 1)
+    return usageinfo.ru_stime.tv_sec*INT64_C(1000000) + usageinfo.ru_stime.tv_usec;
+  NCPTL_FATAL_INTERNAL();
+  return (uint32_t)(-1);             /* Appease idiotic compilers. */
 }
 
 
@@ -841,8 +845,8 @@ static void calculate_process_time_quality (void)
     (uint64_t *) ncptl_malloc (datapoints * sizeof(uint64_t),
                                sizeof(uint64_t));
   for (i=0; i<datapoints; ) {
-    uint64_t initial = ncptl_process_time();
-    uint64_t final = ncptl_process_time();
+    uint64_t initial = ncptl_process_time(0);
+    uint64_t final = ncptl_process_time(0);
     if (initial != final) {
       timerdeltas[i] = final - initial;
       meandelta += (double) timerdeltas[i++];
@@ -999,8 +1003,10 @@ static void initialize_hpet (void)
 static void finalize_hpet (void)
 {
 #ifdef USE_HPET
-  munmap ((void *)hpet_data, 1024);
-  close (hpet_fd);
+  if (hpet_data != (void *)-1)
+    munmap ((void *)hpet_data, 1024);
+  if (hpet_fd != -1)
+    close (hpet_fd);
 #endif
 }
 
@@ -1059,6 +1065,12 @@ void ncptl_init (int version, char *argv0)
                  version, NCPTL_RUN_TIME_VERSION);
   ncptl_progname = ncptl_strdup(argv0);
 
+  /* Don't use fork() if instructed not to. */
+#ifdef HAVE_WORKING_FORK
+  if (getenv("NCPTL_NOFORK"))
+    ncptl_fork_works = 0;
+#endif
+
   /* If we're using PAPI, initialize it. */
 #ifdef USE_PAPI
   {
@@ -1097,10 +1109,6 @@ void ncptl_init (int version, char *argv0)
       ncptl_cycles_per_usec = (uint64_t) (systeminfo.cpu_freq / 1.0e6);
     else
       ncptl_fatal ("Unable to determine the timer frequency");
-#endif
-#ifdef HAVE_WORKING_FORK
-  if (getenv("NCPTL_NOFORK"))
-    ncptl_fork_works = 0;
 #endif
 
   /* Let the user override ncptl_fast_init at run time. */

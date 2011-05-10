@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -144,6 +144,7 @@ class NCPTL_Lexer:
                        "rbrace",
                        "rbracket",
                        "rparen",
+                       "star",
                        "string_token"])
         self.tokens = tokens
 
@@ -160,12 +161,26 @@ class NCPTL_Lexer:
         lex.lex(module=self)
 
         # Repeatedly invoke the lexer and return all of the tokens it produces.
+        self.lineno = 1
         lex.input(sourcecode)
         self.toklist = []
         while 1:
+            # Acquire the next token and assign it a line number if necessary.
             token = lex.token()
             if not token:
                 break
+            if token.lineno < self.lineno:
+                token.lineno = self.lineno
+
+            # Hack: Disambiguate op_mult and star on the parser's behalf.
+            if token.type in ["comma", "rparen"]:
+                try:
+                    if self.toklist[-1].type == "op_mult":
+                        self.toklist[-1].type = "star"
+                except IndexError:
+                    pass
+
+            # We now have one more valid token.
             self.toklist.append(token)
         return self.toklist
 
@@ -200,7 +215,7 @@ class NCPTL_Lexer:
     # Keep track of line numbers.
     def t_newline(self, token):
         r' \r?\n '
-        token.lineno = token.lineno + 1
+        self.lineno = self.lineno + 1
         return None
 
     # Ignore whitespace.
@@ -211,7 +226,7 @@ class NCPTL_Lexer:
     # Remove comments.
     def t_comment(self, token):
         r' \#.* '
-        self.line2comment[token.lineno] = token.value
+        self.line2comment[self.lineno] = token.value
         return None
 
     # Sanitize and store string literals.
@@ -227,18 +242,19 @@ class NCPTL_Lexer:
                 if onechar == "n":
                     sanitized.append("\n")
                 elif onechar == "\n":
-                    token.lineno = token.lineno + 1
+                    self.lineno = self.lineno + 1
                 elif onechar in ["\\", '"']:
                     sanitized.append(onechar)
                 else:
                     self.errmsg.warning('Discarding unrecognized escape sequence "\\%s"' % onechar,
-                                        lineno0=token.lineno, lineno1=token.lineno)
+                                        lineno0=self.lineno, lineno1=self.lineno)
             else:
                 sanitized.append(onechar)
                 if onechar == "\n":
-                    token.lineno = token.lineno + 1
+                    self.lineno = self.lineno + 1
             c = c + 1
         token.value = '"%s"' % string.join(sanitized, "")
+        token.lineno = self.lineno
         return token
 
     # Store idents as "ident" and keywords as themselves (uppercased).
@@ -255,6 +271,7 @@ class NCPTL_Lexer:
             # {lowercase, original}.
             token.type = "ident_token"
             token.value = (string.lower(token.value), token.value)
+        token.lineno = self.lineno
         return token
 
     # Store an integer as a tuple {long-expanded, original}.  Note that
@@ -279,6 +296,7 @@ class NCPTL_Lexer:
         elif len(parts) == 3:
             number = number * 10**long(parts[2])
         token.value = (number, token.value)
+        token.lineno = self.lineno
         return token
 
     # Everything else we encounter should return a syntax error.

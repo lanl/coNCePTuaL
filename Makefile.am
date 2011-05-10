@@ -4,10 +4,10 @@
 #############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -51,7 +51,7 @@
 @DEFINE_RM@
 ncptl_includedir = $(includedir)/ncptl
 ncptl_examplesdir = $(pkgdatadir)/examples
-MOSTLYCLEANFILES =
+MOSTLYCLEANFILES = ncptl.php.tmp
 CLEANFILES = empty.log $(STYLESHEETS) $(PACKAGE)_$(VERSION)	\
 	     ncptl_backends.pyc ncptl_config.pyc ncptl_ast.pyc	\
 	     ncptl_error.pyc ncptl_token.pyc lex.pyc yacc.pyc   \
@@ -61,12 +61,13 @@ DISTCLEANFILES = ncptl.h.ni ncptl.h signalmap.c substitutions.dat.in \
 		 ncptl-logextract_keywords libncptl.i.in 	     \
 		 $(nodist_pkgpython_SCRIPTS)
 AUTOMAKE_OPTIONS = foreign
+ACLOCAL_AMFLAGS = -I m4
 bin_SCRIPTS = ncptl-logextract ncptl-logmerge ncptl-logunmerge
 ncptl_examples_DATA = @EXAMPLEFILES@
-STYLESHEETS = ncptl.ssh ncptl.sty ncptl.vim ncptl.lang \
+STYLESHEETS = ncptl.ssh ncptl.sty ncptl.vim ncptl.lang ncptl.php \
 	      ncptl-mode.el ncptl-mode.elc
 STYLESHEETS_IN = ncptl.ssh.in ncptl.sty.in ncptl.vim.in ncptl.lang.in \
-	      ncptl-mode.el.in
+	         ncptl.php.in ncptl-mode.el.in
 EXTRA_DIST = $(STYLESHEETS_IN) $(EXTRA_PYTHON) $(ncptl_examples_DATA)    \
 	     libncptl_extras.i libncptl_wrap.c.in pyncptl.py __init__.py \
 	     Makefile.simple.in	conceptual.spec.in doc/conceptual.pdf    \
@@ -93,10 +94,11 @@ nodist_pkgpython_SCRIPTS = ncptl_backends.py ncptl_config.py \
 			   ncptl_parse_table.py
 
 pkgpython_PYTHON = $(PYFILES)
-EXTRA_PYTHON = codegen_c_mpi.py codegen_c_generic.py codegen_c_udgram.py \
-	       codegen_c_trace.py codegen_c_seq.py codegen_dot_ast.py    \
-	       codegen_interpret.py codegen_picl.py codegen_latex_vis.py \
-	       codegen_c_profile.py codegen_stats.py makehelper.py
+EXTRA_PYTHON = codegen_c_mpi.py codegen_c_generic.py codegen_c_udgram.py   \
+	       codegen_c_trace.py codegen_c_seq.py codegen_dot_ast.py      \
+	       codegen_interpret.py codegen_picl.py codegen_latex_vis.py   \
+	       codegen_c_profile.py codegen_stats.py codegen_libsea_ast.py \
+	       codegen_paraver.py makehelper.py
 
 ###########################################################################
 
@@ -257,6 +259,17 @@ ncptl.lang: $(top_srcdir)/ncptl.lang.in $(top_srcdir)/ncptl_keywords.py $(top_bu
 	    }' >> $@
 	cat $(top_srcdir)/ncptl.lang.in >> $@
 
+# Build (but don't install) a GeSHi language definition.
+ncptl.php: $(top_srcdir)/ncptl.php.in $(top_srcdir)/ncptl_keywords.py $(top_builddir)/config.status
+	$(PYTHON) $(top_srcdir)/ncptl_keywords.py --last="\'%s\'" "\'%s'," | \
+	  fmt -63 | $(AWK) '{print "            " $$0}' > ncptl.php.tmp
+	cat $(top_srcdir)/ncptl.php.in | \
+	  $(SED) -e "/'MAKE SHOULD HAVE REPLACED THIS LINE'/{" \
+		 -e "r ncptl.php.tmp" \
+		 -e "d" \
+		 -e "}" > $@
+	$(RM) ncptl.php.tmp
+
 # Build (but don't install) an Emacs major mode.
 ncptl-mode.el: $(top_srcdir)/ncptl-mode.el.in $(top_srcdir)/ncptl_keywords.py $(top_builddir)/config.status
 	KEYWORD_LIST=`$(PYTHON) $(top_srcdir)/ncptl_keywords.py '\"%s\"'` ; \
@@ -391,7 +404,11 @@ mostlyclean-local:
 ###########################################################################
 
 # Forward documentation requests to the doc subdirectory.
-pdf docbook %.pdf %.html:
+pdf docbook:
+	cd doc && $(MAKE) $(AM_MAKEFLAGS) $@
+
+# Build explicitly named PDF and HTML files.
+%.pdf %.html:
 	cd doc && $(MAKE) $(AM_MAKEFLAGS) $@
 
 # The following is needed by "make dist".
@@ -566,7 +583,7 @@ distclean-local:
 # coNCePTuaL run-time library to Python.
 install-exec-hook: $(SWIG_OUTPUTS)
 	chmod -R u+w $(DESTDIR)$(libdir)
-	-env PYTHONPATH=$(top_builddir):$$PYTHONPATH $(PYTHON) $(top_srcdir)/makehelper.py install $(top_builddir) --prefix=$(DESTDIR)$(exec_prefix)
+	-env PYTHONPATH=$(top_builddir):$$PYTHONPATH $(PYTHON) $(top_srcdir)/makehelper.py install $(top_builddir) --prefix=$(DESTDIR)$(exec_prefix) --install-platlib=$(DESTDIR)$(pyexecdir) --install-purelib=$(DESTDIR)$(pythondir)
 
 ## Matches "if BUILD_PYMODULE".
 else

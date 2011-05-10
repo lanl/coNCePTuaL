@@ -1,0 +1,75 @@
+<?php
+/*************************************************************************************
+ * ncptl.php
+ * -----
+ * Author: Scott Pakin (pakin@lanl.gov)
+ * Copyright: (c) 2011 Los Alamos National Security, LLC
+ * Release Version: 1.2e
+ * Date Started: 2011/01/20
+ *
+ * coNCePTuaL language file for GeSHi.
+ *
+ ************************************************************************************/
+
+$language_data = array (
+    'LANG_NAME' => 'coNCePTuaL',
+    'COMMENT_SINGLE' => array(1 => '#'),
+    'COMMENT_MULTI' => array(),
+    'COMMENT_REGEXP' => array(),
+    'CASE_KEYWORDS' => GESHI_CAPS_NO_CHANGE,
+    'QUOTEMARKS' => array("'", '"'),
+    'ESCAPE_CHAR' => '\\',
+    'ESCAPE_REGEXP' => array(),
+    'NUMBERS' => array(0 => '\d+([Ee]\d+|[KkMmGgTt])?'),
+    'KEYWORDS' => array(
+        1 => array(
+            'MAKE SHOULD HAVE REPLACED THIS LINE'
+            )
+        ),
+    'SYMBOLS' => array(
+        '(', ')', '{', '}', '[', ']',
+        '+', '-', '*', '/',
+        '=', '<>', '<', '>', '>=', '<=',
+	'\\/', '/\\',
+	'<<', '>>',
+        '&', '|',
+        '...', '.', ','
+        ),
+    'CASE_SENSITIVE' => array(
+        GESHI_COMMENTS => false,
+        1 => false,
+        ),
+    'STYLES' => array(
+        'KEYWORDS' => array(
+            1 => 'color: #003366; font-weight:bold;',
+            ),
+        'COMMENTS' => array(
+            1 => 'color: #006600; font-style: italic;',
+            ),
+        'ESCAPE_CHAR' => array(
+            0 => 'color: #000099; font-weight: bold;',
+            ),
+        'BRACKETS' => array(
+            0 => 'color: #009900;'
+            ),
+        'STRINGS' => array(
+            0 => 'color: #3366CC;'
+            ),
+        'NUMBERS' => array(
+            0 => 'color: #CC0000;',
+            ),
+        'SYMBOLS' => array(
+            0 => 'color: #339933;'
+            ),
+        ),
+    'URLS' => array(),
+    'OOLANG' => false,
+    'OBJECT_SPLITTERS' => array(),
+    'REGEXPS' => array(),
+    'STRICT_MODE_APPLIES' => GESHI_NEVER,
+    'SCRIPT_DELIMITERS' => array(),
+    'HIGHLIGHT_STRICT_BLOCK' => array(),
+    'TAB_WIDTH' => 4
+);
+
+?>

@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -100,8 +100,13 @@
 typedef long ssize_t;
 #endif
 
-/* Define a string to specify that we're writing to standard output. */
+/* Define strings to specify that we're writing to standard output or
+ * to an internal string. */
 #define STANDARD_OUTPUT_NAME "<standard output>"
+#define INTERNAL_STRING_NAME "<internal string>"
+
+/* Define an arbitrary byte increment for resizing the log-contents string. */
+#define LOG_CONTENTS_INCREMENT 8192
 
 
 /*********************
@@ -134,11 +139,23 @@ typedef struct {
  * process to maintain multiple log files concurrently (e.g., in a
  * multithreaded backend). */
 typedef struct ncptl_log_file_state {
-  /* Handle to the log file */
+  /* Handle to the log file or, alternatively, a string containing the
+   * text that would have been written to the log file.  If logfile is
+   * NULL, then output is written to log_contents.  However, both
+   * logfile and log_contents can be non-NULL.  This occurs if the
+   * program invokes ncptl_log_get_contents() when output is written
+   * to logfile. */
   FILE *logfile;
+  char *log_contents;
+  ncptl_int log_contents_used;          /* # of valid bytes in log_contents */
+  ncptl_int log_contents_allocated;     /* # of bytes allocated for log_contents */
 
-  /* Processor associated with this log file */
-  ncptl_int processor;
+  /* Name of thie log file */
+  char *filename;
+
+  /* Process rank (PROCESSOR in the coNCePTuaL language) associated
+   * with this log file */
+  ncptl_int process_rank;
 
   /* Store a database of key:value pairs written as comments to the
    * log-file prologue. */
@@ -155,7 +172,8 @@ typedef struct ncptl_log_file_state {
 
 #ifdef HAVE_GETRUSAGE
   /* Process time used at the point at which we created the log file */
-  uint64_t log_creation_process_time;
+  uint64_t log_creation_process_time_user;
+  uint64_t log_creation_process_time_sys;
 
   /* Major and minor page faults observed at the point at which we
    * created the log file */
@@ -228,7 +246,7 @@ extern int64_t ncptl_genrand_int63(RNG_STATE *);
 extern uint64_t ncptl_genrand_int64(RNG_STATE *);
 extern void ncptl_install_signal_handler (int, SIGHANDLER, SIGHANDLER *, int);
 #ifdef HAVE_GETRUSAGE
-extern uint64_t ncptl_process_time (void);
+extern uint64_t ncptl_process_time (int);
 extern void ncptl_page_fault_count (uint64_t *, uint64_t *);
 #endif
 extern uint64_t ncptl_interrupt_count (void);
@@ -691,29 +709,29 @@ static char *numbers_to_ranges (ncptl_int *values, ncptl_int numvalues)
     if (values[i] == values[i-1]+1)
       /* Next sequential value -- extend the current range. */
       rangeend = values[i];
-    else 
+    else
       if (values[i] > values[i-1]+1) {
-	/* Skipped value -- start a new range. */
-	if (rangebegin == rangeend)
-	  sprintf (endresultstr, "%s%" NICS,
-		   rangebegin == values[0] ? "" : ",", rangeend);
-	else
-	  sprintf (endresultstr, "%s%" NICS "%c%" NICS,
-		   rangebegin == values[0] ? "" : ",", rangebegin,
-		   rangeend == rangebegin+1 ? ',' : '-', rangeend);
-	endresultstr += strlen (endresultstr);
-	rangebegin = rangeend = values[i];
+        /* Skipped value -- start a new range. */
+        if (rangebegin == rangeend)
+          sprintf (endresultstr, "%s%" NICS,
+                   rangebegin == values[0] ? "" : ",", rangeend);
+        else
+          sprintf (endresultstr, "%s%" NICS "%c%" NICS,
+                   rangebegin == values[0] ? "" : ",", rangebegin,
+                   rangeend == rangebegin+1 ? ',' : '-', rangeend);
+        endresultstr += strlen (endresultstr);
+        rangebegin = rangeend = values[i];
       }
   }
 
   /* Append the final range. */
   if (rangebegin == rangeend)
     sprintf (endresultstr, "%s%" NICS,
-	     rangebegin == values[0] ? "" : ",", rangeend);
+             rangebegin == values[0] ? "" : ",", rangeend);
   else
     sprintf (endresultstr, "%s%" NICS "%c%" NICS,
-	     rangebegin == values[0] ? "" : ",", rangebegin,
-	     rangeend == rangebegin+1 ? ',' : '-', rangeend);
+             rangebegin == values[0] ? "" : ",", rangebegin,
+             rangeend == rangebegin+1 ? ',' : '-', rangeend);
   return resultstr;
 }
 
@@ -730,14 +748,37 @@ static void log_random_delay (NCPTL_LOG_FILE_STATE *logstate)
 }
 
 
-/* Write a string to the log file. Currently, no error-checking is
+/* Write a string to the log file. Currently, no file error-checking is
  * performed. */
 static void log_printf (NCPTL_LOG_FILE_STATE *logstate, const char *format, ...)
 {
   va_list args;
 
   va_start (args, format);
-  (void) vfprintf (logstate->logfile, format, args);
+  if (logstate->logfile)
+    /* File */
+    (void) vfprintf (logstate->logfile, format, args);
+  else {
+    /* String */
+    while (1) {
+      int bytes_available = (int) (logstate->log_contents_allocated - logstate->log_contents_used);
+      int bytes_needed = vsnprintf(&logstate->log_contents[logstate->log_contents_used-1],  /* Overwrite the trailing '\0'. */
+                               bytes_available, format, args);
+      if (bytes_needed == -1 || bytes_needed+1 >= bytes_available) {
+        /* We need to allocate more memory for log_contents and try again. */
+        if (bytes_needed < LOG_CONTENTS_INCREMENT)
+          bytes_needed = LOG_CONTENTS_INCREMENT;
+        logstate->log_contents_allocated += bytes_needed;
+        logstate->log_contents = ncptl_realloc(logstate->log_contents,
+                                               logstate->log_contents_allocated,
+                                               0);
+      }
+      else {
+        logstate->log_contents_used += bytes_needed;
+        break;
+      }
+    }
+  }
   va_end (args);
 }
 
@@ -746,13 +787,30 @@ static void log_printf (NCPTL_LOG_FILE_STATE *logstate, const char *format, ...)
  * performed. */
 static void log_putc (NCPTL_LOG_FILE_STATE *logstate, int onechar)
 {
-  (void) fputc (onechar, logstate->logfile);
+  if (logstate->logfile)
+    /* File */
+    (void) fputc (onechar, logstate->logfile);
+  else {
+    /* String */
+    if (logstate->log_contents_used == logstate->log_contents_allocated) {
+      /* Allocate more memory. */
+      logstate->log_contents_allocated += LOG_CONTENTS_INCREMENT;
+      logstate->log_contents = ncptl_realloc(logstate->log_contents,
+                                             logstate->log_contents_allocated,
+                                             0);
+    }
+    logstate->log_contents[logstate->log_contents_used-1] = (char) onechar;  /* Overwrite the trailing '\0'. */
+    logstate->log_contents[logstate->log_contents_used++] = '\0';
+  }
 }
 
 
 /* Flush the log file.  Currently, no error-checking is performed. */
 static void log_flush (NCPTL_LOG_FILE_STATE *logstate)
 {
+  if (!logstate->logfile)
+    /* String */
+    return;
   log_random_delay (logstate);
   (void) fflush (logstate->logfile);
 }
@@ -911,11 +969,12 @@ static int log_write_proc_cmdline (NCPTL_LOG_FILE_STATE *logstate,
 
 
 /* Write a time value in a user-friendly format. */
-static void log_write_friendly_time (NCPTL_LOG_FILE_STATE *logstate, uint64_t num_seconds)
+static void log_write_friendly_time (NCPTL_LOG_FILE_STATE *logstate, double num_seconds_float)
 {
+  uint64_t num_seconds;         /* Integral number of seonds */
   uint64_t days, hours, minutes, seconds;    /* Categorized version of elapsed_time */
-  int needcomma;              /* 0=don't prepend a command; >0=prepend */
-  char *prefix;               /* Prefix to output before first term. */
+  int needcomma;                /* 0=don't prepend a command; >0=prepend */
+  char *prefix;                 /* Prefix to output before first term. */
 
 #define LOG_PRINTF_TERM(TERM, TERMSTR)                  \
     if (TERM)                                           \
@@ -925,6 +984,7 @@ static void log_write_friendly_time (NCPTL_LOG_FILE_STATE *logstate, uint64_t nu
                         TERMSTR,                        \
                         TERM==1 ? "" : "s")
 
+  num_seconds = (uint64_t) (num_seconds_float + 0.5);
   log_printf (logstate, "%" PRIu64 " second%s",
               num_seconds, num_seconds==1 ? "" : "s");
   if (num_seconds >= 60) {
@@ -981,7 +1041,7 @@ static void log_write_prologue_basic (NCPTL_LOG_FILE_STATE *logstate,
 
   /* Say how many tasks and processors we have available to us. */
   log_key_value (logstate, "Number of tasks", "%" NICS, tasks);
-  log_key_value (logstate, "Processor (0<=P<tasks)", "%" NICS, logstate->processor);
+  log_key_value (logstate, "Rank (0<=P<tasks)", "%" NICS, logstate->process_rank);
 
   /* Log a unique identifier for this particular program execution. */
   log_key_value (logstate, "Unique execution identifier", program_uuid);
@@ -1058,7 +1118,7 @@ static void log_write_prologue_hardware_bgp (NCPTL_LOG_FILE_STATE *logstate)
 
   /* Log information about the node. */
   log_key_value (logstate, "Node coordinate within the BlueGene/P partition", "(%u, %u, %u)",
-		 xloc, yloc, zloc);
+                 xloc, yloc, zloc);
 
   /* Log information about the partition. */
   log_key_value (logstate, "BlueGene/P partition size", "%u * %u * %u = %lu nodes",
@@ -1169,13 +1229,19 @@ static void log_write_prologue_hardware_bgl (NCPTL_LOG_FILE_STATE *logstate)
 }
 #endif
 
-#ifdef HAVE__MY_PNID
+#if defined(HAVE__MY_PNID) || defined(CRAY_XT_NID_FILE)
 /* Write some Cray XT-specific information to the log file. */
 static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
 {
-  extern uint32_t _my_pnid;
+# ifdef HAVE__MY_PNID
+  extern uint32_t _my_pnid;       /* Predefined */
+# elif defined(CRAY_XT_NID_FILE)
+  uint32_t _my_pnid;              /* To be read from CRAY_XT_NID_FILE */
+# else
+#  error Unable to determine how to read a Cray XT node ID
+# endif
   char rsinfostr[NCPTL_MAX_LINE_LEN];
-# ifdef HAVE_RSMSEVENT
+# if defined(HAVE_RCAMESHTOPOLOGY) || defined(HAVE_RSMSEVENT)
   rs_node_t physinfo;
   char *env_topo_class = getenv("RSMS_TOPO_CLASS");
 # endif
@@ -1183,20 +1249,40 @@ static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
   rca_mesh_coord_t mesh_coord;
 # endif
 
-# ifdef HAVE_RSMSEVENT
-  /* Use topology class information to interpret the physical node
-   * ID.  The topology class defaults to class 4 because that's what
-   * some of Cray's programs do.  The user can override the default
-   * by setting RSMS_TOPO_CLASS. */
-  rs_nid_init (env_topo_class ? atoi(env_topo_class) : RS_TOPO_CLASS_4);
+# if !defined(HAVE__MY_PNID) && defined(CRAY_XT_NID_FILE)
+  {
+    /* We need to read our node ID from a file. */
+    FILE *nidfile;
+    if (!(nidfile=fopen(CRAY_XT_NID_FILE, "r")))
+      return;
+    if (fscanf(nidfile, "%u", &_my_pnid) != 1) {
+      fclose(nidfile);
+      return;
+    }
+    fclose(nidfile);
+  }
 # endif
 
   /* Write our physical node ID. */
   sprintf (rsinfostr, "%u", _my_pnid);
   log_key_value (logstate, "Cray XT node ID", rsinfostr);
 
-# ifdef HAVE_RSMSEVENT
-  /* Write our topology class and physical coordinates. */
+  /* Use topology class information to interpret the physical node ID. */
+# ifdef HAVE_RCAMESHTOPOLOGY
+  {
+    int topo;                  /* Topology class */
+
+    rca_get_meshtopology(&topo);
+    log_key_value (logstate, "Cray XT topology class", get_topo_str(topo));
+    rca_get_nodeid(&physinfo);
+    rs_phys2str(&physinfo, rsinfostr);
+    log_key_value (logstate, "Cray XT node location", rsinfostr);
+  }
+# elif defined(HAVE_RSMSEVENT)
+  /* The topology class defaults to class 4 because that's what some
+   * of Cray's programs do.  The user can override the default by
+   * setting RSMS_TOPO_CLASS. */
+  rs_nid_init (env_topo_class ? atoi(env_topo_class) : RS_TOPO_CLASS_4);
   log_key_value (logstate, "Cray XT topology class", get_topo_str(topo_class));
   memset ((void *)&physinfo, 0, sizeof(rs_node_t));
   rs_nid2phys(_my_pnid, rt_node, &physinfo);
@@ -1207,7 +1293,7 @@ static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
 # ifdef HAVE_RCAMESHCOORD
   if (rca_get_meshcoord ((uint16_t)_my_pnid, &mesh_coord) == 0) {
     sprintf (rsinfostr, "(%u, %u, %u)",
-	     mesh_coord.mesh_x, mesh_coord.mesh_y, mesh_coord.mesh_z);
+             mesh_coord.mesh_x, mesh_coord.mesh_y, mesh_coord.mesh_z);
     log_key_value (logstate, "Cray XT node coordinates", rsinfostr);
   }
 # endif
@@ -1433,14 +1519,20 @@ static void log_write_prologue_hardware (NCPTL_LOG_FILE_STATE *logstate)
   }                                                     \
   while (0)
 
+  /* Log whatever hardware and OS information we have. */
   LOG_CONDITIONALLY_TRIMMED ("Host name",               "%s", hostname);
   LOG_CONDITIONALLY_TRIMMED ("Operating system",        "%s", os);
+  LOG_CONDITIONALLY_TRIMMED ("OS distribution",         "%s", osdist);
   LOG_CONDITIONALLY_TRIMMED ("Computer make and model", "%s", computer);
   LOG_CONDITIONALLY_TRIMMED ("BIOS version",            "%s", bios);
   LOG_CONDITIONALLY_TRIMMED ("CPU vendor",              "%s", cpu_vendor);
   LOG_CONDITIONALLY_TRIMMED ("CPU architecture",        "%s", arch);
   LOG_CONDITIONALLY_TRIMMED ("CPU model",               "%s", cpu_model);
-  LOG_CONDITIONALLY         ("CPU count",               "%d", numcpus);
+  LOG_CONDITIONALLY_TRIMMED ("CPU flags",               "%s", cpu_flags);
+  LOG_CONDITIONALLY         ("Hardware threads per CPU core", "%d", threads_per_core);
+  LOG_CONDITIONALLY         ("CPU cores per socket",    "%d", cores_per_socket);
+  LOG_CONDITIONALLY         ("CPU sockets per node",    "%d", sockets_per_node);
+  LOG_CONDITIONALLY         ("Total CPU contexts per node", "%d", contexts_per_node);
   if (systeminfo.cpu_freq)
     log_key_value_SI (logstate, cpu_freq, systeminfo.cpu_freq, "Hz", "Hz", 1000.0, "");
   if (systeminfo.timer_freq)
@@ -1468,7 +1560,7 @@ static void log_write_prologue_hardware (NCPTL_LOG_FILE_STATE *logstate)
 #ifdef HAVE_BGLPERSONALITY
   log_write_prologue_hardware_bgl (logstate);
 #endif
-#ifdef HAVE__MY_PNID
+#if defined(HAVE__MY_PNID) || defined(CRAY_XT_NID_FILE)
   log_write_prologue_hardware_xt (logstate);
 #endif
 #ifdef ODM_IS_SUPPORTED
@@ -1500,7 +1592,7 @@ static void log_write_prologue_thread_affinity (NCPTL_LOG_FILE_STATE *logstate)
   ncptl_free (cpustring);
   if (numcpus > 1)
     log_printf (logstate, "# WARNING: Threads can migrate among %" NICS " CPUs, which may cause performance variability.\n",
-		numcpus);
+                numcpus);
 #else
   dummyvar.vp = logstate;   /* Convince the compiler that logstate is not an unused parameter. */
 #endif
@@ -1699,7 +1791,7 @@ static void log_write_prologue_checkpointing (NCPTL_LOG_FILE_STATE *logstate)
 
   if (ncptl_log_checkpoint_interval) {
     log_printf (logstate, "# %s: ", key);
-    log_write_friendly_time (logstate, ncptl_log_checkpoint_interval/1000000);
+    log_write_friendly_time (logstate, ncptl_log_checkpoint_interval/1000000.0);
     log_printf (logstate, "\n");
   }
   else
@@ -1969,7 +2061,8 @@ static void log_write_prologue_creation (NCPTL_LOG_FILE_STATE *logstate)
 
   /* Store information we'll need when we close the log file. */
 #ifdef HAVE_GETRUSAGE
-  logstate->log_creation_process_time = ncptl_process_time();
+  logstate->log_creation_process_time_user = ncptl_process_time(0);
+  logstate->log_creation_process_time_sys = ncptl_process_time(1);
   ncptl_page_fault_count (&logstate->major_faults, &logstate->minor_faults);
 #endif
   logstate->log_creation_interrupt_count = ncptl_interrupt_count();
@@ -2064,7 +2157,8 @@ static void log_write_epilogue (NCPTL_LOG_FILE_STATE *logstate)
 {
   time_t now;                 /* Seconds since the epoch */
 #ifdef HAVE_GETRUSAGE
-  uint64_t procnow;           /* Total process time used (microseconds) */
+  uint64_t procnow_user;      /* Total user process time used (microseconds) */
+  uint64_t procnow_sys;       /* Total system process time used (microseconds) */
   uint64_t new_major_faults;  /* Major page faults since we started the log */
   uint64_t new_minor_faults;  /* Minor page faults since we started the log */
 #endif
@@ -2073,7 +2167,7 @@ static void log_write_epilogue (NCPTL_LOG_FILE_STATE *logstate)
   now = time (NULL);
   log_printf (logstate, "# Log completion time: %s", asctime (localtime (&now)));
   log_printf (logstate, "# Elapsed time: ");
-  log_write_friendly_time (logstate, logstate->log_creation_time ? now - logstate->log_creation_time : 0);
+  log_write_friendly_time (logstate, logstate->log_creation_time ? now - logstate->log_creation_time : 0.0);
   log_printf (logstate, "\n");
 
 #ifdef USE_HPET
@@ -2095,11 +2189,18 @@ static void log_write_epilogue (NCPTL_LOG_FILE_STATE *logstate)
 
 #ifdef HAVE_GETRUSAGE
   /* Now do the same thing for elapsed process time. */
-  procnow = ncptl_process_time();
+  procnow_user = ncptl_process_time(0);
+  procnow_sys = ncptl_process_time(1);
   log_printf (logstate, "# Process CPU usage (user+system): ");
   log_write_friendly_time (logstate,
-                           logstate->log_creation_process_time
-                           ? (procnow - logstate->log_creation_process_time) / 1000000 : 0);
+                           logstate->log_creation_process_time_user
+                           ? (procnow_user - logstate->log_creation_process_time_user) / 1000000.0
+                           : 0.0);
+  log_printf (logstate, " + ");
+  log_write_friendly_time (logstate,
+                           logstate->log_creation_process_time_sys
+                           ? (procnow_sys - logstate->log_creation_process_time_sys) / 1000000.0
+                           : 0.0);
   log_printf (logstate, "\n");
 
   /* Output new page faults observed since we started the log file. */
@@ -2124,7 +2225,8 @@ static void log_write_epilogue (NCPTL_LOG_FILE_STATE *logstate)
 }
 
 
-/* Delete the previous checkpoint data from the log file. */
+/* Delete the previous checkpoint data from the log file.  This must
+ * never be called if we're logging to an internal string. */
 static void log_truncate (NCPTL_LOG_FILE_STATE *logstate)
 {
   long log_offset;     /* Current byte offset into the log file */
@@ -2209,15 +2311,20 @@ static char *log_template_to_filename (char *logtemplate, ncptl_int processor)
   static char logfilename[PATH_MAX_VAR+2*MAX_DIGITS_ALLOWED];   /* Resulting log-file name + two 64-bit overshoots (not guaranteed to be sufficient) */
   ncptl_int run_number = 1;     /* Number that helps make LOGFILENAME unique */
 
-  /* If we were given a null template then log to the null device. */
-  if (logtemplate[0] == '\0')
-    return NULL_DEVICE_NAME;
-
   /* If the NCPTL_LOG_ONLY environment variable is set, log only if
    * we're in one of the given ranges. */
   if (getenv("NCPTL_LOG_ONLY")
       && !log_number_in_range(getenv("NCPTL_LOG_ONLY"), processor))
     return NULL_DEVICE_NAME;
+
+  /* If we were told to log to the null device, the standard output
+   * device, or an internal string then we don't need to parse the
+   * filename. */
+  if (logtemplate[0] == '\0')
+    return NULL_DEVICE_NAME;
+  if (!strcmp(logtemplate, STANDARD_OUTPUT_NAME)
+      || !strcmp(logtemplate, INTERNAL_STRING_NAME))
+    return logtemplate;
 
   /* Copy from LOGTEMPLATE to LOGFILENAME, replacing formals with actuals. */
   while (1) {
@@ -2358,10 +2465,16 @@ static char *log_template_to_filename (char *logtemplate, ncptl_int processor)
  * state. */
 NCPTL_LOG_FILE_STATE *ncptl_log_open (char *logtemplate, ncptl_int processor)
 {
-  char *logfilename = logtemplate 
-    ? log_template_to_filename (logtemplate, processor)
-    : STANDARD_OUTPUT_NAME;
+  char *logfilename;
   NCPTL_LOG_FILE_STATE *logstate;
+
+  /* Expand the filename template into a full filename. */
+  if (!strcmp(logtemplate, "-"))
+    logfilename = log_template_to_filename (STANDARD_OUTPUT_NAME, processor);
+  else if (!strcmp(logtemplate, "$"))
+    logfilename = log_template_to_filename (INTERNAL_STRING_NAME, processor);
+  else
+    logfilename = log_template_to_filename (logtemplate, processor);
 
   /* Allocate and initialize the log file's state. */
   logstate =
@@ -2369,8 +2482,11 @@ NCPTL_LOG_FILE_STATE *ncptl_log_open (char *logtemplate, ncptl_int processor)
                                            CPU_MINIMUM_ALIGNMENT_BYTES);
   memset ((void *)logstate, 0, sizeof(NCPTL_LOG_FILE_STATE));
 
+  /* Store the name of this log file. */
+  logstate->filename = ncptl_strdup(logfilename);
+
   /* Store the processor number associated with this log file. */
-  logstate->processor = processor;
+  logstate->process_rank = processor;
 
   /* Create a database for log-file comments. */
   logstate->log_database = ncptl_set_init (101, NCPTL_MAX_LINE_LEN, NCPTL_MAX_LINE_LEN);
@@ -2389,31 +2505,40 @@ NCPTL_LOG_FILE_STATE *ncptl_log_open (char *logtemplate, ncptl_int processor)
   logstate->log_delay *= 1000;
 
   /* Open the log file. */
-  log_random_delay (logstate);
-  if (!strcmp(logfilename, STANDARD_OUTPUT_NAME))
-    logstate->logfile = stdout;
+  if (!strcmp(logfilename, INTERNAL_STRING_NAME)) {
+    logstate->log_contents_allocated = LOG_CONTENTS_INCREMENT;
+    logstate->log_contents = ncptl_malloc(logstate->log_contents_allocated, 0);
+    logstate->log_contents[0] = '\0';
+    logstate->log_contents_used = 1;
+  }
   else {
-    if (!(logstate->logfile=fopen(logfilename, "w"))) {
+    log_random_delay (logstate);
+    if (!strcmp(logfilename, STANDARD_OUTPUT_NAME))
+      logstate->logfile = stdout;
+    else {
+      if (!(logstate->logfile=fopen(logfilename, "w+"))) {
 #ifdef HAVE_STRERROR
-      if (strerror(errno))
-	ncptl_fatal ("Failed to open log file \"%s\" (%s)",
-		     logfilename, strerror(errno));
-      else
+        if (strerror(errno))
+          ncptl_fatal ("Failed to open log file \"%s\" (%s)",
+                       logfilename, strerror(errno));
+        else
 #elif HAVE_DECL_SYS_ERRLIST
-	if (errno < sys_nerr)
-	  ncptl_fatal ("Failed to open log file \"%s\" (%s)",
-		       logfilename, sys_errlist[errno]);
-	else
+        if (errno < sys_nerr)
+          ncptl_fatal ("Failed to open log file \"%s\" (%s)",
+                       logfilename, sys_errlist[errno]);
+        else
 #endif
-	  ncptl_fatal ("Failed to open log file \"%s\" (errno=%d)",
-		       logfilename, errno);
+          ncptl_fatal ("Failed to open log file \"%s\" (errno=%d)",
+                       logfilename, errno);
+      }
     }
   }
 
-  /* Disable checkpointing if we're writing to the null device or to
-   * the standard output device. */
+  /* Disable checkpointing if we're writing to the null device, the
+   * standard output device, or an internal string. */
   if (!strcmp(logfilename, NULL_DEVICE_NAME)
-      || !strcmp(logfilename, STANDARD_OUTPUT_NAME))
+      || !strcmp(logfilename, STANDARD_OUTPUT_NAME)
+      || !strcmp(logfilename, INTERNAL_STRING_NAME))
     ncptl_log_checkpoint_interval = 0;
 
   /* Both store and return the newly initialized log-file state. */
@@ -2964,6 +3089,41 @@ void ncptl_log_add_comment (const char *key, const char *value)
 }
 
 
+/* Return the current contents of the log file as a string.  The
+ * caller must not modify the string, free the string, or hold onto
+ * the string past the next call that modifies the log file.  If the
+ * log file contents were not maintained (because the log file is the
+ * standard-output or null device), return NULL. */
+const char *ncptl_log_get_contents (NCPTL_LOG_FILE_STATE *logstate)
+{
+  if (logstate->logfile
+      && strcmp(logstate->filename, STANDARD_OUTPUT_NAME)
+      && strcmp(logstate->filename, NULL_DEVICE_NAME)) {
+    /* File */
+    long log_offset;     /* Current byte offset into the log file */
+    int fildes;          /* Low-level file descriptor representing the log file */
+
+    /* Allocate enough memory to hold the log file's entire contents,
+     * rewind the file pointer to the beginning, read the entire file,
+     * and restore the file pointer. */
+    if ((fildes=fileno(logstate->logfile)) == -1)
+      NCPTL_SYSTEM_ERROR ("Unable to determine the log file's file descriptor");
+    if ((log_offset=ftell(logstate->logfile)) == -1 && errno)
+      NCPTL_SYSTEM_ERROR ("Unable to determine the log-file's current write offset");
+    logstate->log_contents = ncptl_realloc(logstate->log_contents, log_offset, 0);
+    if (fseek(logstate->logfile, 0L, SEEK_SET) == -1 && errno)
+      NCPTL_SYSTEM_ERROR ("Failed to rewind the log-file pointer");
+    if (fread(logstate->log_contents, 1, (size_t)log_offset, logstate->logfile) != (size_t)log_offset)
+      NCPTL_SYSTEM_ERROR ("Failed to read the log file's complete contents");
+    if (fseek(logstate->logfile, 0L, SEEK_END) == -1 && errno)
+      NCPTL_SYSTEM_ERROR ("Failed to set the log-file pointer");
+  }
+
+  /* File or string */
+  return logstate->log_contents;
+}
+
+
 /* Flush and close the log file and free most of the memory used to
  * store the log file's state.  We can't free logstate itself because
  * we don't know if ncptl_log_shutdown() will try to access it. */
@@ -2973,18 +3133,22 @@ void ncptl_log_close (NCPTL_LOG_FILE_STATE *logstate)
 
   /* Write the log to disk. */
   ncptl_log_commit_data (logstate);
-  if (logstate->logfile != stdout)
+  if (logstate->logfile && logstate->logfile != stdout)
     fclose (logstate->logfile);
   logstate->logfile = NULL;
 
-  /* Free all of the memory we had previously allocated. */
+  /* Free all of the memory we had previously allocated then zero out
+   * all of the state. */
   for (c=0; c<logstate->log_columns_alloced; c++)
     if (logstate->logfiledata[c].description)
       ncptl_free (logstate->logfiledata[c].description);
   ncptl_free (logstate->logfiledata);
-  logstate->logfiledata = NULL;
   ncptl_set_empty (logstate->log_database);
   ncptl_free (logstate->log_database);
+  if (logstate->log_contents)
+    ncptl_free (logstate->log_contents);
+  ncptl_free (logstate->filename);
+  memset ((void *)logstate, 0, sizeof(NCPTL_LOG_FILE_STATE));
 }
 
 
@@ -3052,12 +3216,13 @@ void ncptl_log_output_dataless_log (void)
   char *log_uuid;
 
   ncptl_init (NCPTL_RUN_TIME_VERSION, libname);
-  logstate = ncptl_log_open (NULL, 0);
+  logstate = ncptl_log_open ("-", 0);
   log_uuid = ncptl_log_generate_uuid();
   ncptl_log_write_prologue (logstate, libname, log_uuid, "N/A", "N/A", 1, NULL, 0, NULL);
   ncptl_free (log_uuid);
   ncptl_log_write_epilogue (logstate);
   ncptl_log_close (logstate);
+  ncptl_finalize();
 
   exit (EXIT_SUCCESS);
 }

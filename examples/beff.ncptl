@@ -2,7 +2,7 @@
 # Based on the b_eff benchmark by Rolf Rabenseifner and Gerrit Schulz
 # Ported to coNCePTuaL by Scott Pakin <pakin@lanl.gov>
 
-Require language version "1.2".
+Require language version "1.3".
 
 total_mb is "Total amount of memory (megabytes)" and comes from "--memory" or "-m" with default 128.
 
@@ -13,13 +13,13 @@ Let Lmax be (total_mb*1M)/128 while
       for each ringtype in {0, 1} {    # 0=linear rings; 1=random rings
         for each ringsize in {2, 4, 8, min(max(16, num_tasks/4), num_tasks), min(max(32, num_tasks/2), num_tasks), num_tasks} {
           all tasks synchronize then
-          all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + torus_neighbor(t mod ringsize, ringsize, -1) then
-          all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + torus_neighbor(t mod ringsize, ringsize, +1) then
+          all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + mesh_neighbor((ringsize), t mod ringsize, (-1)) then
+          all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + mesh_neighbor((ringsize), t mod ringsize, (+1)) then
           all tasks await completion then
           for 4 milliseconds {
             all tasks reset their counters then
-            all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + torus_neighbor(t mod ringsize, ringsize, -1) then
-            all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + torus_neighbor(t mod ringsize, ringsize, +1) then
+            all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + mesh_neighbor((ringsize), t mod ringsize, (-1)) then
+            all tasks t asynchronously send a unique msgsize byte message to task ringsize*(t/ringsize) + mesh_neighbor((ringsize), t mod ringsize, (+1)) then
             all tasks await completion then
             all tasks log the msgsize as "Bytes" and
                           the ringtype as "Ring type (0=linear, 1=random)" and

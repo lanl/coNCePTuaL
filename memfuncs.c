@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -378,7 +378,7 @@ void *ncptl_malloc_message (ncptl_int numbytes,
    * aligned offset manually.  This enables us to reuse the same
    * buffer but return it with a different alignment on each call. */
   thismsg = &nonunique[outstanding];
-  truebytes = numbytes + alignment + (misaligned ? ncptl_pagesize : 0);
+  truebytes = numbytes + alignment + (misaligned ? ncptl_pagesize : 0) - 1;
   if (truebytes > thismsg->bytes) {
     /* We need more memory for message OUTSTANDING. */
     thismsg->bytes = truebytes;

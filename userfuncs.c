@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -200,6 +200,33 @@ static void seed_unsync_rng (void)
 }
 
 
+/* Return a task's x, y, and z coordinates on a 3-D mesh or -1 if the
+ * task does not lie anywhere on the given 3-D mesh. */
+static void get_mesh_coordinates (ncptl_int width, ncptl_int height, ncptl_int depth,
+                                  ncptl_int task,
+                                  ncptl_int *xpos, ncptl_int *ypos, ncptl_int *zpos)
+{
+  ncptl_int meshelts = width * height * depth;
+
+  /* Abort if we were given unreasonable mesh dimensions. */
+  if (!meshelts)
+    ncptl_fatal ("neighbor calculations can't be performed on a zero-sized mesh/torus");
+  if (width<0 || height<0 || depth<0)
+    ncptl_fatal ("meshes/tori may not have negative dimensions");
+
+  /* Tasks that are outside of the mesh have no neighbors. */
+  if (task<0 || task>=meshelts) {
+    *xpos = *ypos = *zpos = -1;
+    return;
+  }
+
+  /* Map the task number from Z to Z^3. */
+  *xpos = task % width;
+  *ypos = (task % (width*height)) / width;
+  *zpos = task / (width*height);
+}
+
+
 /**********************
  * Exported functions *
  **********************/
@@ -381,6 +408,9 @@ double ncptl_dfunc_factor10 (double num)
 /* Return the absolute value of a given number. */
 ncptl_int ncptl_func_abs (ncptl_int number)
 {
+  if (number == NCPTL_INT_MIN)
+    ncptl_fatal ("the absolute value of %" NICS " is not defined in %lu-bit arithmetic",
+                 number, (unsigned long)(8*sizeof(ncptl_int)));
 #ifdef HAVE_LLABS
   return (ncptl_int) llabs ((uint64_t) number);
 #else
@@ -573,29 +603,13 @@ double ncptl_dfunc_tree_child (double task, double child, double arity)
 }
 
 
-/* Return a task's x, y, or z coordinate on a 3-D mesh (or torus). */
-ncptl_int ncptl_func_grid_coord (ncptl_int task, ncptl_int coord,
-                                 ncptl_int width, ncptl_int height, ncptl_int depth)
+/* Return a task's x, y, or z coordinate on a 3-D mesh or torus. */
+ncptl_int ncptl_func_mesh_coord (ncptl_int width, ncptl_int height, ncptl_int depth,
+                                 ncptl_int task, ncptl_int coord)
 {
   ncptl_int xpos, ypos, zpos;
-  ncptl_int gridelts = width * height * depth;
 
-  /* Abort if we were given unreasonable grid dimensions. */
-  if (!gridelts)
-    ncptl_fatal ("coordinate calculations can't be performed on a zero-sized mesh/torus");
-  if (width<0 || height<0 || depth<0)
-    ncptl_fatal ("meshes/tori may not have negative dimensions");
-
-  /* Tasks that are outside of the grid have no valid coordinates. */
-  if (task<0 || task>=gridelts)
-    return -1;
-
-  /* Map the task number from Z to Z^3. */
-  xpos = task % width;
-  ypos = (task % (width*height)) / width;
-  zpos = task / (width*height);
-
-  /* Return the appropriate coordinate. */
+  get_mesh_coordinates (width, height, depth, task, &xpos, &ypos, &zpos);
   switch (coord) {
     case 0:
       return xpos;
@@ -611,90 +625,138 @@ ncptl_int ncptl_func_grid_coord (ncptl_int task, ncptl_int coord,
 }
 
 /* Double version of the above */
-double ncptl_dfunc_grid_coord (double task, double coord,
-                               double width, double height, double depth)
+double ncptl_dfunc_mesh_coord (double width, double height, double depth,
+                               double task, double coord)
 {
-  VALIDATE_FLOAT (task);
-  VALIDATE_FLOAT (coord);
   VALIDATE_FLOAT (width);
   VALIDATE_FLOAT (height);
   VALIDATE_FLOAT (depth);
-  return (ncptl_int) ncptl_func_grid_coord ((ncptl_int) task,
-                                            (ncptl_int) coord,
-                                            (ncptl_int) width,
-                                            (ncptl_int) height,
-                                            (ncptl_int) depth);
+  VALIDATE_FLOAT (task);
+  VALIDATE_FLOAT (coord);
+  return (double) ncptl_func_mesh_coord ((ncptl_int) width,
+                                         (ncptl_int) height,
+                                         (ncptl_int) depth,
+                                         (ncptl_int) task,
+                                         (ncptl_int) coord);
 }
 
 
 /* Return a task's neighbor on a 3-D mesh or torus. */
-ncptl_int ncptl_func_grid_neighbor (ncptl_int task, ncptl_int torus,
-                                    ncptl_int width, ncptl_int height, ncptl_int depth,
+ncptl_int ncptl_func_mesh_neighbor (ncptl_int width, ncptl_int height, ncptl_int depth,
+                                    ncptl_int xtorus, ncptl_int ytorus, ncptl_int ztorus,
+                                    ncptl_int task,
                                     ncptl_int xdelta, ncptl_int ydelta, ncptl_int zdelta)
 {
   ncptl_int xpos, ypos, zpos;
-  ncptl_int gridelts = width * height * depth;
-
-  /* Abort if we were given unreasonable grid dimensions. */
-  if (!gridelts)
-    ncptl_fatal ("neighbor calculations can't be performed on a zero-sized %s",
-                 torus ? "torus" : "mesh");
-  if (width<0 || height<0 || depth<0)
-    ncptl_fatal ("%s may not have negative dimensions",
-                 torus ? "tori" : "meshes");
-
-  /* Tasks that are outside of the grid have no neighbors. */
-  if (task<0 || task>=gridelts)
-    return -1;
-
-  /* Map the task number from Z to Z^3. */
-  xpos = task % width;
-  ypos = (task % (width*height)) / width;
-  zpos = task / (width*height);
 
   /* Add deltas to each coordinate in turn.  If we fall off the end of
      a row, column, or pile, we wrap around (torus case) or return an
      invalid neighbor (mesh case). */
-  if (torus) {
-    xpos = ncptl_func_modulo (xpos+xdelta, width);
-    ypos = ncptl_func_modulo (ypos+ydelta, height);
-    zpos = ncptl_func_modulo (zpos+zdelta, depth);
-  }
-  else {
-    xpos += xdelta;
-    ypos += ydelta;
-    zpos += zdelta;
-    if (xpos<0 || (xpos>=width && width>0) ||
-        ypos<0 || (ypos>=height && height>0) ||
-        zpos<0 || (zpos>=depth && depth>0))
-      return -1;
-  }
+  get_mesh_coordinates (width, height, depth, task, &xpos, &ypos, &zpos);
+  if (xpos == -1)
+    return -1;
+  xpos += xdelta;
+  ypos += ydelta;
+  zpos += zdelta;
+  if (xtorus)
+    xpos = ncptl_func_modulo (xpos, width);
+  if (ytorus)
+    ypos = ncptl_func_modulo (ypos, height);
+  if (ztorus)
+    zpos = ncptl_func_modulo (zpos, depth);
+  if (xpos<0 || xpos>=width ||
+      ypos<0 || ypos>=height ||
+      zpos<0 || zpos>=depth)
+    return -1;
 
   /* Map back from Z^3 to Z. */
   return zpos*height*width + ypos*width + xpos;
 }
 
 /* Double version of the above */
-double ncptl_dfunc_grid_neighbor (double task, double torus,
-                                  double width, double height, double depth,
+double ncptl_dfunc_mesh_neighbor (double width, double height, double depth,
+                                  double xtorus, double ytorus, double ztorus,
+                                  double task,
                                   double xdelta, double ydelta, double zdelta)
 {
-  VALIDATE_FLOAT (task);
-  VALIDATE_FLOAT (torus);
   VALIDATE_FLOAT (width);
   VALIDATE_FLOAT (height);
   VALIDATE_FLOAT (depth);
+  VALIDATE_FLOAT (xtorus);
+  VALIDATE_FLOAT (ytorus);
+  VALIDATE_FLOAT (ztorus);
+  VALIDATE_FLOAT (task);
   VALIDATE_FLOAT (xdelta);
   VALIDATE_FLOAT (ydelta);
   VALIDATE_FLOAT (zdelta);
-  return (ncptl_int) ncptl_func_grid_neighbor ((ncptl_int) task,
-                                               (ncptl_int) torus,
-                                               (ncptl_int) width,
-                                               (ncptl_int) height,
-                                               (ncptl_int) depth,
-                                               (ncptl_int) xdelta,
-                                               (ncptl_int) ydelta,
-                                               (ncptl_int) zdelta);
+  return (double) ncptl_func_mesh_neighbor ((ncptl_int) width,
+                                            (ncptl_int) height,
+                                            (ncptl_int) depth,
+                                            (ncptl_int) xtorus,
+                                            (ncptl_int) ytorus,
+                                            (ncptl_int) ztorus,
+                                            (ncptl_int) task,
+                                            (ncptl_int) xdelta,
+                                            (ncptl_int) ydelta,
+                                            (ncptl_int) zdelta);
+}
+
+
+/* Return the Manhattan distance between two tasks on a 3-D mesh or torus. */
+ncptl_int ncptl_func_mesh_distance (ncptl_int width, ncptl_int height, ncptl_int depth,
+                                    ncptl_int xtorus, ncptl_int ytorus, ncptl_int ztorus,
+
+                                    ncptl_int task1, ncptl_int task2)
+{
+  ncptl_int xpos1, ypos1, zpos1;
+  ncptl_int xpos2, ypos2, zpos2;
+  ncptl_int xdelta, ydelta, zdelta;
+
+  /* Get each task's x, y, and z coordinates.  Return -1 if either
+   * task does not lie on the mesh/torus. */
+  get_mesh_coordinates (width, height, depth, task1, &xpos1, &ypos1, &zpos1);
+  get_mesh_coordinates (width, height, depth, task2, &xpos2, &ypos2, &zpos2);
+  if (xpos1 == -1 || xpos2 == -1)
+    return -1;
+
+  /* Compute the distance between each pair of coordinates on a mesh. */
+  xdelta = ncptl_func_abs (xpos1 - xpos2);
+  ydelta = ncptl_func_abs (ypos1 - ypos2);
+  zdelta = ncptl_func_abs (zpos1 - zpos2);
+
+  /* See if we can take shortcuts across any torus edges. */
+  if (xtorus && xdelta > width/2)
+    xdelta = width - xdelta;
+  if (ytorus && ydelta > height/2)
+    ydelta = height - ydelta;
+  if (ztorus && zdelta > depth/2)
+    zdelta = depth - zdelta;
+
+  /* Return the Manhattan distance between the two tasks. */
+  return xdelta + ydelta + zdelta;
+}
+
+/* Double version of the above */
+double ncptl_dfunc_mesh_distance (double width, double height, double depth,
+                                  double xtorus, double ytorus, double ztorus,
+                                  double task1, double task2)
+{
+  VALIDATE_FLOAT (width);
+  VALIDATE_FLOAT (height);
+  VALIDATE_FLOAT (depth);
+  VALIDATE_FLOAT (xtorus);
+  VALIDATE_FLOAT (ytorus);
+  VALIDATE_FLOAT (ztorus);
+  VALIDATE_FLOAT (task1);
+  VALIDATE_FLOAT (task2);
+  return (double) ncptl_func_mesh_distance ((ncptl_int) width,
+                                            (ncptl_int) height,
+                                            (ncptl_int) depth,
+                                            (ncptl_int) xtorus,
+                                            (ncptl_int) ytorus,
+                                            (ncptl_int) ztorus,
+                                            (ncptl_int) task1,
+                                            (ncptl_int) task2);
 }
 
 
@@ -1012,4 +1074,45 @@ double ncptl_dfunc_random_poisson (double mean)
   if (mean < 0.0)
     ncptl_fatal ("unable to take RANDOM_POISSON(%g); result is undefined", mean);
   return (double) ncptl_func_random_poisson ((ncptl_int) mean);
+}
+
+
+/* Return a randomly selected number from a Pareto distribution with
+ * shape SHAPE and either bounds [LOW, HIGH] or scale LOW if LOW=HIGH. */
+ncptl_int ncptl_func_random_pareto (ncptl_int shape, ncptl_int low, ncptl_int high)
+{
+  double rnum;
+
+  /* Let the double version do all of the work. */
+  do
+    rnum = ncptl_dfunc_round(ncptl_dfunc_random_pareto((double)shape, (double)low, (double)high));
+  while (rnum > (double)NCPTL_INT_MAX);
+  return rnum;
+}
+
+/* Double version of the above */
+double ncptl_dfunc_random_pareto (double shape, double low, double high)
+{
+  double urandnum;    /* Random number on the interval (0, 1) */
+
+  VALIDATE_FLOAT (shape);
+  VALIDATE_FLOAT (low);
+  VALIDATE_FLOAT (high);
+  if (shape <= 0.0 || low <= 0.0 || low > high)
+    ncptl_fatal ("unable to take RANDOM_PARETO(%g, %g, %g); result is undefined",
+                 shape, low, high);
+  do
+    urandnum = ncptl_dfunc_random_uniform(0.0, 1.0);
+  while (urandnum == 0.0);
+  if (low == high)
+    /* Ordinary Pareto distribution */
+    return low / ncptl_dfunc_power(urandnum, 1.0/shape);
+  else {
+    /* Bounded Pareto distribution */
+    double high_shape = ncptl_dfunc_power(high, shape);
+    double low_shape = ncptl_dfunc_power(low, shape);
+    double num = urandnum*high_shape - urandnum*low_shape - high_shape;
+    double den = high_shape * low_shape;
+    return ncptl_dfunc_power(-num/den, -1.0/shape);
+  }
 }

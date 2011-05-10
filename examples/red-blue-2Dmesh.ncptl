@@ -2,6 +2,7 @@
 # Red-blue broadcast on a 2-D mesh           #
 # By Leon Arber, June 2004                   #
 # Restructured by Scott Pakin, December 2005 #
+# and again in February 2011                 #
 ##############################################
 
 # Parse the command line.
@@ -21,33 +22,33 @@ Assert that "the mesh must cover all processes" with SX*SY = num_tasks.
 # in the 3-D case, MESH_COORDINATE will greatly simplify
 # expressability.
 All tasks synchronize.
-Let B be msgsize/2 and rtask be mesh_neighbor (0, SX, +RX, SY, +RY) and GetX be 0 and GetY be 1 while {
+Let B be msgsize/2 and rtask be mesh_neighbor ((SX, SY), 0, (+RX, +RY)) and GetX be 0 and GetY be 1 while {
   for reps repetitions {
     all tasks reset their counters then
     # RED: The root and the tasks to its right, sending right
-    task t such that mesh_coordinate (t, GetY, SX, SY) = RY /\ mesh_coordinate (t, GetX, SX, SY) >= RX asynchronously sends a B byte message to task mesh_neighbor (t, SX, +1, SY, 0) who receives it synchronously then
+    task t such that mesh_coordinate ((SX, SY), t, GetY) = RY /\ mesh_coordinate ((SX, SY), t, GetX) >= RX asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (+1, 0)) who receives it synchronously then
     # RED: The root and the tasks to its left, sending left
-    task t such that mesh_coordinate (t, GetY, SX, SY) = RY /\ mesh_coordinate (t, GetX, SX, SY) <= RX asynchronously sends a B byte message to task mesh_neighbor (t, SX, -1, SY, 0) who receives it synchronously then
+    task t such that mesh_coordinate ((SX, SY), t, GetY) = RY /\ mesh_coordinate ((SX, SY), t, GetX) <= RX asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (-1, 0)) who receives it synchronously then
     # BLUE: The root and the tasks beneath it, sending down
-    task t such that t MOD SY = RX /\ t/SY >= RY asynchronously sends a B byte message to task mesh_neighbor (t, SX, 0, SY, +1) who receives it synchronously then
+    task t such that t MOD SY = RX /\ t/SY >= RY asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (0, +1)) who receives it synchronously then
     # BLUE: The root and the tasks above it, sending up
-    task t such that t MOD SY = RX /\ t/SY <= RY asynchronously sends a B byte message to task mesh_neighbor (t, SX, 0, SY, -1) who receives it synchronously then
+    task t such that t MOD SY = RX /\ t/SY <= RY asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (0, -1)) who receives it synchronously then
     # RED: The upper part including the root row (but not the root column), sending up
-    task t such that mesh_coordinate (t, GetY, SX, SY) <= RY /\ mesh_coordinate (t, GetX, SX, SY) <> RX asynchronously sends a B byte message to task mesh_neighbor (t, SX, 0, SY, -1) who receives it synchronously then
+    task t such that mesh_coordinate ((SX, SY), t, GetY) <= RY /\ mesh_coordinate ((SX, SY), t, GetX) <> RX asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (0, -1)) who receives it synchronously then
     # RED: The lower part including the root row (but not the root column), sending down
-    task t such that mesh_coordinate (t, GetY, SX, SY) >= RY /\ mesh_coordinate (t, GetX, SX, SY) <> RX asynchronously sends a B byte message to task mesh_neighbor (t, SX, 0, SY, +1) who receives it synchronously then
+    task t such that mesh_coordinate ((SX, SY), t, GetY) >= RY /\ mesh_coordinate ((SX, SY), t, GetX) <> RX asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (0, +1)) who receives it synchronously then
     # BLUE: The right part including the root column (but not the root row), sending to the right
-    task t such that t MOD SX >= RX /\ t/SY <> RY asynchronously sends a B byte message to task mesh_neighbor (t, SX, +1, SY, 0) who receives it synchronously then
+    task t such that t MOD SX >= RX /\ t/SY <> RY asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (+1, 0)) who receives it synchronously then
     # BLUE: The left part including the root column (but not the root row), sending to the left
-    task t such that t MOD SX <= RX /\ t/SY <> RY asynchronously sends a B byte message to task mesh_neighbor (t, SX, -1, SY, 0) who receives it synchronously then
+    task t such that t MOD SX <= RX /\ t/SY <> RY asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (-1, 0)) who receives it synchronously then
     # RED: The column at the right of the root sends to the left (but not to the root)
-    task t such that mesh_coordinate (t, GetX, SX, SY) = RX+1 /\ mesh_neighbor (t, SX, -1, SY, 0) <> rtask asynchronously sends a B byte message to task mesh_neighbor (t, SX, -1, SY, 0) who receives it synchronously then
+    task t such that mesh_coordinate ((SX, SY), t, GetX) = RX+1 /\ mesh_neighbor ((SX, SY), t, (-1, 0)) <> rtask asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (-1, 0)) who receives it synchronously then
     # RED: The special case in which the root is in the last column so the previous column sends to the right (but not to the root)
-    task t such that RX = SX-1 /\ mesh_coordinate (t, GetX, SX, SY) = RX-1 asynchronously sends a B byte message to task mesh_neighbor (t, SX, +1, SY, 0) who receives it synchronously then
+    task t such that RX = SX-1 /\ mesh_coordinate ((SX, SY), t, GetX) = RX-1 asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (+1, 0)) who receives it synchronously then
     # BLUE: The row beneath the root sends upwards (but not to the root)
-    task t such that t/SX = RY+1 /\ t MOD SX <> RX asynchronously sends a B byte message to task mesh_neighbor (t, SX, 0, SY, -1) who receives it synchronously then
+    task t such that t/SX = RY+1 /\ t MOD SX <> RX asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (0, -1)) who receives it synchronously then
     # BLUE: The special case in which the root is in the last row so the previous row sends downwards (but not to the root)
-    task t such that t/SX = RY-1 /\ RY = SY-1 asynchronously sends a B byte message to task mesh_neighbor (t, SX, 0, SY, +1) who receives it synchronously then
+    task t such that t/SX = RY-1 /\ RY = SY-1 asynchronously sends a B byte message to task mesh_neighbor ((SX, SY), t, (0, +1)) who receives it synchronously then
 
     # --- Start all tasks running ---
     all tasks await completion then

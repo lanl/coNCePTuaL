@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -234,8 +234,8 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
     # --------------------------- #
 
     def code_define_functions_PRE(self, localvars):
-        "Define some point-to-point communication functions."
-        pt2ptfuncs = []
+        "Define some point-to-point and collective communication functions."
+        msgfuncs = []
         uses_send   = self.events_used.has_key("EV_SEND")
         uses_asend  = self.events_used.has_key("EV_ASEND")
         uses_recv   = self.events_used.has_key("EV_RECV")
@@ -266,10 +266,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             " * 0 if the send blocked. */",
             "static inline int conc_send_packet (COMMSTATE *cstate, int dest, void *buffer, int packetsize)",
             "{"],
-                      stack=pt2ptfuncs)
+                      stack=msgfuncs)
         self.code_declare_var(type="int", name="bytessent",
                               comment="Number of bytes actually sent",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.pushmany([
             "do",
             "bytessent = send (cstate->channels[dest], buffer, (size_t) packetsize, 0);",
@@ -287,7 +287,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "return 1;",
             "}",
             ""],
-                      stack=pt2ptfuncs)
+                      stack=msgfuncs)
 
         # Define a wrapper for recv() with automatic error checking.
         self.pushmany([
@@ -295,10 +295,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             " * 0 if the send blocked. */",
             "static inline int conc_receive_packet (COMMSTATE *cstate, int source, void *buffer, int packetsize)",
             "{"],
-                      stack=pt2ptfuncs)
+                      stack=msgfuncs)
         self.code_declare_var(type="int", name="bytesreceived",
                               comment="Number of bytes actually received",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.pushmany([
             "do",
             "bytesreceived = recv (cstate->channels[source],",
@@ -317,32 +317,32 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "return 1;",
             "}",
             ""],
-                      stack=pt2ptfuncs)
+                      stack=msgfuncs)
 
         # Define a function that determines the maximum socket size.
         self.pushmany([
             "/* Binary search for the largest valid packet length. */",
             "static ncptl_int conc_find_max_packet_len (COMMSTATE *cstate)",
             "{",],
-                      stack=pt2ptfuncs)
+                      stack=msgfuncs)
         self.code_declare_var(type="int", name="maxsize",
                               comment="Maximum valid message size",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.code_declare_var(type="int", name="delta",
                               comment="Change in message size to try next",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.code_declare_var(type="socklen_t", name="intsize", rhs="sizeof(int)",
                               comment="Number of bytes in maxsize",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.code_declare_var(type="char *", name="msgbuffer",
                               comment="Buffer used for sending and receiving",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.code_declare_var(type="int", name="bytessent",
                               comment="Number of bytes actually sent",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.code_declare_var(type="int", name="bytesreceived",
                               comment="Number of bytes actually received",
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
         self.pushmany([
             "CONC_SET_BLOCKING (cstate, physrank, 1);",
             "if (getsockopt (cstate->channels[physrank], SOL_SOCKET, SO_SNDBUF, &maxsize, &intsize) == -1 ||",
@@ -372,7 +372,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "CONC_SET_BLOCKING (cstate, physrank, 0);",
             "return (maxsize/sizeof(ncptl_int))*sizeof(ncptl_int) - 1;",
             "}"],
-                              stack=pt2ptfuncs)
+                              stack=msgfuncs)
 
         # Define a wait-one function.
         if uses_wait:
@@ -381,38 +381,38 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "  * ASSUMPTION: target_req has not yet completed. */",
                 "static inline void conc_wait_one (COMMSTATE *cstate, void *target_req)",
                 "{"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(type="struct timeval", name="polltime",
                                   comment="Time structure corresponding to a minimal poll time",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 " /* Alternately complete receives and sends until target_req",
                 "  * is satisfied. */",
                 "while (1) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(name="task_ofs",
                                   comment="Offset from our task ID",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 " /* Process each task ID in turn, starting from our own. */",
                 "for (task_ofs=0; task_ofs<var_num_tasks; task_ofs++) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             for type, name, rhs, comment in [
                 ("ncptl_int", "taskID", "(physrank+task_ofs) % var_num_tasks", "Task ID to process"),
                 ("ncptl_int", "pendingsends", "ncptl_queue_length (cstate->blockedsendQ[taskID])", "Number of blocked sends"),
                 ("ncptl_int", "pendingrecvs", "ncptl_queue_length (cstate->blockedrecvQ[taskID])", "Number of blocked receives"),
                 ("int", "making_progress", None, "1=a packet was sent/received; 0=we idled")]:
                 self.code_declare_var(type=type, name=name, rhs=rhs,
-                                      comment=comment, stack=pt2ptfuncs)
+                                      comment=comment, stack=msgfuncs)
             self.pushmany([
                 "",
                 " /* Keep sending from task taskID and/or receiving from task",
                 "  * taskID until we can no longer do so. */",
                 "making_progress = pendingrecvs || pendingsends;",
                 "while (making_progress) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             for type, name, rhs, comment in [
                 ("int", "recvfd", "0", "File descriptor for a receive channel"),
                 ("int", "sendfd", "0", "File descriptor for a send channel"),
@@ -424,7 +424,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 ("int", "recv_available", None, "1=recv() won't block; 0=it will"),
                 ("int", "send_available", None, "1=send() won't block; 0=it will")]:
                 self.code_declare_var(type=type, name=name, rhs=rhs,
-                                      comment=comment, stack=pt2ptfuncs)
+                                      comment=comment, stack=msgfuncs)
             self.pushmany([
                 "",
                 "FD_ZERO (&firstrecv);",
@@ -453,11 +453,11 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "",
                 " /* Process a pending receive, if any. */",
                 "if (pendingrecvs && recv_available) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(type="int", name="packetsize",
                                   rhs="(int) (recvev->size>maxpacketlen ? maxpacketlen : recvev->size)",
                                   comment="Number of bytes to receive per call",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 "if (conc_receive_packet (cstate, recvev->source, recvev->buffer, packetsize)) {",
@@ -500,7 +500,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "}",
                 "}",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
 
         # Define a wait-all function.
         if uses_wait:
@@ -508,9 +508,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "/* Wait until all of our blocked sends and receives complete. */",
                 "static inline void conc_wait_all (COMMSTATE *cstate)",
                 "{"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(name="taskID", comment="Loop over all task IDs",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 " /* Ensure we have something to do. */",
@@ -520,20 +520,20 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 " /* Await completion from each task in turn -- not very efficient",
                 "  * but we expect var_num_tasks to be small. */",
                 "for (taskID=0; taskID<var_num_tasks; taskID++) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(name="pendingsends", comment="Number of blocked sends",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.code_declare_var(name="pendingrecvs", comment="Number of blocked receives",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 " /* Wait for the final send to complete. */",
                 "pendingsends = ncptl_queue_length (cstate->blockedsendQ[taskID]);",
                 "if (pendingsends) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(type="CONC_SEND_EVENT *", name="lastsend",
                                   comment="Task taskID's final pending send",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 "lastsend = (CONC_SEND_EVENT *) ncptl_queue_contents (cstate->blockedsendQ[taskID], 0);",
@@ -544,10 +544,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 " /* Wait for the final receive to complete. */",
                 "pendingrecvs = ncptl_queue_length (cstate->blockedrecvQ[taskID]);",
                 "if (pendingrecvs) {"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             self.code_declare_var(type="CONC_RECV_EVENT *", name="lastrecv",
                                   comment="Task taskID's final pending receive",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "",
                 "lastrecv = (CONC_RECV_EVENT *) ncptl_queue_contents (cstate->blockedrecvQ[taskID], 0);",
@@ -560,53 +560,78 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "cstate->sendsblocked = 0;",
                 "cstate->recvsblocked = 0;",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
 
         # Define a synchronous send function.
         if uses_send:
             self.pushmany([
                 "/* Enqueue a message on a given channel and block until it completes. */",
                 "static inline void conc_send_msg (COMMSTATE *cstate, CONC_SEND_EVENT *sendev)",
-                "{",
+                "{"],
+                          stack=msgfuncs)
+            self.code_declare_var(type="CONC_SEND_EVENT *", name="sendev_copy",
+                                  comment="Mutable copy of sendev",
+                                  stack=msgfuncs)
+            self.pushmany([
                 "cstate->sendsblocked = 1;",
-                "conc_wait_one (cstate, ",
-                "ncptl_queue_push (cstate->blockedsendQ[sendev->dest], (void *) sendev));",
+                "sendev_copy = (CONC_SEND_EVENT *) ncptl_queue_push (cstate->blockedsendQ[sendev->dest], (void *) sendev);",
+                "sendev_copy->buffer = (void *) ((char *)sendev_copy->buffer + sendev_copy->bufferofs);",
+                "conc_wait_one (cstate, sendev_copy);",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
 
         # Define a synchronous receive function.
         if uses_recv:
             self.pushmany([
                 "/* Post a receive and block until it completes. */",
                 "static inline void conc_recv_msg (COMMSTATE *cstate, CONC_RECV_EVENT *recvev)",
-                "{",
+                "{"],
+                          stack=msgfuncs)
+            self.code_declare_var(type="CONC_RECV_EVENT *", name="recvev_copy",
+                                  comment="Mutable copy of recvev",
+                                  stack=msgfuncs)
+            self.pushmany([
                 "cstate->recvsblocked = 1;",
-                "conc_wait_one (cstate, ",
-                "ncptl_queue_push (cstate->blockedrecvQ[recvev->source], (void *) recvev));",
+                "recvev_copy = (CONC_RECV_EVENT *) ncptl_queue_push (cstate->blockedrecvQ[recvev->source], (void *) recvev);",
+                "recvev_copy->buffer = (void *) ((char *)recvev_copy->buffer + recvev_copy->bufferofs);",
+                "conc_wait_one (cstate, recvev_copy);",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
 
         # Define an asynchronous send function.
         if uses_asend:
             self.pushmany([
                 "/* Enqueue a message on a given channel (nonblocking). */",
                 "static inline void conc_asend_msg (COMMSTATE *cstate, CONC_SEND_EVENT *sendev)",
-                "{",
+                "{"],
+                          stack=msgfuncs)
+            self.code_declare_var(type="CONC_SEND_EVENT *", name="sendev_copy",
+                                  comment="Mutable copy of sendev",
+                                  stack=msgfuncs)
+            self.pushmany([
+
                 "cstate->sendsblocked = 1;",
-                "ncptl_queue_push (cstate->blockedsendQ[sendev->dest], (void *) sendev);",
+                "sendev_copy = (CONC_SEND_EVENT *) ncptl_queue_push (cstate->blockedsendQ[sendev->dest], (void *) sendev);",
+                "sendev_copy->buffer = (void *) ((char *)sendev_copy->buffer + sendev_copy->bufferofs);",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
 
         # Define an asynchronous receive function.
         if uses_arecv:
             self.pushmany([
                 "/* Enqueue a receive request on a given channel (nonblocking). */",
                 "static inline void conc_arecv_msg (COMMSTATE *cstate, CONC_RECV_EVENT *recvev)",
-                "{",
+                "{"],
+                          stack=msgfuncs)
+            self.code_declare_var(type="CONC_RECV_EVENT *", name="recvev_copy",
+                                  comment="Mutable copy of recvev",
+                                  stack=msgfuncs)
+            self.pushmany([
                 "cstate->recvsblocked = 1;",
-                "ncptl_queue_push (cstate->blockedrecvQ[recvev->source], (void *) recvev);",
+                "recvev_copy = (CONC_RECV_EVENT *) ncptl_queue_push (cstate->blockedrecvQ[recvev->source], (void *) recvev);",
+                "recvev_copy->buffer = (void *) ((char *)recvev_copy->buffer + recvev_copy->bufferofs);",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
 
         # Define a synchronization function.
         if uses_sync:
@@ -614,14 +639,14 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "/* Barrier-synchronize a list of tasks using a butterfly pattern. */",
                 "static inline void conc_synchronize (COMMSTATE *cstate, int *peerlist, ncptl_int maxrank, ncptl_int syncrank)",
                 "{"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
             for type, name, comment in [
                 ("ncptl_int", "stage", "Current stage of the butterfly pattern"),
                 ("CONC_SEND_EVENT", "sendev", "Send event to pass to conc_asend_msg()"),
                 ("CONC_RECV_EVENT", "recvev", "Receive event to pass to conc_recv_msg()"),
                 ("ncptl_int", "dummybuffer", "Dummy message buffer")]:
                 self.code_declare_var(type=type, name=name, comment=comment,
-                                      stack=pt2ptfuncs)
+                                      stack=msgfuncs)
 
             # For each peer with a Hamming distance of 1 from us,
             # perform a nonblocking send followed by a blocking
@@ -631,11 +656,11 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "memset ((void *)&sendev, 0, sizeof(CONC_SEND_EVENT));",
                 "memset ((void *)&recvev, 0, sizeof(CONC_RECV_EVENT));",
                 "for (stage=ncptl_func_bits(maxrank)-1; stage>=0; stage--) {"],
-                      stack=pt2ptfuncs)
+                      stack=msgfuncs)
             self.code_declare_var(name="peernum",
                                   rhs="syncrank ^ (1<<stage)",
                                   comment="Offset into peerlist[] of our current peer",
-                                  stack=pt2ptfuncs)
+                                  stack=msgfuncs)
             self.pushmany([
                 "if (peernum <= maxrank) {",
                 "sendev.dest = peerlist[peernum];",
@@ -648,10 +673,190 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "}",
                 "}",
                 "}"],
-                          stack=pt2ptfuncs)
+                          stack=msgfuncs)
+
+        # Define a multicast function.
+        if uses_mcast:
+            self.pushmany([
+                    "/* Multicast data from a single source to a set of destinations. */",
+                    "static void conc_multicast (COMMSTATE *cstate, CONC_MCAST_EVENT *mcast_ev)",
+                    "{"],
+                          stack=msgfuncs)
+            self.code_declare_var(name="mcastrank",
+                                  rhs="mcast_ev->mcastrank",
+                                  comment="This task's rank in the multicast",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="int *", name="peerlist",
+                                  rhs="(int *) ncptl_queue_contents(mcast_ev->peerqueue, 0)",
+                                  comment="List of our peers' physical task numbers",
+                                  stack=msgfuncs)
+            self.code_declare_var(name="maxrank",
+                                  rhs="ncptl_queue_length(mcast_ev->peerqueue) - 1",
+                                  comment="Number of tasks involved in the multicast",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="CONC_SEND_EVENT", name="sendev",
+                                  comment="Send event to pass to conc_asend_msg()",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="CONC_RECV_EVENT", name="recvev",
+                                  comment="Receive event to pass to conc_recv_msg()",
+                                  stack=msgfuncs)
+            self.pushmany([
+                    "",
+                    " /* Multicast data in a binary-tree pattern. */",
+                    "memset ((void *)&sendev, 0, sizeof(CONC_SEND_EVENT));",
+                    "sendev.size = mcast_ev->size;"],
+                          stack=msgfuncs)
+            for field in ["alignment", "buffernum", "bufferofs", "misaligned",
+                          "touching", "verification", "buffer"]:
+                self.push("sendev.%s = mcast_ev->%s;" % (field, field), msgfuncs)
+            self.pushmany([
+                    "memset ((void *)&recvev, 0, sizeof(CONC_RECV_EVENT));",
+                    "recvev.size = mcast_ev->size;"],
+                          stack=msgfuncs)
+            for field in ["alignment", "buffernum", "bufferofs", "misaligned",
+                          "touching", "verification", "buffer"]:
+                self.push("recvev.%s = mcast_ev->%s;" % (field, field), msgfuncs)
+            self.pushmany([
+                    "if (mcastrank > 0) {",
+                    " /* Receive synchronously from our parent. */",
+                    "recvev.source = peerlist[(mcastrank-1)/2];",
+                    "conc_recv_msg (cstate, &recvev);",
+                    "}",
+                    "if ((mcastrank+1)*2-1 <= maxrank) {",
+                    " /* Send asynchronously to our left child. */",
+                    "sendev.dest = peerlist[(mcastrank+1)*2 - 1];",
+                    "conc_asend_msg (cstate, &sendev);",
+                    "if ((mcastrank+1)*2 <= maxrank) {",
+                    " /* Send asynchronously to our right child. */",
+                    "sendev.dest = peerlist[(mcastrank+1)*2];",
+                    "conc_asend_msg (cstate, &sendev);",
+                    "}",
+                    "",
+                    " /* Wait for all of our pending sends to complete. */",
+                    "conc_wait_all (cstate);",
+                    "}",
+                    "}"],
+                          stack=msgfuncs)
+
+        # Define a reduction function.
+        if uses_reduce:
+            self.pushmany([
+                    "/* Reduce data from one set of tasks to another set. */",
+                    "static inline void conc_reduce (COMMSTATE *cstate, CONC_REDUCE_EVENT *reduce_ev)",
+                    "{"],
+                          stack=msgfuncs)
+            self.push(" /* Implement all forms of reduction as a reduce-to-one followed by an optional multicast. */", msgfuncs)
+            self.code_declare_var(name="sendrank",
+                                  rhs="reduce_ev->sendrank",
+                                  comment="This task's rank in the reduction step",
+                                  stack=msgfuncs)
+            self.code_declare_var(name="recvrank",
+                                  rhs="reduce_ev->recvrank",
+                                  comment="This task's rank in the multicast step",
+                                  stack=msgfuncs)
+            self.code_declare_var(name="msgsize",
+                                  rhs="reduce_ev->numitems * reduce_ev->itemsize",
+                                  comment="The number of bytes in the reduction message",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="ncptl_int *", name="send_peerlist",
+                                  rhs="(ncptl_int *) ncptl_queue_contents(reduce_ev->all_senders, 0)",
+                                  comment="List of our reduction peers' physical task numbers",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="ncptl_int *", name="recv_peerlist",
+                                  rhs="(ncptl_int *) ncptl_queue_contents(reduce_ev->all_receivers, 0)",
+                                  comment="List of our multicast peers' physical task numbers",
+                                  stack=msgfuncs)
+            self.code_declare_var(name="num_send_peers",
+                                  rhs="ncptl_queue_length(reduce_ev->all_senders)",
+                                  comment="Number of tasks involved in the reduction step",
+                                  stack=msgfuncs)
+            self.code_declare_var(name="num_recv_peers",
+                                  rhs="ncptl_queue_length(reduce_ev->all_receivers)",
+                                  comment="Number of tasks involved in the multicast step",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="CONC_SEND_EVENT", name="sendev",
+                                  comment="Send event to pass to conc_asend_msg()",
+                                  stack=msgfuncs)
+            self.code_declare_var(type="CONC_RECV_EVENT", name="recvev",
+                                  comment="Receive event to pass to conc_recv_msg()",
+                                  stack=msgfuncs)
+            self.pushmany([
+                "",
+                " /* Implement a reduction tree to reduce a value to the first sender. */",
+                "memset ((void *)&sendev, 0, sizeof(CONC_SEND_EVENT));",
+                "sendev.size = msgsize;"],
+                          stack=msgfuncs)
+            for field in ["alignment", "buffernum", "bufferofs", "misaligned",
+                          "touching", "buffer"]:
+                self.push("sendev.%s = reduce_ev->%s;" % (field, field), msgfuncs)
+            self.pushmany([
+                "memset ((void *)&recvev, 0, sizeof(CONC_RECV_EVENT));",
+                "recvev.size = msgsize;"],
+                          stack=msgfuncs)
+            for field in ["alignment", "buffernum", "bufferofs", "misaligned",
+                          "touching", "buffer"]:
+                self.push("recvev.%s = reduce_ev->%s;" % (field, field), msgfuncs)
+            self.pushmany([
+                "if (reduce_ev->sending) {",
+                " /* Receive asynchronously from our children. */",
+                "if ((sendrank+1)*2-1 < num_send_peers) {",
+                "recvev.source = send_peerlist[(sendrank+1)*2-1];",
+                "conc_arecv_msg (cstate, &recvev);",
+                "if ((sendrank+1)*2 < num_send_peers) {",
+                "recvev.source = send_peerlist[(sendrank+1)*2];",
+                "conc_arecv_msg (cstate, &recvev);",
+                "}",
+                "conc_wait_all (cstate);",
+                "}",
+                "",
+                " /* Send synchronously to our parent. */",
+                "if (sendrank > 0) {",
+                "sendev.dest = send_peerlist[(sendrank-1)/2];",
+                "conc_send_msg (cstate, &sendev);",
+                "}",
+                "else {",
+                " /* The root of the reduction sends to the root of the multicast. */",
+                "if (send_peerlist[0] != recv_peerlist[0]) {",
+                "sendev.dest = recv_peerlist[0];",
+                "conc_send_msg (cstate, &sendev);",
+                "}"
+                "}"
+                "}"],
+                          stack=msgfuncs)
+            self.pushmany([
+                "",
+                " /* Implement a multicast tree to multicast from the first receiver. */",
+                "if (reduce_ev->receiving) {",
+                "if (recvrank == 0 && send_peerlist[0] != recv_peerlist[0]) {",
+                " /* The root of the multicast receives from the root of the reduction. */",
+                "recvev.source = send_peerlist[0];",
+                "conc_recv_msg (cstate, &recvev);",
+                "}",
+                "",
+                "if (recvrank > 0) {",
+                " /* Receive synchronously from our parent. */",
+                "recvev.source = recv_peerlist[(recvrank-1)/2];",
+                "conc_recv_msg (cstate, &recvev);",
+                "}",
+                "if ((recvrank+1)*2-1 < num_recv_peers) {",
+                " /* Send asynchronously to our left child. */",
+                "sendev.dest = recv_peerlist[(recvrank+1)*2 - 1];",
+                "conc_asend_msg (cstate, &sendev);",
+                "if ((recvrank+1)*2 < num_recv_peers) {",
+                " /* Send asynchronously to our right child. */",
+                "sendev.dest = recv_peerlist[(recvrank+1)*2];",
+                "conc_asend_msg (cstate, &sendev);",
+                "}",
+                "",
+                " /* Wait for any blocked sends to complete. */",
+                "conc_wait_all (cstate);",
+                "}",
+                "}",
+                "}"],
+                          stack=msgfuncs)
 
         # Return the list of function definitions.
-        return pt2ptfuncs
+        return msgfuncs
 
 
     # -------------- #
@@ -1061,10 +1266,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         mcastdecls = []
         self.pushmany(self.code_mcast_sync_declarations(localvars["target_or_source"]),
                       stack=mcastdecls)
-        self.mcast_source_var = self.code_declare_var(suffix="task",
-                                                      rhs=localvars["source_task"][1],
-                                                      comment="Source task of the multicast",
-                                                      stack=mcastdecls)
+        self.mcast_source_var = localvars["sourcevar"]
         return mcastdecls
 
     def n_mcast_stmt_INIT(self, localvars):
@@ -1073,58 +1275,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
 
     def code_def_procev_mcast_BODY(self, localvars):
         "Multicast a message to a set of tasks."
-        mcastcode = []
-        self.push("{", mcastcode)
-        self.code_declare_var(name="mcastrank",
-                              rhs="thisev->s.mcast.mcastrank",
-                              comment="This task's rank in the multicast",
-                              stack=mcastcode)
-        self.code_declare_var(name="msgsize",
-                              rhs="thisev->s.mcast.size",
-                              comment="The number of bytes in the multicast message",
-                              stack=mcastcode)
-        self.code_declare_var(type="int *", name="peerlist",
-                              rhs="(int *) ncptl_queue_contents(thisev->s.mcast.peerqueue, 0)",
-                              comment="List of our peers' physical task numbers",
-                              stack=mcastcode)
-        self.code_declare_var(name="maxrank",
-                              rhs="ncptl_queue_length(thisev->s.mcast.peerqueue) - 1",
-                              comment="Number of tasks involved in the multicast",
-                              stack=mcastcode)
-        self.code_declare_var(type="CONC_SEND_EVENT", name="sendev",
-                              comment="Send event to pass to conc_asend_msg()",
-                              stack=mcastcode)
-        self.code_declare_var(type="CONC_RECV_EVENT", name="recvev",
-                              comment="Receive event to pass to conc_recv_msg()",
-                              stack=mcastcode)
-        self.pushmany([
-            "memset ((void *)&sendev, 0, sizeof(CONC_SEND_EVENT));",
-            "sendev.size = msgsize;",
-            "sendev.buffer = thisev->s.mcast.buffer;",
-            "memset ((void *)&recvev, 0, sizeof(CONC_RECV_EVENT));",
-            "recvev.size = msgsize;",
-            "recvev.buffer = thisev->s.mcast.buffer;",
-            "if (mcastrank > 0) {",
-            " /* Receive synchronously from our parent. */",
-            "recvev.source = peerlist[(mcastrank-1)/2];",
-            "conc_recv_msg (&commstate[COMMSTATE_COLL], &recvev);",
-            "}",
-            "if ((mcastrank+1)*2-1 <= maxrank) {",
-            " /* Send asynchronously to our left child. */",
-            "sendev.dest = peerlist[(mcastrank+1)*2 - 1];",
-            "conc_asend_msg (&commstate[COMMSTATE_COLL], &sendev);",
-            "if ((mcastrank+1)*2 <= maxrank) {",
-            " /* Send asynchronously to our right child. */",
-            "sendev.dest = peerlist[(mcastrank+1)*2];",
-            "conc_asend_msg (&commstate[COMMSTATE_COLL], &sendev);",
-            "}",
-            "",
-            " /* Wait for any blocked sends to complete. */",
-            "conc_wait_all (&commstate[COMMSTATE_COLL]);",
-            "}",
-            "}"],
-                      stack=mcastcode)
-        return mcastcode
+        return ["conc_multicast (&commstate[COMMSTATE_COLL], &thisev->s.mcast);"]
 
     def code_def_procev_etime_REDUCE_MIN(self, localvars):
         "Find the global minimum of the elapsedtime variable."
@@ -1235,107 +1386,4 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
 
     def code_def_procev_reduce_BODY(self, localvars):
         "Perform a reduction operation."
-        reducecode = []
-        self.push(" /* Implement all forms of reduction as a reduce-to-one followed by an optional multicast. */", reducecode)
-        self.push("{", reducecode)
-        self.code_declare_var(name="sendrank",
-                              rhs="thisev->s.reduce.sendrank",
-                              comment="This task's rank in the reduction step",
-                              stack=reducecode)
-        self.code_declare_var(name="recvrank",
-                              rhs="thisev->s.reduce.recvrank",
-                              comment="This task's rank in the multicast step",
-                              stack=reducecode)
-        self.code_declare_var(name="msgsize",
-                              rhs="thisev->s.reduce.numitems * thisev->s.reduce.itemsize",
-                              comment="The number of bytes in the reduction message",
-                              stack=reducecode)
-        self.code_declare_var(type="ncptl_int *", name="send_peerlist",
-                              rhs="(ncptl_int *) ncptl_queue_contents(thisev->s.reduce.all_senders, 0)",
-                              comment="List of our reduction peers' physical task numbers",
-                              stack=reducecode)
-        self.code_declare_var(type="ncptl_int *", name="recv_peerlist",
-                              rhs="(ncptl_int *) ncptl_queue_contents(thisev->s.reduce.all_receivers, 0)",
-                              comment="List of our multicast peers' physical task numbers",
-                              stack=reducecode)
-        self.code_declare_var(name="num_send_peers",
-                              rhs="ncptl_queue_length(thisev->s.reduce.all_senders)",
-                              comment="Number of tasks involved in the reduction step",
-                              stack=reducecode)
-        self.code_declare_var(name="num_recv_peers",
-                              rhs="ncptl_queue_length(thisev->s.reduce.all_receivers)",
-                              comment="Number of tasks involved in the multicast step",
-                              stack=reducecode)
-        self.code_declare_var(type="CONC_SEND_EVENT", name="sendev",
-                              comment="Send event to pass to conc_asend_msg()",
-                              stack=reducecode)
-        self.code_declare_var(type="CONC_RECV_EVENT", name="recvev",
-                              comment="Receive event to pass to conc_recv_msg()",
-                              stack=reducecode)
-        self.pushmany([
-            "",
-            " /* Implement a reduction tree to reduce a value to the first sender. */",
-            "memset ((void *)&sendev, 0, sizeof(CONC_SEND_EVENT));",
-            "sendev.size = msgsize;",
-            "sendev.buffer = thisev->s.reduce.buffer;",
-            "memset ((void *)&recvev, 0, sizeof(CONC_RECV_EVENT));",
-            "recvev.size = msgsize;",
-            "recvev.buffer = thisev->s.reduce.buffer;",
-            "if (thisev->s.reduce.sending) {",
-            " /* Receive asynchronously from our children. */",
-            "if ((sendrank+1)*2-1 < num_send_peers) {",
-            "recvev.source = send_peerlist[(sendrank+1)*2-1];",
-            "conc_arecv_msg (&commstate[COMMSTATE_COLL], &recvev);",
-            "if ((sendrank+1)*2 < num_send_peers) {",
-            "recvev.source = send_peerlist[(sendrank+1)*2];",
-            "conc_arecv_msg (&commstate[COMMSTATE_COLL], &recvev);",
-            "}",
-            "conc_wait_all (&commstate[COMMSTATE_COLL]);",
-            "}",
-            "",
-            " /* Send synchronously to our parent. */",
-            "if (sendrank > 0) {",
-            "sendev.dest = send_peerlist[(sendrank-1)/2];",
-            "conc_send_msg (&commstate[COMMSTATE_COLL], &sendev);",
-            "}",
-            "else {",
-            " /* The root of the reduction sends to the root of the multicast. */",
-            "if (send_peerlist[0] != recv_peerlist[0]) {",
-            "sendev.dest = recv_peerlist[0];",
-            "conc_send_msg (&commstate[COMMSTATE_COLL], &sendev);",
-            "}"
-            "}"
-            "}"],
-                      stack=reducecode)
-        self.pushmany([
-            "",
-            " /* Implement a multicast tree to multicast from the first receiver. */",
-            "if (thisev->s.reduce.receiving) {",
-            "if (recvrank == 0 && send_peerlist[0] != recv_peerlist[0]) {",
-            " /* The root of the multicast receives from the root of the reduction. */",
-            "recvev.source = send_peerlist[0];",
-            "conc_recv_msg (&commstate[COMMSTATE_COLL], &recvev);",
-            "}",
-            "",
-            "if (recvrank > 0) {",
-            " /* Receive synchronously from our parent. */",
-            "recvev.source = recv_peerlist[(recvrank-1)/2];",
-            "conc_recv_msg (&commstate[COMMSTATE_COLL], &recvev);",
-            "}",
-            "if ((recvrank+1)*2-1 < num_recv_peers) {",
-            " /* Send asynchronously to our left child. */",
-            "sendev.dest = recv_peerlist[(recvrank+1)*2 - 1];",
-            "conc_asend_msg (&commstate[COMMSTATE_COLL], &sendev);",
-            "if ((recvrank+1)*2 < num_recv_peers) {",
-            " /* Send asynchronously to our right child. */",
-            "sendev.dest = recv_peerlist[(recvrank+1)*2];",
-            "conc_asend_msg (&commstate[COMMSTATE_COLL], &sendev);",
-            "}",
-            "",
-            " /* Wait for any blocked sends to complete. */",
-            "conc_wait_all (&commstate[COMMSTATE_COLL]);",
-            "}",
-            "}"],
-                      stack=reducecode)
-        self.push("}", reducecode)
-        return reducecode
+        return ["conc_reduce (&commstate[COMMSTATE_COLL], &thisev->s.reduce);"]

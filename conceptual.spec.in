@@ -4,10 +4,10 @@
 ###################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -53,11 +53,13 @@ Summary: coNCePTuaL: A Network Correctness and Performance Testing Language
 Version: @VERSION@
 Release: 1
 Source0: %{name}-%{version}.tar.gz
+Vendor: Los Alamos National Laboratory
+URL: http://conceptual.sourceforge.net/
 License: LANL
 Group: Development/Languages
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
-Requires: python >= 2.2
-BuildRequires: texinfo, python >= 2.2
+Requires: python >= 2.2, openmpi-devel
+BuildRequires: texinfo, python >= 2.2, openmpi-devel
 
 %description
 coNCePTuaL is a domain-specific programming language for rapidly

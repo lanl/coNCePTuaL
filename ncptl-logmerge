@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -289,7 +289,7 @@ sub compare_lines ()
     foreach my $fnum (0 .. $#inputdata) {
         $lineno[$fnum]++;
     }
-    
+
     # Return the synchronization line.
     return $inputdata[0]->[$lineno[0]-1];
 }
@@ -360,11 +360,11 @@ foreach my $fnum (0 .. $#inputdata) {
     $inputdata[$fnum] =~ s/^\# ={19}/"# " . "=" x 26/gem;
 
     # Find the processor number.
-    if ($inputdata[$fnum] =~ /^\# Processor \(0<=P<tasks\): (\d+)/m) {
+    if ($inputdata[$fnum] =~ /^\# Rank \(0<=P<tasks\): (\d+)/m) {
         push @procnum, $1;
     }
     else {
-        die "${progname}: No processor number found in $inputfiles[$fnum]\n";
+        die "${progname}: No process rank found in $inputfiles[$fnum]\n";
     }
 
     # Split the result into lines for more convenient comparisons across files.
@@ -379,7 +379,7 @@ foreach my $fnum (0 .. $#inputdata) {
 @lineno = (0) x @inputdata;
 foreach (1 .. 7) {
     my $sync_line = compare_lines();
-    push @outputdata, $sync_line if !$simplification;
+    push @outputdata, $sync_line if defined $sync_line && !$simplification;
 }
 
 # Output the merged file.
@@ -553,12 +553,12 @@ a coNCePTuaL program.  It is not a general-purpose file combiner nor
 does it accept its own output as input.  Unrecognized input files
 cause B<ncptl-logmerge> to abort with the preceding error message.
 
-=item C<No processor number found in> I<filename>
+=item C<No process rank found in> I<filename>
 
-B<ncptl-logmerge> needs to map filenames to processor numbers to
-indicate which processors produced which lines of output.  If an input
-file does not contain a C<Processor (0E<lt>=PE<lt>tasks)> comment,
-B<ncptl-logmerge> aborts with the preceding error message.
+B<ncptl-logmerge> needs to map filenames to process ranks to indicate
+which ranks produced which lines of output.  If an input file does not
+contain a C<Rank (0E<lt>=PE<lt>tasks)> comment, B<ncptl-logmerge>
+aborts with the preceding error message.
 
 =back
 

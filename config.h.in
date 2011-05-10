@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -71,6 +71,9 @@
 
 /* Define as the name of the CPU on which coNCePTuaL applications will run. */
 #undef CPU_TYPE
+
+/* Define as a special file containing a Cray XT node ID. */
+#undef CRAY_XT_NID_FILE
 
 /* Define as the number of times the cycle counter increments per microsecond
    (often equal to the clock speed in MHz). */
@@ -142,7 +145,7 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
-/* Define to 1 if `cap_version' is member of `ELAN_CAPABILITY'. */
+/* Define to 1 if `cap_version' is a member of `ELAN_CAPABILITY'. */
 #undef HAVE_ELAN_CAPABILITY_CAP_VERSION
 
 /* Define unless using the symbol `environ' results in a link error. */
@@ -156,6 +159,9 @@
 
 /* Define to 1 if you have the `fmod' function. */
 #undef HAVE_FMOD
+
+/* Define to 1 if you have the `fork' function. */
+#undef HAVE_FORK
 
 /* Define to 1 if you have the `getcwd' function. */
 #undef HAVE_GETCWD
@@ -198,6 +204,12 @@
 
 /* Define to 1 if you have the `get_cycles' function. */
 #undef HAVE_GET_CYCLES
+
+/* Define to 1 if you have the `glob' function. */
+#undef HAVE_GLOB
+
+/* Define to 1 if you have the <glob.h> header file. */
+#undef HAVE_GLOB_H
 
 /* Define to 1 if you have the <gnugetopt.h> header file. */
 #undef HAVE_GNUGETOPT_H
@@ -341,6 +353,9 @@
 /* Define if Cray XT mesh coordinates are available. */
 #undef HAVE_RCAMESHCOORD
 
+/* Define if the Cray XT mesh topology is available. */
+#undef HAVE_RCAMESHTOPOLOGY
+
 /* Define to 1 if you have the <rca_lib.h> header file. */
 #undef HAVE_RCA_LIB_H
 
@@ -395,6 +410,9 @@
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
 
+/* Define to 1 if you have the `strcasestr' function. */
+#undef HAVE_STRCASESTR
+
 /* Define to 1 if you have the `strerror' function. */
 #undef HAVE_STRERROR
 
@@ -422,7 +440,7 @@
 /* Define if you have the `CuAt' struct. */
 #undef HAVE_STRUCT_CUAT
 
-/* Define to 1 if `h_name' is member of `struct hostent'. */
+/* Define to 1 if `h_name' is a member of `struct hostent'. */
 #undef HAVE_STRUCT_HOSTENT_H_NAME
 
 /* Define to 1 if you have the `sysconf' function. */
@@ -500,6 +518,12 @@
 /* Define if stdarg.h defines a va_copy() macro. */
 #undef HAVE_VA_COPY
 
+/* Define to 1 if you have the `vfork' function. */
+#undef HAVE_VFORK
+
+/* Define to 1 if you have the <vfork.h> header file. */
+#undef HAVE_VFORK_H
+
 /* Define to 1 if you have the `vfprintf' function. */
 #undef HAVE_VFPRINTF
 
@@ -511,6 +535,12 @@
 
 /* Define to 1 if you have the <windows.h> header file. */
 #undef HAVE_WINDOWS_H
+
+/* Define to 1 if `fork' works. */
+#undef HAVE_WORKING_FORK
+
+/* Define to 1 if `vfork' works. */
+#undef HAVE_WORKING_VFORK
 
 /* Define if we're running on a CPU in the IA-32 family with 64-bit
    extensions. */
@@ -535,8 +565,15 @@
 /* Define as a memory-mappable HPET device. */
 #undef HPET_DEVICE
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* Define if a uint128_t must be fabricated out of two uint64_t values. */
 #undef MUST_FAKE_UINT128
+
+/* Define as the maximum value an ncptl_int can accept. */
+#undef NCPTL_INT_MAX
 
 /* Define as the minimum (i.e., most negative) value an ncptl_int can accept.
    */
@@ -566,6 +603,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
@@ -701,6 +741,9 @@
 /* If not already defined, then define as a datatype of *exactly* 64 bits. */
 #undef int64_t
 
+/* Define to `int' if <sys/types.h> does not define. */
+#undef pid_t
+
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef uid_t
 
@@ -718,6 +761,9 @@
 
 /* If not already defined, then define as a datatype of *exactly* 8 bits. */
 #undef uint8_t
+
+/* Define as `fork' if `vfork' does not work. */
+#undef vfork
 
 /*----- There should be no need to modify anything beyond this point. -----*/
 
@@ -853,5 +899,7 @@
 #ifdef FORCE_MPI_WTIME
 # include <mpi.h>
 #endif
-
+#ifdef HAVE_GLOB
+# include <glob.h>
+#endif
 #endif

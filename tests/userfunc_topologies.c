@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
  *
  * Ensure that ncptl_func_tree_parent(), ncptl_func_tree_child(),
- * ncptl_func_grid_neighbor(), ncptl_func_grid_coord(),
+ * ncptl_func_mesh_neighbor(), ncptl_func_mesh_coord(),
  * ncptl_func_knomial_parent(), and ncptl_func_knomial_child() all
  * work
  *
@@ -9,10 +9,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -113,6 +113,14 @@ int main (void)
      5,  6,  7,  4,
      9, 10, 11,  8,
      1,  2,  3,  0
+  };
+  ncptl_int partial_torus_neighbor_pos[] = {  /* Map to {+x, +y, +z} neighbor in a 4x3x2 mesh that wraps in y only */
+    17, 18, 19, -1,
+    21, 22, 23, -1,
+    13, 14, 15, -1,
+    -1, -1, -1, -1,
+    -1, -1, -1, -1,
+    -1, -1, -1, -1
   };
   ncptl_int parent2k[] = {      /* Map to parent in a 2-nomial tree */
     -1, 0,  0, 1,
@@ -224,12 +232,15 @@ int main (void)
     }
   debug_printf ("\n");
 
-  /* Test ncptl_func_grid_neighbor(). */
-  debug_printf ("\tTesting ncptl_func_grid_neighbor() ...\n");
+  /* Test ncptl_func_mesh_neighbor(). */
+  debug_printf ("\tTesting ncptl_func_mesh_neighbor() ...\n");
   for (i=0; i<(ncptl_int)(sizeof(mesh_neighbor_pos)/sizeof(ncptl_int)); i++) {
-    ncptl_int neighbor = ncptl_func_grid_neighbor (i, 0, 4, 3, 2, +1, +1, +1);
-    debug_printf ("\t   ncptl_func_grid_neighbor (%2" NICS
-                  ", 0, 4, 3, 2, +1, +1, +1) --> %3" NICS,
+    ncptl_int neighbor = ncptl_func_mesh_neighbor (4, 3, 2,
+                                                   0, 0, 0,
+                                                   i,
+                                                   +1, +1, +1);
+    debug_printf ("\t   ncptl_func_mesh_neighbor (4, 3, 2, 0, 0, 0, %2" NICS
+                  ", +1, +1, +1) --> %3" NICS,
                   i, neighbor);
     if (mesh_neighbor_pos[i] != neighbor) {
       debug_printf (" (should be %" NICS ")\n", mesh_neighbor_pos[i]);
@@ -239,9 +250,12 @@ int main (void)
       debug_printf ("\n");
   }
   for (i=0; i<(ncptl_int)(sizeof(torus_neighbor_pos)/sizeof(ncptl_int)); i++) {
-    ncptl_int neighbor = ncptl_func_grid_neighbor (i, 1, 4, 3, 2, +1, +1, +1);
-    debug_printf ("\t   ncptl_func_grid_neighbor (%2" NICS
-                  ", 1, 4, 3, 2, +1, +1, +1) --> %3" NICS,
+    ncptl_int neighbor = ncptl_func_mesh_neighbor (4, 3, 2,
+                                                   1, 1, 1,
+                                                   i,
+                                                   +1, +1, +1);
+    debug_printf ("\t   ncptl_func_mesh_neighbor (4, 3, 2, 1, 1, 1, %2" NICS
+                  ", +1, +1, +1) --> %3" NICS,
                   i, neighbor);
     if (torus_neighbor_pos[i] != neighbor) {
       debug_printf (" (should be %" NICS ")\n", torus_neighbor_pos[i]);
@@ -250,10 +264,25 @@ int main (void)
     else
       debug_printf ("\n");
   }
+  for (i=0; i<(ncptl_int)(sizeof(partial_torus_neighbor_pos)/sizeof(ncptl_int)); i++) {
+    ncptl_int neighbor = ncptl_func_mesh_neighbor (4, 3, 2,
+                                                   0, 1, 0,
+                                                   i,
+                                                   +1, +1, +1);
+    debug_printf ("\t   ncptl_func_mesh_neighbor (4, 3, 2, 0, 1, 0, %2" NICS
+                  ", +1, +1, +1) --> %3" NICS,
+                  i, neighbor);
+    if (partial_torus_neighbor_pos[i] != neighbor) {
+      debug_printf (" (should be %" NICS ")\n", partial_torus_neighbor_pos[i]);
+      RETURN_FAILURE();
+    }
+    else
+      debug_printf ("\n");
+  }
   debug_printf ("\n");
 
-  /* Test ncptl_func_grid_coord(). */
-  debug_printf ("\tTesting ncptl_func_grid_coord() ...\n");
+  /* Test ncptl_func_mesh_coord(). */
+  debug_printf ("\tTesting ncptl_func_mesh_coord() ...\n");
   for (z=0; z<GRIDDEPTH; z++)
     for (y=0; y<GRIDHEIGHT; y++)
       for (x=0; x<GRIDWIDTH; x++) {
@@ -262,19 +291,80 @@ int main (void)
 
         for (i=0; i<3; i++)
           coords[i] =
-            ncptl_func_grid_coord (taskID, i,
-                                   GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH);
-        debug_printf ("\t   ncptl_func_grid_coord (%2" NICS
-                      ", {0,1,2}, %d, %d, %d) --> {%" NICS ",%" NICS
-                      ",%" NICS "}",
-                      taskID, GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH,
+            ncptl_func_mesh_coord (GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH, taskID, i);
+        debug_printf ("\t   ncptl_func_mesh_coord (%d, %d, %d, %2" NICS
+                      ", {0,1,2}) --> {%" NICS ",%" NICS ",%" NICS "}",
+                      GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH, taskID,
                       coords[0], coords[1], coords[2]);
         if (x!=coords[0] || y!=coords[1] || z!=coords[2]) {
-          debug_printf (" (should be {%" NICS ",%" NICS ",%" NICS "}\n",
+          debug_printf (" (should be {%" NICS ",%" NICS ",%" NICS "})\n",
                         x, y, z);
           RETURN_FAILURE();
         }
         debug_printf ("\n");
+      }
+  debug_printf ("\n");
+
+  /* Test ncptl_func_mesh_distance(). */
+  debug_printf ("\tTesting ncptl_func_mesh_distance() ...\n");
+  for (z=0; z<GRIDDEPTH; z++)
+    for (y=0; y<GRIDHEIGHT; y++)
+      for (x=0; x<GRIDWIDTH; x++) {
+        ncptl_int taskID_1 = x + GRIDWIDTH*(y + GRIDHEIGHT*z);
+        ncptl_int xdelta, ydelta, zdelta;
+
+        for (zdelta=0; zdelta<GRIDDEPTH; zdelta++)
+          for (ydelta=0; ydelta<GRIDHEIGHT; ydelta++)
+            for (xdelta=0; xdelta<GRIDWIDTH; xdelta++) {
+              ncptl_int newz = (z + zdelta) % GRIDDEPTH;
+              ncptl_int newy = (y + ydelta) % GRIDHEIGHT;
+              ncptl_int newx = (x + xdelta) % GRIDWIDTH;
+              ncptl_int abs_xdelta = (x <= newx) ? xdelta : GRIDWIDTH - xdelta;
+              ncptl_int abs_ydelta = (y <= newy) ? ydelta : GRIDHEIGHT - ydelta;
+              ncptl_int abs_zdelta = (z <= newz) ? zdelta : GRIDDEPTH - zdelta;
+              ncptl_int taskID_2 = newx + GRIDWIDTH*(newy + GRIDHEIGHT*newz);
+              ncptl_int expected_meshdist;
+              ncptl_int meshdist;
+              ncptl_int expected_torusdist;
+              ncptl_int torusdist;
+
+              /* Determine the correct distances. */
+              expected_meshdist = abs_xdelta + abs_ydelta + abs_zdelta;
+              expected_torusdist = 0;
+              expected_torusdist += abs_xdelta <= GRIDWIDTH/2 ? abs_xdelta : GRIDWIDTH - abs_xdelta;
+              expected_torusdist += abs_ydelta <= GRIDHEIGHT/2 ? abs_ydelta : GRIDHEIGHT - abs_ydelta;
+              expected_torusdist += abs_zdelta <= GRIDDEPTH/2 ? abs_zdelta : GRIDDEPTH - abs_zdelta;
+
+              /* Validate distance on a mesh. */
+              meshdist =
+                ncptl_func_mesh_distance (GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH,
+                                          0, 0, 0,
+                                          taskID_1, taskID_2);
+              debug_printf ("\t   ncptl_func_mesh_distance (%d, %d, %d, 0, 0, 0, %" NICS
+                            ", %" NICS ") --> %" NICS,
+                            GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH,
+                            taskID_1, taskID_2, meshdist);
+              if (meshdist != expected_meshdist) {
+                debug_printf (" (should be %" NICS ")\n", expected_meshdist);
+                RETURN_FAILURE();
+              }
+              debug_printf ("\n");
+
+              /* Validate distance on a full torus. */
+              torusdist =
+                ncptl_func_mesh_distance (GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH,
+                                          1, 1, 1,
+                                          taskID_1, taskID_2);
+              debug_printf ("\t   ncptl_func_mesh_distance (%d, %d, %d, 1, 1, 1, %" NICS
+                            ", %" NICS ") --> %" NICS,
+                            GRIDWIDTH, GRIDHEIGHT, GRIDDEPTH,
+                            taskID_1, taskID_2, torusdist);
+              if (torusdist != expected_torusdist) {
+                debug_printf (" (should be %" NICS ")\n", expected_torusdist);
+                RETURN_FAILURE();
+              }
+              debug_printf ("\n");
+            }
       }
   debug_printf ("\n");
 
@@ -316,6 +406,7 @@ int main (void)
         debug_printf ("\n");
     }
   }
+  debug_printf ("\n");
 
   /* Test ncptl_func_knomial_child(). */
   knomial_sizes[0] = sizeof(child2k)/(3*sizeof(ncptl_int));

@@ -2,7 +2,7 @@
 # Based on the LSE code by Monk et al. (MITRE)
 # Converted to coNCePTuaL by Scott Pakin <pakin@lanl.gov>
 
-Require language version "1.2".
+Require language version "1.3".
 
 # Parse the command line.
 reps is "Number of repetitions of each pipeline flow" and comes from
@@ -33,8 +33,8 @@ Let num_rows be num_tasks/num_cols while {
     # task in the previous row then receive the data.
     for each x_delta in {0, ..., num_cols-1} {
       task src such that src>=num_cols sends a 0 byte message to unsuspecting task
-        torus_neighbor(src, num_cols, -x_delta, num_rows, -1) then
-      task torus_neighbor(src, num_cols, x_delta, num_rows, +1) receives a
+        mesh_neighbor((num_cols*, num_rows*), src, (-x_delta, -1)) then
+      task mesh_neighbor((num_cols*, num_rows*), src, (x_delta, +1)) receives a
         msgsize byte message from task src such that src<num_tasks-num_cols
     } then
 
@@ -46,10 +46,10 @@ Let num_rows be num_tasks/num_cols while {
     # All tasks except those in the last row await a data request from
     # each task in the subsequent row then provide the data.
     for each x_delta in {0, ..., num_cols-1} {
-      task torus_neighbor(src, num_cols, -x_delta, num_rows, -1) receives
+      task mesh_neighbor((num_cols*, num_rows*), src, (-x_delta, -1)) receives
         a 0 byte message from task src such that src>=num_cols then
       task src such that src<num_tasks-num_cols sends a msgsize byte message to
-        unsuspecting task torus_neighbor(src, num_cols, x_delta, num_rows, +1)
+        unsuspecting task mesh_neighbor((num_cols*, num_rows*), src, (x_delta, +1))
     } then
 
     # Log a histogram and various statistics of the interarrival times.

@@ -1,4 +1,4 @@
-This is conceptual.info, produced by makeinfo version 4.12 from
+This is conceptual.info, produced by makeinfo version 4.13 from
 conceptual.texi.
 
 INFO-DIR-SECTION Programming
@@ -8,7 +8,537 @@ END-INFO-DIR-ENTRY
 
    This file describes the coNCePTuaL language and tool suite.
 
-   Copyright (C) 2009, Los Alamos National Security, LLC
+   Copyright (C) 2011, Los Alamos National Security, LLC
+
+
+File: conceptual.info,  Node: Reducing,  Next: Synchronizing,  Prev: Multicasting,  Up: Communication statements
+
+4.4.6 Reducing
+--------------
+
+A reduction operation is, in a sense, a complementary operation to a
+multicast (*note Multicasting::).  While a multicast delivers a message
+from one source to multiple targets, a reduction combines messages from
+multiple sources (by applying a commutative/associative operator to
+corresponding elements) to a single target.  Reduction is a collective
+operation: all parties collaborate to calculate the reduced value(s).
+As an example, if tasks 0, 1, and 2 collectively reduce the messages
+{5, 1}, {2, 7}, and {3, 4} to task 2 using the "+" operator, then
+task 2 will receive the message {10, 12}.  In fact, CONCEPTUAL's
+implementation of reductions also supports reductions to multiple
+targets with each target receiving a copy of the reduced value.
+
+   The following grammatical rules define CONCEPTUAL's many-to-many and
+many-to-one reduction facilities:
+
+<REDUCE_STMT>   ::=   <SOURCE_TASK>
+                      `REDUCES'
+                      <REDUCE_MESSAGE_SPEC>
+                      `TO' <SOURCE_TASK>
+                      [`WHO RECEIVES THE RESULT' <REDUCE_TARGET_MESSAGE_SPEC>]
+                |     <SOURCE_TASK>
+                      `REDUCES'
+                      <REDUCE_MESSAGE_SPEC>
+                      [`TO' <REDUCE_MESSAGE_SPEC>]
+
+   <REDUCE_MESSAGE_SPEC> is defined in *note Message specifications::.
+Both the data providers and data receivers are specified as <SOURCE_TASK>
+nonterminals (*note Source tasks::).  This design enables any set of
+tasks to provide the data to reduce and any disjoint or overlapping set
+of tasks to receive the reduced data.  As with all communication in
+CONCEPTUAL, message contents are opaque.  Furthermore, the grammar does
+not currently enable the programmer to specify the
+commutative/associative operator to use.
+
+   A simple many-to-one reduction can be expressed in CONCEPTUAL with
+`ALL TASKS REDUCE 5 DOUBLEWORDS TO TASK 0'.  Note that the definition
+of <REDUCE_MESSAGE_SPEC> and <REDUCE_TARGET_MESSAGE_SPEC> (*note
+Message specifications::) supports reductions only of `INTEGER's and `DOUBLEWORD's,
+not arbitrary <DATA_TYPE> values.  Omitting the optional ``TO' <REDUCE_MESSAGE_SPEC>',
+as in `TASKS rt SUCH THAT 3 DIVIDES rt REDUCE AN INTEGER', specifies
+that all tasks performing the reduction will receive a copy of the
+reduced value.  The sources and targets can also be designated
+explicitly as in `TASKS xyz SUCH THAT xyz<num_tasks/2 REDUCE 100
+DOUBLEWORDS TO TASKS xyz+num_tasks/4'.  When that code is run with
+8 tasks, tasks 0-3 reduce 100 doublewords (800 bytes) apiece and
+tasks 2-5 each receive identical copies of the 100 doublewords of
+reduced data.
+
+   Message data used with `REDUCES' can be transfered DATA TOUCHING
+`WITH DATA TOUCHING' (but not `WITH VERIFICATION'); data alignment can
+be specified; and, messages buffers can be named explicitly.  The
+following example represents fairly complex many-to-many usage of `REDUCES':
+
+     TASKS rsrc SUCH THAT rsrc IS EVEN REDUCE 32 64-BYTE-ALIGNED INTEGERS
+     WITH DATA TOUCHING FROM BUFFER 2 TO TASKS rtarg SUCH THAT
+     rtarg<num_tasks/4 \/ rtarg>(3*num_tasks)/4 WHO RECEIVE THE RESULT AS
+     32 UNIQUE PAGE-ALIGNED INTEGERS WITHOUT DATA TOUCHING.
+
+
+File: conceptual.info,  Node: Synchronizing,  Prev: Reducing,  Up: Communication statements
+
+4.4.7 Synchronizing
+-------------------
+
+CONCEPTUAL enables sets of tasks to perform "barrier synchronization".
+The semantics are that no task can finish synchronizing until all tasks
+have started synchronizing.  The syntax is as follows:
+
+<SYNC_STMT>   ::=   <SOURCE_TASK>
+                    `SYNCHRONIZES'
+
+   A <SYNC_STMT> can be used to ensure that one set of statements has
+completed before beginning another set.  For example, a CONCEPTUAL
+program might have a set of tasks post a series of asynchronous
+receives (*note Receiving::), then make `ALL TASKS SYNCHRONIZE' before
+having another set of tasks perform the corresponding `UNSUSPECTING'
+sends (*note Sending::).  This procedure ensures that all of the target
+tasks are ready to receive before the source tasks start sending to
+them.
+
+
+File: conceptual.info,  Node: I/O statements,  Next: Counter and timer statements,  Prev: Communication statements,  Up: Grammar
+
+4.5 I/O statements
+==================
+
+CONCEPTUAL provides two statements for presenting information.  One
+statement writes simple messages to the standard output device and is
+intended to be used for providing status information during the run of
+a program.  The other statement provides a powerful mechanism for
+storing performance and correctness data to a log file.
+
+* Menu:
+
+* Utilizing log-file comments::  Treating log-file comments as a database
+* Writing to standard output::  Displaying status messages
+* Writing to a log file::       Storing test results
+
+
+File: conceptual.info,  Node: Utilizing log-file comments,  Next: Writing to standard output,  Prev: I/O statements,  Up: I/O statements
+
+4.5.1 Utilizing log-file comments
+---------------------------------
+
+<OUTPUT_STMT>s and <LOG_STMT>s have limited access to the <KEY:VALUE>
+pairs that are written as comments at the top of every log file as
+shown in *note Log-file format::.  Given a key, KEY, the string
+expression `THE VALUE OF KEY' represents the value associated with that
+key or the empty string if KEY does not appear in the log-file comments:
+
+<STRING_OR_LOG_COMMENT>   ::=   <STRING>
+                          |     `THE VALUE OF' <STRING>
+
+That is, `"CPU frequency"' means the literal string "CPU frequency"
+while `THE VALUE OF "CPU frequency"' translates to a string like
+"1300000000 Hz (1.3 GHz)".  Environment variables are also considered
+keys and are therefore acceptable input to a VALUE OF `THE VALUE OF'
+construct.
+
+
+File: conceptual.info,  Node: Writing to standard output,  Next: Writing to a log file,  Prev: Utilizing log-file comments,  Up: I/O statements
+
+4.5.2 Writing to standard output
+--------------------------------
+
+CONCEPTUAL's `OUTPUT' keyword is used to write a message from one or
+more source tasks (*note Source tasks::) to the standard output device.
+This is useful for providing progress reports during the execution of
+long-running CONCEPTUAL programs.  An <OUTPUT_STMT> looks like this:
+
+<OUTPUT_STMT>   ::=   <SOURCE_TASK>
+                      `OUTPUTS'
+                      <EXPR> | <STRING_OR_LOG_COMMENT>
+                      [`AND'   <EXPR> | <STRING_OR_LOG_COMMENT>]*
+
+   The following are some sample <OUTPUT_STMT>s:
+
+     TASK 0 OUTPUTS "Hello, world!"
+
+     TASKS nr SUCH THAT nr>0 OUTPUT nr AND "'s parent is " AND nr>>1 AND
+     " and its children are " AND nr<<1 AND " and " AND nr<<1+1
+
+     ALL TASKS me OUTPUT "Task " AND me AND " is running on host " AND THE
+     VALUE OF "Host name" AND " and plans to send to task " AND (me+1) MOD
+     num_tasks
+
+   `OUTPUT' does not implicitly output spaces between terms.  Hence,
+`OUTPUT "Yes" AND "No"' will output "YesNo", not "Yes No".  Although it
+is unlikely that a program would ever need to output two arithmetic
+expressions with no intervening text, an empty string can be used for
+this purpose: `OUTPUT 6 AND "" AND 3'.
+
+   An <OUTPUT_STMT> implicitly outputs a newline character at the end.
+Additional newline characters can be output by embedding `\n' in a
+string.  (*note Primitives::.)  CONCEPTUAL does not provide a means for
+suppressing the newline, however.
+
+
+File: conceptual.info,  Node: Writing to a log file,  Prev: Writing to standard output,  Up: I/O statements
+
+4.5.3 Writing to a log file
+---------------------------
+
+After performing a network correctness or performance test it is almost
+always desirable to store the results in a file.  CONCEPTUAL has
+language support for writing tabular data to a log file.  The <LOG_STMT>
+command does the bulk of the work:
+
+<LOG_STMT>   ::=   <SOURCE_TASK>
+                   `LOGS'
+                   <AGGR_EXPR> `AS' <STRING_OR_LOG_COMMENT>
+                   [`AND' <AGGR_EXPR> `AS' <STRING_OR_LOG_COMMENT>]*
+
+   The idea behind a <LOG_STMT> is that a set of source tasks (*note
+Source tasks::) log an aggregate expression (*note Aggregate
+expressions::) to a log file under the column heading <STRING_OR_LOG_COMMENT>.
+Each task individually maintains a separately named log file so there
+is no ambiguity over which task wrote which entries.
+
+   Each (static) `LOGS' statement in a CONCEPTUAL program specifies one
+or more columns of the log file.  Every dynamic execution of a `LOGS'
+statement writes a single row to the log file.  A single `LOGS'
+statement should suffice for most CONCEPTUAL programs.
+
+   The following are some examples of <LOG_STMT>s:
+
+     ALL TASKS LOG bit_errors AS "Bit errors"
+
+     TASK 0 LOGS THE msgsize AS "Bytes" AND
+                 THE MEDIAN OF (1E6*bytes_sent)/(1M*elapsed_usecs) AS "MB/s"
+
+The first example produces a log file like the following:
+
+     "Bit errors"
+     "(all data)"
+     3
+
+The second example produces a log file like this:
+
+     "Bytes","MB/s"
+     "(only value)","(median)"
+     65536,179.9416266
+
+Note that in each log file, the CONCEPTUAL run-time system writes two
+rows of column headers for each column.  The first row contains <STRING_OR_LOG_COMMENT>
+as is.  The second row describes the <AGGR_FUNC> (*note Aggregate
+functions::) used to aggregate the data.  One or more rows of data
+follow.
+
+   Assume that the second <LOG_STMT> presented above appears within a
+loop (*note Iterating::).  It is therefore important to include the `THE'
+keyword before `msgsize' to assert that the expression `msgsize' is
+constant across invocations of the <LOG_STMT> and that, consequently,
+only a single row of data should be written to the log file.  Using
+`msgsize' without the `THE' would produce a column of data with one row
+per <LOG_STMT> invocation:
+
+     "Bytes","MB/s"
+     "(all data)","(median)"
+     65536,179.9416266
+     65536,
+     65536,
+     65536,
+     65536,
+          .
+          .
+          .
+
+   The rules that determine how `LOGS' statements produce rows and
+columns of a log file are presented below:
+
+  1. Each _static_ `LOGS' statement (and `AND' clause within a `LOGS'
+     statement) in a program produces a unique column.
+
+  2. Each _dynamic_ execution of a `LOGS' statement appends a row to
+     the column(s) it describes.
+
+  3. Each top-level complex statement (*note Complete programs::)
+     produces a new table in the log file.
+
+   Note that the choice of column name is inconsequential for
+determining what columns are written to the log file:
+
+     TASK 0 LOGS 314/100 AS "Pi" AND 22/7 AS "Pi"
+
+     "Pi","Pi"
+     "(all data)","(all data)"
+     3.14,3.142857143
+
+* Menu:
+
+* Computing aggregates::        Forcing aggregates to compute a result
+
+
+File: conceptual.info,  Node: Computing aggregates,  Prev: Writing to a log file,  Up: Writing to a log file
+
+Computing aggregates
+....................
+
+What if `msgsize' takes on a number of values throughout the execution
+of the program and for each value a number of runs is performed?  How
+would one log the median of each set of data?  Using `THE msgsize'
+won't work because the message size is not constant.  Using `msgsize'
+alone won't work either because CONCEPTUAL would then take the median
+of the times gathered across _all_ message sizes, which is undesirable.
+The solution is for the program to specify explicitly when aggregate
+functions (`MEDIAN' and all of the other functions listed in *note
+Aggregate functions::) compute a value:
+
+<FLUSH_STMT>   ::=   <SOURCE_TASK>
+                     `COMPUTES AGGREGATES'
+
+   The intention is that an inner loop might `LOG' data after every
+iteration and an outer loop would `COMPUTE AGGREGATES' after each
+iteration.
+
+
+File: conceptual.info,  Node: Counter and timer statements,  Next: Complex statements,  Prev: I/O statements,  Up: Grammar
+
+4.6 Counter and timer statements
+================================
+
+Critical to any performance or correctness test is the ability to
+specify which operations represent the test itself and should be
+measured and which are setup or other uninteresting operations and
+should not.  CONCEPTUAL automatically maintains a number of
+"counters"--variables that represent message counts, byte counts,
+bit-error counts, and elapsed time.  The complete list is presented in
+*note Predeclared variables::.
+
+   Normally, a CONCEPTUAL program performs some setup operations, `RESETS
+ITS COUNTERS' to zero, executes a communication pattern, and logs some
+function of the resulting changes in counter values (*note Writing to a
+log file::).  If additional setup work needs to be performed during an
+experiment, a program can COUNTERS `STORE ITS COUNTERS', perform any
+arbitrarily costly operations, ITS COUNTERS `RESTORE ITS COUNTERS', and
+continue the experiment as if those operations never happened.
+
+   Some CONCEPTUAL statements implicitly store and restore counters.
+For example, the `LOGS' statement *note Writing to a log file::) takes
+up no time from the program's perspective, and counted loops (*note
+Counted loops::) bracket any warmup repetitions and post-warmup
+synchronizations between a counter store and restore so no delays, bit
+errors, or messaging operations contribute to the totals measured by
+the experiment.
+
+* Menu:
+
+* Resetting counters::          Clearing message, byte, and time tallies
+* Storing counter values::      Storing message, byte, and time tallies
+* Restoring counter values::    Restoring stored message, byte, and time tallies
+
+
+File: conceptual.info,  Node: Resetting counters,  Next: Storing counter values,  Prev: Counter and timer statements,  Up: Counter and timer statements
+
+4.6.1 Resetting counters
+------------------------
+
+At the start of an experiment, after all setup processing has
+completed, all tasks that will eventually log measurement results
+should zero out their counters:
+
+<RESET_STMT>   ::=   <SOURCE_TASK>
+                     `RESETS ITS COUNTERS'
+
+   Hence, writing `ALL TASKS RESET THEIR COUNTERS' causes each task to
+reset all of the variables listed in *note Predeclared
+variables::--with the exception of `num_tasks'--to zero.  Note that
+`ITS' and `THEIR', like `RESET' and `RESETS', are considered synonyms
+(*note Primitives::).
+
+
+File: conceptual.info,  Node: Storing counter values,  Next: Restoring counter values,  Prev: Resetting counters,  Up: Counter and timer statements
+
+4.6.2 Storing counter values
+----------------------------
+
+A program can store the current values of all of the variables listed
+in *note Predeclared variables:: as follows:
+
+<STORE_STMT>   ::=   <SOURCE_TASK>
+                     `STORES ITS COUNTERS'
+
+   For example, writing `TASK 0 STORES ITS COUNTERS' causes task 0 to
+store the current values of `elapsed_usecs', `total_msgs', `bit_errors',
+etc.  The values are not modified.  Note that `ITS' and `THEIR', like
+`STORE' and `STORES', are considered synonyms (*note Primitives::).
+
+
+File: conceptual.info,  Node: Restoring counter values,  Prev: Storing counter values,  Up: Counter and timer statements
+
+4.6.3 Restoring counter values
+------------------------------
+
+Counters can be restored to their most recently saved values with a <RESTORE_STMT>:
+
+<RESTORE_STMT>   ::=   <SOURCE_TASK>
+                       `RESTORES ITS COUNTERS'
+
+   For example, writing `TASKS t SUCH THAT 3 DIVIDES t RESTORE THEIR
+COUNTERS' causes every third task to replace `elapsed_usecs', `total_msgs', `bit_errors',
+etc. with the values stored by a corresponding <STORE_STMT> (*note
+Storing counter values::).  Note that `ITS' and `THEIR', like `RESTORE'
+and `RESTORES', are considered synonyms (*note Primitives::).
+
+   An important feature of `STORES' and `RESTORES' is that they can be
+nested.  That is, each `STORE' pushes a set of counter values on a
+stack, and each `RESTORE' pops a set of counter values from the stack.
+Consequently, one can write code like the following:
+
+     ALL TASKS RESET THEIR COUNTERS THEN                                 #  1
+     ALL TASKS COMPUTE FOR 2 SECONDS THEN                                #  2
+     ALL TASKS STORE THEIR COUNTERS THEN                                 #  3
+       ALL TASKS COMPUTE FOR 5 SECONDS THEN                              #  4
+       ALL TASKS STORE THEIR COUNTERS THEN                               #  5
+         ALL TASKS COMPUTE FOR 9 SECONDS THEN                            #  6
+         ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 16" THEN   #  7
+       ALL TASKS RESTORE THEIR COUNTERS THEN                             #  8
+       ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 7" THEN      #  9
+       ALL TASKS STORE THEIR COUNTERS THEN                               # 10
+         ALL TASKS COMPUTE FOR 1 SECOND THEN                             # 11
+         ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 8" THEN    # 12
+       ALL TASKS RESTORE THEIR COUNTERS THEN                             # 13
+       ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 7" THEN      # 14
+       ALL TASKS RESTORE THEIR COUNTERS THEN                             # 15
+     ALL TASKS LOG ROUND(elapsed_usecs/1E6) AS "Should be 2".            # 16
+
+   Indentation is used in the above to clarify which `RESTORE'
+operations match which `STORE' operations.  The first `STORE' statement
+(line 3) occurs after 2 seconds have elapsed.  The second `STORE'
+statement (line 5) occurs after 2+5=7 seconds have elapsed.  When the `LOG'
+statement in line 7 is executed, it reports that 2+5+9=16 seconds have
+elapsed.  The `RESTORE' statement in line 8 then "winds back the clock"
+to the previous `STORE' statement, the one in line 5.  The next `LOG'
+statement (line 9) executes as if lines 5-8 never ran and therefore
+reports that only 2+5=7 seconds have elapsed.  The `LOG' statement in
+line 12 sees an additional second of elapsed time due to line 11's `COMPUTE'
+statement, for a total of 2+5+1=8 seconds.  However, the `RESTORE' in
+line 13 makes it as if that `COMPUTE' never happened.  Consequently,
+the `LOG' statement in line 14 reports that only 2+5=7 seconds have
+elapsed.  Finally, the `RESTORE' in line 15 sets the timer to the value
+it had all the way back at line 3.  The final `LOG' statement (line 16)
+therefore reports that only 2 seconds have elapsed because line 2
+contains the only `COMPUTE' statement whose execution time has not been
+discarded.
+
+   Because the `interpret' backend and those derived from it use
+logical time instead of physical time, the code listed above will
+report all zeroes.  Replacing `ROUND(elapsed_usecs/1E6)' with just
+`elapsed_usecs' will log the logical times {6,5,8,7,3}.  That is, the `LOG'
+statement in line 7 sees six events after the initial `RESET';(1) the `LOG'
+statement in line 9 sees only five events after the `RESET'
+(corresponding to lines 2, 3, 4, 5, and 9); and so forth up to the final `LOG'
+statement, which sees only three events: those produced by lines 2, 3,
+and 16.
+
+   A program that calls `RESTORE' more times than it calls `STORE' will
+abort with a fatal run-time error.
+
+   ---------- Footnotes ----------
+
+   (1) Each statement in the example corresponds to a single event and
+therefore counts as one unit of time.
+
+
+File: conceptual.info,  Node: Complex statements,  Next: Other statements,  Prev: Counter and timer statements,  Up: Grammar
+
+4.7 Complex statements
+======================
+
+The CONCEPTUAL statements presented in *note Communication statements::,
+*note I/O statements::, and *note Other statements:: are all known as
+"simple statements".  This section expands upon the statements already
+introduced by presenting "complex statements".  In its most basic form,
+a <COMPLEX_STMT> is just a <SIMPLE_STMT>.  However, the primary purpose
+of a <COMPLEX_STMT> is to juxtapose simple statements and other complex
+statements into more expressive forms.
+
+   Complex statements take the following form:
+
+<COMPLEX_STMT>   ::=   <SIMPLE_STMT> [`THEN' <COMPLEX_STMT>]
+
+   The constituent simple statements include `FOR' loops, `LET'
+bindings, `IF' conditionals, grouping constructs, and all of the
+statements introduced in *note Communication statements::, *note I/O
+statements::, and *note Other statements:::
+
+<SIMPLE_STMT>   ::=   `FOR' <EXPR> `REPETITIONS'   [`PLUS' <EXPR> `WARMUP' `REPETITIONS'
+                       [`AND A SYNCHRONIZATION']]   <SIMPLE_STMT>
+                |      `FOR EACH' <IDENT> `IN' <RANGE>   [`,' <RANGE>]* <SIMPLE_STMT>
+                |      `FOR' <EXPR> <TIME_UNIT> <SIMPLE_STMT>
+                |      `LET' <LET_BINDING> [`AND' <LET_BINDING>]*   `WHILE'
+                      <SIMPLE_STMT>
+                |      `IF' <REL_EXPR> `THEN' <SIMPLE_STMT>   [`OTHERWISE'
+                      <SIMPLE_STMT>]
+                |     `{' [<COMPLEX_STMT>] `}'
+                |     <SEND_STMT>
+                |     <RECEIVE_STMT>
+                |     <WAIT_STMT>
+                |     <MCAST_STMT>
+                |     <REDUCE_STMT>
+                |     <SYNC_STMT>
+                |     <OUTPUT_STMT>
+                |     <LOG_STMT>
+                |     <FLUSH_STMT>
+                |     <RESET_STMT>
+                |     <STORE_STMT>
+                |     <RESTORE_STMT>
+                |     <ASSERT_STMT>
+                |     <DELAY_STMT>
+                |     <TOUCH_STMT>
+                |     <TOUCH_BUFFER_STMT>
+                |     <PROCESSOR_STMT>
+                |     <BACKEND_STMT>
+
+   The remainder of this section describes in turn the `THEN' construct
+and each of the just-introduced <SIMPLE_STMT> types.
+
+* Menu:
+
+* Combining statements::        Performing multiple statements in sequence
+* Iterating::                   Performing a statement multiple times
+* Binding variables::           Lending values to variables
+* Conditional execution::       Executing statements only if a condition is met
+* Grouping::                    Treating multiple statements as one
+
+
+File: conceptual.info,  Node: Combining statements,  Next: Iterating,  Prev: Complex statements,  Up: Complex statements
+
+4.7.1 Combining statements
+--------------------------
+
+The `THEN' keyword separates statements that are to be performed
+sequentially.  For example, a simple ping-pong communication can be
+expressed as follows:
+
+     ALL TASKS RESET ALL COUNTERS THEN
+     TASK 0 SENDS A 0 BYTE MESSAGE TO TASK 1 THEN
+     TASK 1 SENDS A 0 BYTE MESSAGE TO TASK 0 THEN
+     TASK 0 LOGS elapsed_usecs/2 AS "One-way latency"
+
+   There is no implicit intertask synchronization across `THEN'
+statements.  Consequently, the two communications specified in the
+following statement will be performed concurrently:
+
+     TASK 0 ASYNCHRONOUSLY SENDS AN 8 KILOBYTE MESSAGE TO TASK 1 THEN
+     TASK 1 ASYNCHRONOUSLY SENDS AN 8 KILOBYTE MESSAGE TO TASK 0 THEN
+     ALL TASKS AWAIT COMPLETION
+
+
+File: conceptual.info,  Node: Iterating,  Next: Binding variables,  Prev: Combining statements,  Up: Complex statements
+
+4.7.2 Iterating
+---------------
+
+CONCEPTUAL provides a variety of looping constructs designed to
+repeatedly execute a <SIMPLE_STMT>.
+
+* Menu:
+
+* Counted loops::               Iterating for a given number of iterations
+* Range loops::                 Iterating over lists of numbers
+* Timed loops::                 Iterating for a given length of time
 
 
 File: conceptual.info,  Node: Counted loops,  Next: Range loops,  Prev: Iterating,  Up: Iterating
@@ -274,15 +804,42 @@ There are four ways to bind a value to a variable:
 
 where <LET_BINDING> is defined as follows:
 
-<LET_BINDING>   ::=   <IDENT>                          
-                      `BE'                             
-                      <EXPR> | `A RANDOM TASK' [       `OTHER THAN' <EXPR>
-                                                   |   `LESS THAN' <EXPR> [`BUT NOT' <EXPR>]
-                                                   |   `GREATER THAN' <EXPR> [`BUT NOT' <EXPR>]
-                                                   |   `IN' `[' <EXPR> `,' <EXPR> `]' [`BUT
-                                                       NOT' <EXPR>]]
+<LET_BINDING>   ::=   <IDENT> `BE'       expr
+                                     |   <SOURCE_TASK>
+                                     |   `A RANDOM TASK' [<RANDOM_TASK_CONSTRAINTS>]
 
-   Here are some examples of `LET':
+   The optional <RANDOM_TASK_CONSTRAINTS> limits the set of tasks from
+which `A RANDOM TASK' selects:
+
+<RANDOM_TASK_CONSTRAINTS>   ::=   `OTHER THAN' <EXPR>
+                            |     `LESS THAN' <EXPR> [`BUT NOT' <EXPR>]
+                            |     `GREATER THAN' <EXPR> [`BUT NOT' <EXPR>]
+                            |     `IN' `[' <EXPR> `,' <EXPR> `]' [`BUT NOT' <EXPR>]
+
+   An <IDENT> bound using the form ``LET' <IDENT> `BE' <SOURCE_TASK>'
+represents a group of tasks and must therefore be accessed using the `TASK
+GROUP' construct (*note Source tasks::).  For example, in the CONCEPTUAL
+program
+
+     LET left BE TASKS t SUCH THAT t < num_tasks/2 WHILE TASK GROUP left
+     SENDS A 1 KILOBYTE MESSAGE TO TASK num_tasks - left - 1
+
+the ``TASK GROUP' left' expression defines `left' as the group of tasks
+described by ``TASKS' t `SUCH THAT' t < num_tasks/2'.  The `left' in
+`num_tasks - left - 1' refers back to _that_ definition of `left', not
+the let-bound `left'.  The `t' in the let-binding is used only to
+specify the group of tasks that will be bound to `left'.  Its scope is
+limited to the expression `t < num_tasks/2'.  In other words, the
+preceding example is equivalent to
+
+     TASKS left SUCH THAT left < num_tasks/2 SEND A 1 KILOBYTE MESSAGE TO
+     TASK num_tasks - left - 1
+
+   The advantage of using `LET' to define a task group is that the
+same--possible complex--description of a set of tasks can be reused in
+multiple statements without having to type it repeatedly.
+
+   Here are some further examples of `LET':
 
      LET reps BE 3 WHILE FOR reps REPETITIONS TASK 0 OUTPUTS "Laissez les
      bons temps rouler."
@@ -310,7 +867,7 @@ where <LET_BINDING> is defined as follows:
      LET num BE 1000 AND num BE num*2 WHILE TASK 0 OUTPUTS num
      -| 2000
 
-   The last example demonstrates that `LET' can bind a variable to a
+   That last example demonstrates that `LET' can bind a variable to a
 function of its previous value.  It is important to remember, though,
 that variables in CONCEPTUAL cannot be assigned, only bound to a value
 for the duration of the current scope.  They can, however, be bound to
@@ -659,14 +1216,14 @@ them:
      ALL TASKS AWAIT COMPLETION
 
 (*note Buffer control::, explains why the preceding statement requires
-10 buffers.)  One caveat is that in CONCEPTUAL version 1.2, messages
+10 buffers.)  One caveat is that in CONCEPTUAL version 1.3, messages
 sent or received with the `UNIQUE' keyword (*note Unique messages::)
 are not touched.  This limitation may be lifted in a later release of
 CONCEPTUAL.
 
    The second form of the <TOUCH_BUFFER_STMT> statement, `MESSAGE
 BUFFER <EXPR>', touches a specific message buffer.  It is expected to
-be used in programs which send `FROM BUFFER <EXPR>' or receive `INTO
+be used in programs that send `FROM BUFFER <EXPR>' or receive `INTO
 BUFFER <EXPR>'.
 
    `THE CURRENT MESSAGE BUFFER', the third and final form of the <TOUCH_BUFFER_STMT>
@@ -838,7 +1395,7 @@ successfully compiles after a version-mismatch warning, the programmer
 should check the output very carefully to ensure that the program
 behaved as expected.
 
-   The current version of the CONCEPTUAL language is `1.2'.  Note that
+   The current version of the CONCEPTUAL language is `1.3'.  Note that
 the language version does not necessarily correspond to the version of
 the CONCEPTUAL toolset (*note Usage::) as a whole.
 
@@ -998,7 +1555,7 @@ multiple <COMPLEX_STMT>s:
      # A complete coNCePTuaL program
      # By Scott Pakin <pakin@lanl.gov>
 
-     REQUIRE LANGUAGE VERSION "1.2".
+     REQUIRE LANGUAGE VERSION "1.3".
 
      maxval IS "Maximum value to loop to" AND COMES FROM "--maxval" OR
        "-v" WITH DEFAULT 100.
@@ -1115,9 +1672,9 @@ the rest of the chapter.
               |     `CEILING' | `FLOOR' | `ROUND'
               |     `TREE_PARENT' | `TREE_CHILD'
               |     `KNOMIAL_PARENT' | `KNOMIAL_CHILD' | `KNOMIAL_CHILDREN'
-              |     `MESH_NEIGHBOR' | `MESH_COORDINATE'
-              |     `TORUS_NEIGHBOR' | `TORUS_COORDINATE'
-              |     `RANDOM_UNIFORM' | `RANDOM_GAUSSIAN' | `RANDOM_POISSON'
+              |     `MESH_NEIGHBOR' | `MESH_COORDINATE' | `MESH_DISTANCE'
+              |     `RANDOM_UNIFORM' | `RANDOM_GAUSSIAN'
+              |     `RANDOM_POISSON' | `RANDOM_PARETO'
 
 <AGGR_EXPR>   ::=   [`EACH'] <EXPR>
               |     `THE' <EXPR>
@@ -1165,10 +1722,12 @@ the rest of the chapter.
                 |     `ALL TASKS' <IDENT>
                 |     `TASK' <EXPR>
                 |     `TASKS' <RESTRICTED_IDENT>
+                |     `TASK' `GROUP' <IDENT>
 
 <TARGET_TASKS>   ::=   `ALL OTHER TASKS'
                  |     `TASK' <EXPR>
                  |     `TASKS' <RESTRICTED_IDENT>
+                 |     `TASK' `GROUP' <IDENT>
 
 <MESSAGE_SPEC>        ::=   <ITEM_COUNT>
                             [`NONUNIQUE' | `UNIQUE']
@@ -1179,8 +1738,8 @@ the rest of the chapter.
                             `MESSAGES'
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
-                            [`FROM' `BUFFER' <EXPR> |
-                            `FROM' `THE DEFAULT BUFFER']
+                            [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                            `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
 <RECV_MESSAGE_SPEC>   ::=   [`SYNCHRONOUSLY' | `ASYNCHRONOUSLY']
                             [`AS' [`A'|`AN']
@@ -1191,8 +1750,8 @@ the rest of the chapter.
                             `MESSAGES']
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
-                            [`FROM' `BUFFER' <EXPR> |
-                            `FROM' `THE DEFAULT BUFFER']
+                            [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                            `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
 <REDUCE_MESSAGE_SPEC>   ::=   <ITEM_COUNT>
                               [`NONUNIQUE' | `UNIQUE']
@@ -1201,8 +1760,8 @@ the rest of the chapter.
                               <MESSAGE_ALIGNMENT> `MISALIGNED']
                               `INTEGERS' | `DOUBLEWORDS'
                               [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
-                              [`FROM' `BUFFER' <EXPR> |
-                              `FROM' `THE DEFAULT BUFFER']
+                              [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                              `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
 <REDUCE_TARGET_MESSAGE_SPEC>   ::=   [`AS' <ITEM_COUNT>
                                      [`NONUNIQUE' | `UNIQUE']
@@ -1210,8 +1769,8 @@ the rest of the chapter.
                                      <MESSAGE_ALIGNMENT> `MISALIGNED']
                                      `INTEGERS' | `DOUBLEWORDS']
                                      [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
-                                     [`INTO' `BUFFER' <EXPR> |
-                                     `INTO' `THE DEFAULT BUFFER']
+                                     [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
+                                     `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
 <ITEM_COUNT>   ::=   `A' | `AN' | <EXPR>
 
@@ -1326,13 +1885,14 @@ the rest of the chapter.
                 [`, ... ,' <EXPR>]
                 `}'
 
-<LET_BINDING>   ::=   <IDENT>                          
-                      `BE'                             
-                      <EXPR> | `A RANDOM TASK' [       `OTHER THAN' <EXPR>
-                                                   |   `LESS THAN' <EXPR> [`BUT NOT' <EXPR>]
-                                                   |   `GREATER THAN' <EXPR> [`BUT NOT' <EXPR>]
-                                                   |   `IN' `[' <EXPR> `,' <EXPR> `]' [`BUT
-                                                       NOT' <EXPR>]]
+<LET_BINDING>   ::=   <IDENT> `BE'       expr
+                                     |   <SOURCE_TASK>
+                                     |   `A RANDOM TASK' [<RANDOM_TASK_CONSTRAINTS>]
+
+<RANDOM_TASK_CONSTRAINTS>   ::=   `OTHER THAN' <EXPR>
+                            |     `LESS THAN' <EXPR> [`BUT NOT' <EXPR>]
+                            |     `GREATER THAN' <EXPR> [`BUT NOT' <EXPR>]
+                            |     `IN' `[' <EXPR> `,' <EXPR> `]' [`BUT NOT' <EXPR>]
 
 <IF_STMT>   ::=   `IF' <REL_EXPR>
                   `THEN' <SIMPLE_STMT>
@@ -1419,7 +1979,7 @@ implement in CONCEPTUAL:
 
      # A ping-pong latency test written in coNCePTuaL
 
-     Require language version "1.2".
+     Require language version "1.3".
 
      # Parse the command line.
      reps is "Number of repetitions of each message size" and comes from
@@ -1465,7 +2025,7 @@ following CONCEPTUAL code implements a hot-potato test.
 
      # Virtual ring "hot potato" test
 
-     Require language version "1.2".
+     Require language version "1.3".
 
      trials is "Number of trials to perform" and comes from "--trials" or
        "-t" with default 100000.
@@ -1516,7 +2076,7 @@ message size and the number of tasks.
 
      # Hot-spot bandwidth
 
-     Require language version "1.2".
+     Require language version "1.3".
 
      maxbytes is "Maximum message size in bytes" and comes from
        "--maxbytes" or "-x" with default 1024.
@@ -1563,7 +2123,7 @@ and `KNOMIAL_CHILD' functions.
      # Test the performance of multicasting over various k-nomial trees
      # By Scott Pakin <pakin@lanl.gov>
 
-     Require language version "1.2".
+     Require language version "1.3".
 
      # Parse the command line.
      minsize is "Min. message size (bytes)" and comes from "--minbytes" or "-n"
@@ -1637,7 +2197,7 @@ builds only with the `c_mpi' backend.
      #
      # N.B. Requires the c_mpi backend.
 
-     Require language version "1.2".
+     Require language version "1.3".
 
      # Parse the command line.
      numwords is "Message size (words)" and comes from "--msgsize" or "-s" with
@@ -1861,16 +2421,15 @@ File: conceptual.info,  Node: Hook methods,  Next: A minimal C-based backend,  P
 Multiple code generators for the same language but different
 communication libraries are apt to contain much code in common.
 Because C is a popular language, CONCEPTUAL provides a `codegen_c_generic.py'
-module which implements a virtual `NCPTL_CodeGen' base class.  This
-base class implements all of the methods listed in *note Method
-calls::.  However, rather than support a particular communication
-library, the `codegen_c_generic.py' implementation of `NCPTL_CodeGen'
-merely provides a number of calls to "hook" methods--placeholders that
-implement library-specific functionality.  *Note C hooks::, for a list
-of all of the hooks that `codegen_c_generic.py' defines.  For clarity,
-hooks are named after the method from which they're called but with an
-all-uppercase tag appended.  Hook methods take a single parameter, a
-read-only dictionary (the result of invoking Python's `locals()'
+module that implements a virtual `NCPTL_CodeGen' base class.  This base
+class implements all of the methods listed in *note Method calls::.
+However, rather than support a particular communication library, the `codegen_c_generic.py'
+implementation of `NCPTL_CodeGen' merely provides a number of calls to
+"hook" methods--placeholders that implement library-specific
+functionality.  *Note C hooks::, for a list of all of the hooks that `codegen_c_generic.py'
+defines.  For clarity, hooks are named after the method from which
+they're called but with an all-uppercase tag appended.  Hook methods
+take a single parameter, a read-only dictionary (the result of invoking Python's `locals()'
 function) of all of the local variables in the caller's scope.  They
 return C code in the form of a list with one line of C per element.  A
 hook method is invoked only if it exists, which gives the backend
@@ -2056,7 +2615,7 @@ the generated C code will look like this:
      }
 
    Programs generated by `codegen_c_generic.py' define a number of event
-types which are summarized in *note Event types::.  The `EV_CODE' event
+types that are summarized in *note Event types::.  The `EV_CODE' event
 is used, for example, by the `BACKEND EXECUTES' (*note Injecting
 arbitrary code::), `LOGS' (*note Writing to a log file::), and `OUTPUTS'
 (*note Writing to standard output::) statements.  Note that there are
@@ -2303,12 +2862,12 @@ run-time library functions and directly by backends.
                        my_ncptl_int_var);
 
      `ncptl_int' constants declared by backends derived from `codegen_c_generic.py'
-     are given an explicit suffix which defaults to `LL' but can be
+     are given an explicit suffix that defaults to `LL' but can be
      overridden at configuration time using the `--with-const-suffix'
      option.
 
  -- Constant: NCPTL_INT_MIN
-     `NCPTL_INT_MIN' is a C preprocessor macro which represents the
+     `NCPTL_INT_MIN' is a C preprocessor macro that represents the
      smallest (i.e., most negative) number that can be assigned to an `ncptl_int'.
      For example, if `ncptl_int' is a 64-bit signed integer type, then `NCPTL_INT_MIN'
      will be the value `-9223372036854775808'.
@@ -2333,7 +2892,7 @@ run-time library functions and directly by backends.
      Every CONCEPTUAL log file is backed by a unique `NCPTL_LOG_FILE_STATE'
      opaque data type.  An `NCPTL_LOG_FILE_STATE' data type represents
      all of the state needed to maintain that file, such as file
-     descriptors, prologue comments, and data which has not yet been
+     descriptors, prologue comments, and data that has not yet been
      aggregated.
 
  -- Variable: int ncptl_pagesize
@@ -2348,8 +2907,8 @@ run-time library functions and directly by backends.
      take many seconds to complete.  Much of this time is spent
      calibrating and measuring the quality of the various timers the
      run-time library uses.  For backends such as `picl' (*note The
-     picl backend::) which do not measure real time there is little
-     need to have an accurate timer.  Setting `ncptl_fast_init' to `1'
+     picl backend::) that do not measure real time there is little need
+     to have an accurate timer.  Setting `ncptl_fast_init' to `1'
      before invoking `ncptl_init()' skips the timer calibration and
      measurement steps, thereby leading to faster initialization times.
      A user can also override the setting of `ncptl_fast_init' at run
@@ -2727,8 +3286,8 @@ accesses a log file (*note Writing to a log file::).
      backend-specific <KEY:VALUE> pairs to the set of prologue or
      epilogue comments that get written to a log file (*note Log-file
      format::).  `ncptl_log_add_comment()' can be called repeatedly.
-     All calls which precede `ncptl_log_open()' are included in the
-     log-file prologue.  All calls which follow `ncptl_log_open()' are
+     All calls that precede `ncptl_log_open()' are included in the
+     log-file prologue.  All calls that follow `ncptl_log_open()' are
      included in the log-file epilogue.  Note that `ncptl_log_add_comment()'
      makes a copy of KEY and VALUE, so these need not be heap-allocated.
 
@@ -2747,11 +3306,14 @@ accesses a log file (*note Writing to a log file::).
      will need to pass this pointer to nearly all of the other log-file
      functions described in this section.
 
-     There are two special cases of TEMPLATE.  First, if TEMPLATE
+     There are three special cases for TEMPLATE.  First, if TEMPLATE
      points to an empty string, all log-file output is sent to the null
      device (i.e., `/dev/null' on Unix and Unix-like operating
-     systems).  Second, if TEMPLATE is a null pointer, all log-file
-     output is sent to the standard output device.
+     systems).  Second, if TEMPLATE is a single dash (`-'), all
+     log-file output is sent to the standard output device.  Third, if
+     TEMPLATE is a single dollar sign (`$'), all log-file output is
+     buffered in a library-internal string.  The string can be
+     retrieved using `ncptl_log_get_contents()'.
 
  -- Function: char * ncptl_log_generate_uuid (void)
      Return a random string of hexadecimal digits formatted as
@@ -2821,6 +3383,16 @@ accesses a log file (*note Writing to a log file::).
  -- Function: void ncptl_log_write_epilogue (NCPTL_LOG_FILE_STATE
           *LOGSTATE)
      Write a stock set of comments as an epilogue to the log file.
+
+ -- Function: const char * ncptl_log_get_contents (NCPTL_LOG_FILE_STATE
+          *LOGSTATE)
+     Return the current contents of the log file as a string.  The
+     caller must not use the string after the next run-time library
+     call that modifies the log file, modify the string, or free the
+     string.  The caller should copy the string (e.g., with `ncptl_strdup()')
+     if any of those actions are necessary.  If the the log file does
+     not support random access (because it goes to the standard-output
+     device or the null device), `NULL' is returned.
 
  -- Function: void ncptl_log_close (NCPTL_LOG_FILE_STATE *LOGSTATE)
      Close the log file.  No `ncptl_log_SOMETHING()' function should be
@@ -3158,29 +3730,31 @@ arguments to `ncptl_int's and call the corresponding `func' versions.
           double ARITY)
      Return child CHILD of task TASK in an ARITY-ary tree.
 
- -- Function: ncptl_int ncptl_func_grid_coord (ncptl_int vartask,
+ -- Function: ncptl_int ncptl_func_mesh_coord (ncptl_int vartask,
           ncptl_int COORD, ncptl_int WIDTH, ncptl_int HEIGHT, ncptl_int
           DEPTH)
- -- Function: double ncptl_dfunc_grid_coord (double vartask, double
+ -- Function: double ncptl_dfunc_mesh_coord (double vartask, double
           COORD, double WIDTH, double HEIGHT, double DEPTH)
      Return task TASK's x coordinate (COORD=0), y coordinate (COORD=1),
      or z coordinate (COORD=2) on a WIDTH*HEIGHT*DEPTH mesh (or torus).
 
- -- Function: ncptl_int ncptl_func_grid_neighbor (ncptl_int TASK,
-          ncptl_int TORUS, ncptl_int WIDTH, ncptl_int HEIGHT, ncptl_int
-          DEPTH, ncptl_int XDELTA, ncptl_int YDELTA, ncptl_int ZDELTA)
- -- Function: double ncptl_dfunc_grid_neighbor (double TASK, double
-          TORUS, double WIDTH, double HEIGHT, double DEPTH, double
-          XDELTA, double YDELTA, double ZDELTA)
+ -- Function: ncptl_int ncptl_func_mesh_neighbor (ncptl_int WIDTH,
+          ncptl_int HEIGHT, ncptl_int DEPTH, ncptl_int XTORUS,
+          ncptl_int YTORUS, ncptl_int ZTORUS, ncptl_int TASK, ncptl_int
+          XDELTA, ncptl_int YDELTA, ncptl_int ZDELTA)
+ -- Function: double ncptl_dfunc_mesh_neighbor (double WIDTH, double
+          HEIGHT, double DEPTH, double XTORUS, double YTORUS, double
+          ZTORUS, double TASK, double XDELTA, double YDELTA, double
+          ZDELTA)
      Return one of task TASK's neighbors--not necessarily an immediate
      neighbor--on a 3-D mesh or torus.  For the following explanation,
      assume that task TASK lies at coordinates (x, y, z) on a
-     WIDTH*HEIGHT*DEPTH mesh or torus.  In the mesh case (TORUS=0), the
-     value returned is the task ID corresponding to coordinates
-     (x+XDELTA, y+YDELTA, z+ZDELTA).  In the torus case (TORUS=1), the
-     value returned is the task ID corresponding to coordinates
-     ((x+XDELTA) mod WIDTH, (y+YDELTA) mod HEIGHT, (z+ZDELTA) mod
-     DEPTH).
+     WIDTH*HEIGHT*DEPTH mesh or torus.  In the mesh case
+     (XTORUS=YTORUS=ZTORUS=0), the value returned is the task ID
+     corresponding to coordinates (x+XDELTA, y+YDELTA, z+ZDELTA).  In
+     the full-torus case (XTORUS=YTORUS=ZTORUS=1), the value returned
+     is the task ID corresponding to coordinates ((x+XDELTA) mod WIDTH,
+     (y+YDELTA) mod HEIGHT, (z+ZDELTA) mod DEPTH).
 
    Note that there are no 1-D or 2-D grid functions.  Instead, the
 appropriate 3-D function should be used with DEPTH and--in the 1-D
@@ -3227,6 +3801,16 @@ Random-number functions
  -- Function: double ncptl_dfunc_random_poisson (double MEAN)
      Return an integer selected at random from a Poisson distribution
      with mean MEAN and standard deviation sqrt(MEAN).
+
+ -- Function: ncptl_int ncptl_func_random_pareto (ncptl_int SHAPE,
+          ncptl_int LOWER_BOUND, ncptl_int UPPER_BOUND)
+ -- Function: double ncptl_dfunc_random_pareto (double SHAPE, double
+          LOWER_BOUND, double UPPER_BOUND)
+     If LOWER_BOUND=UPPER_BOUND, return a value selected at random from
+     a Pareto distribution with shape SHAPE and scale LOWER_BOUND.  If
+     LOWER_BOUND<>UPPER_BOUND, return a value selected at random from a
+     bounded Pareto distribution with shape SHAPE and bounded by the
+     range [LOWER_BOUND, UPPER_BOUND].
 
 
 File: conceptual.info,  Node: Finalization functions,  Prev: Language-visible functions,  Up: Run-time library functions
@@ -3475,7 +4059,7 @@ then launched from an execution server to run on the compute nodes.
 The CPUs in all three node types use the x86-64 architecture but the
 compile server and execution server run Linux while the compute nodes
 run the lightweight Catamount kernel.  Cross-compilation is necessary
-to prevent the `./configure ' script which runs on the compile server
+to prevent the `./configure ' script that runs on the compile server
 from attempting to execute small programs to test run-time
 features--these would be guaranteed to fail.
 
@@ -3805,8 +4389,8 @@ On a few systems, `./configure ' has been observed to take an extremely
 long time to run.  A common source of the problem is a slow filesystem.
 During the course of its execution the `configure' script creates and
 compiles a large number of small files.  If the current directory
-resides in a filesystem which exhibits poor small-file performance,
-then this may explain why `./configure ' runs slowly.  Try to configure
+resides in a filesystem that exhibits poor small-file performance, then
+this may explain why `./configure ' runs slowly.  Try to configure
 CONCEPTUAL from a local filesystem (e.g., `/tmp') and see if it runs
 faster.
 
@@ -3845,6 +4429,8 @@ built, either:
         coNCePTuaL interpreter
       * Not installing the PICL backend because it depends upon the
         coNCePTuaL interpreter
+      * Not installing the Paraver backend because it depends upon the
+        coNCePTuaL interpreter
       * Not installing the LaTeX visualization backend because it depends
         upon the coNCePTuaL interpreter
 
@@ -3868,7 +4454,7 @@ File: conceptual.info,  Node: Manual configuration,  Prev: Problems with ``C com
 --------------------------
 
 One of the most important by-products of running `./configure ' is a `config.h'
-file which is used to build the CONCEPTUAL run-time library.  If the
+file that is used to build the CONCEPTUAL run-time library.  If the
 approach outlined in *note Interpreting configure warnings:: proves
 unable to convince CONCEPTUAL to build the library or other component,
 it may be possible to address the failed tests manually by editing any
@@ -3880,13 +4466,25 @@ the makefile in order to skip over unsalvageable parts of the build
 process.
 
    The `--with-header-code' option to `configure' lets you specify a
-single line of C code to insert into every test file which `configure'
+single line of C code to insert into every test file that `configure'
 generates and also into the header files used to build the run-time
 library.  This extra line of code can be used to make up for missing
 functionality or to load nonstandard header files.  If you need to
 inject more than one line of code use `./configure
 --with-header=code='#include "myheaders.h"'' and create an appropriate
 `myheaders.h' file.
+
+   Like all Autoconf scripts, `configure' runs a large number of small
+test programs to characterize the user's system.  It keeps track of the
+results of these tests in a set of "variables cache variables".  If a
+cache variable is assigned a value on the command line, `configure'
+will skip the associated test and simply assume that the cache
+variable's value represents the test result.  Thus, cache variables
+provide a fine level of control over the behavior of the `configure'
+script and are a useful mechanism for working around the idiosyncrasies
+of any given system.  *Note Cache Variables::, for a list of many of
+the variables cache variables recognized by the CONCEPTUAL `configure'
+script.
 
    It is highly unlikely that `./configure ' will fail completely.  If
 it does, a working CONCEPTUAL system may still be possible.  Manually
@@ -3913,6 +4511,7 @@ is otherwise unable to perform all of its operations.
 
 * Menu:
 
+* Failure following "missing" check::
 * Too many columns in multitable item::  Building Emacs info files
 * Can't find compiler_version.h::  Running `make install' properly
 * Could not read symbols::      Linking with the correct libraries
@@ -3923,9 +4522,35 @@ is otherwise unable to perform all of its operations.
 * Building on problematic platforms::  Hacking makefiles by hand
 
 
-File: conceptual.info,  Node: Too many columns in multitable item,  Next: Can't find compiler_version.h,  Prev: Problems with make,  Up: Problems with make
+File: conceptual.info,  Node: Failure following "missing" check,  Next: Too many columns in multitable item,  Prev: Problems with make,  Up: Problems with make
 
-8.2.1 `Too many columns in multitable item'
+8.2.1 Failure following `missing' check
+---------------------------------------
+
+The `Makefile' produced by `./configure ' sometimes gets confused into
+thinking that it needs to recreate one or more of the GNU Autotools
+build files such as `aclocal.m4', `config.h.in', `configure', or `Makefile.in'.
+A symptom of this confusion is an error message following an invocation
+of the `missing' script:
+
+     $ make
+     cd . && /bin/sh ./config.status ncptl.h
+     config.status: creating ncptl.h
+     config.status: ncptl.h is unchanged
+     cd . && /bin/sh /home/me/conceptual-1.3/missing --run autoheader
+                        [Error message appears here.]
+
+   The source of the problem is usually an incongruous timestamp on some
+file relative to that of some other file.  Unfortunately, identifying
+the files in question can be difficult.  The quick fix is to edit the `missing'
+script, putting `exit 0' at the beginning of the file, right after the
+`#! /bin/sh' line.  This tells the `Makefile' that none of the GNU
+Autotools build files need to be recreated.
+
+
+File: conceptual.info,  Node: Too many columns in multitable item,  Next: Can't find compiler_version.h,  Prev: Failure following "missing" check,  Up: Problems with make
+
+8.2.2 `Too many columns in multitable item'
 -------------------------------------------
 
 Very old versions of `makeinfo' are unable to process `conceptual.texi'
@@ -3936,7 +4561,7 @@ re-running `make' should bypass the failing documentation-building step.
 
 File: conceptual.info,  Node: Can't find compiler_version.h,  Next: Could not read symbols,  Prev: Too many columns in multitable item,  Up: Problems with make
 
-8.2.2 Can't find `compiler_version.h'
+8.2.3 Can't find `compiler_version.h'
 -------------------------------------
 
 The CONCEPTUAL build process currently requires `make' to be executed
@@ -3950,7 +4575,7 @@ error resembling the following:
 
 File: conceptual.info,  Node: Could not read symbols,  Next: Incorrect tools/flags are utilized,  Prev: Can't find compiler_version.h,  Up: Problems with make
 
-8.2.3 `could not read symbols'
+8.2.4 `could not read symbols'
 ------------------------------
 
 An attempt to link the CONCEPTUAL run-time library on one x86-64 Linux
@@ -3972,7 +4597,7 @@ LDFLAGS=-L/usr/lib64' to indicate that libraries should be read from
 
 File: conceptual.info,  Node: Incorrect tools/flags are utilized,  Next: Compaq compilers on Alpha CPUs,  Prev: Could not read symbols,  Up: Problems with make
 
-8.2.4 Incorrect tools/flags are utilized
+8.2.5 Incorrect tools/flags are utilized
 ----------------------------------------
 
 You might find that although you specified a particular tool or flag at
@@ -3995,7 +4620,7 @@ single command:
 
 File: conceptual.info,  Node: Compaq compilers on Alpha CPUs,  Next: undefined type found DEFINE____,  Prev: Incorrect tools/flags are utilized,  Up: Problems with make
 
-8.2.5 Compaq compilers on Alpha CPUs
+8.2.6 Compaq compilers on Alpha CPUs
 ------------------------------------
 
 Although CONCEPTUAL builds fine on Alpha-based systems when using a `gcc'
@@ -4050,7 +4675,7 @@ the following `libtool' line and the problem should go away:
 
 File: conceptual.info,  Node: undefined type found DEFINE____,  Next: "makehelper.py config" fails,  Prev: Compaq compilers on Alpha CPUs,  Up: Problems with make
 
-8.2.6 `undefined type, found `DEFINE_____''
+8.2.7 `undefined type, found `DEFINE_____''
 -------------------------------------------
 
 The GCC 2.95.2 compiler on at least one MacOS 10.1 system complains
@@ -4071,11 +4696,11 @@ retrying in basic mode') and succeeds.
 
 File: conceptual.info,  Node: "makehelper.py config" fails,  Next: Building on problematic platforms,  Prev: undefined type found DEFINE____,  Up: Problems with make
 
-8.2.7 `makehelper.py config' fails
+8.2.8 `makehelper.py config' fails
 ----------------------------------
 
 When `makehelper.py' is run with the `config' option, it generates a
-temporary `.c' file which it runs through the C preprocessor.  Problems
+temporary `.c' file that it runs through the C preprocessor.  Problems
 (e.g., a `gcc.exe: no input files' error message) may occur when
 running under Cygwin (a Unix-like user environment for Microsoft
 Windows) with a Cygwin Python interpreter but a non-Cygwin C preprocessor
@@ -4092,7 +4717,7 @@ to use.  Use forward slashes and filenames without spaces
 
 File: conceptual.info,  Node: Building on problematic platforms,  Prev: "makehelper.py config" fails,  Up: Problems with make
 
-8.2.8 Building on problematic platforms
+8.2.9 Building on problematic platforms
 ---------------------------------------
 
 Some experimental systems require rather specialized build procedures
@@ -4104,9 +4729,9 @@ make::.
 
    CONCEPTUAL includes an alternate Makefile called `Makefile.simple'
 (generated at configuration time from `Makefile.simple.in').  `Makefile.simple'
-is a stripped-down version of `Makefile' which is designed to be easy
-to edit by hand.  `make -f Makefile.simple' builds a static version of
-the CONCEPTUAL run-time library in the current directory.  `make -f Makefile.simple clean'
+is a stripped-down version of `Makefile' that is designed to be easy to
+edit by hand.  `make -f Makefile.simple' builds a static version of the
+CONCEPTUAL run-time library in the current directory.  `make -f Makefile.simple clean'
 deletes the run-time library and all of the object files used to build
 it.  `Makefile.simple' supports no other features.  The intention is to
 provide the bare minimum needed to get backends such as `c_mpi' to
@@ -4338,7 +4963,7 @@ functional the run-time library aborts with an `Unable to determine the
 OS page size' error.
 
    As a workaround, `configure' provides a `--with-page-size' option
-which enables the user to manually specify the page size.  Because any
+that enables the user to manually specify the page size.  Because any
 manually specified value is prone to error, CONCEPTUAL log files
 include a `Page size was specified manually at configuration time'
 warning if the run-time library was configured using `--with-page-size'.
@@ -4576,6 +5201,8 @@ identifiers.
 
    * `GREATER'
 
+   * `GROUP'
+
    * `HALFWORD'
 
    * `HALFWORDS'
@@ -4636,9 +5263,11 @@ identifiers.
 
    * `MEMORY'
 
-   * `MESH_NEIGHBOR'
-
    * `MESH_COORDINATE'
+
+   * `MESH_DISTANCE'
+
+   * `MESH_NEIGHBOR'
 
    * `MESSAGE'
 
@@ -4667,6 +5296,8 @@ identifiers.
    * `MULTICAST'
 
    * `MULTICASTS'
+
+   * `MY'
 
    * `NONUNIQUE'
 
@@ -4703,6 +5334,8 @@ identifiers.
    * `RANDOM'
 
    * `RANDOM_GAUSSIAN'
+
+   * `RANDOM_PARETO'
 
    * `RANDOM_POISSON'
 
@@ -4799,10 +5432,6 @@ identifiers.
    * `TIMES'
 
    * `TO'
-
-   * `TORUS_NEIGHBOR'
-
-   * `TORUS_COORDINATE'
 
    * `TOUCH'
 
@@ -4956,11 +5585,17 @@ traversal.  *Note Backend creation::, for more information.
 
    * `n_buffer_number'
 
+   * `n_buffer_offset'
+
    * `n_computes_for'
 
    * `n_data_multiplier'
 
    * `n_data_type'
+
+   * `n_dimension'
+
+   * `n_dimension_list'
 
    * `n_empty_stmt'
 
@@ -5007,6 +5642,8 @@ traversal.  *Note Backend creation::, for more information.
    * `n_message_spec'
 
    * `n_mult_expr'
+
+   * `n_my_task'
 
    * `n_no_touching'
 
@@ -5096,7 +5733,7 @@ B.2 C hooks
 
 To save the backend developer from having to implement CONCEPTUAL
 backends entirely from scratch, CONCEPTUAL provides a `codegen_c_generic.py'
-module which defines a base class for code generators that output C
+module that defines a base class for code generators that output C
 code.  The base class handles the features that are specific to C but
 independent of any messaging library.  Derived classes need only define
 those "hook" functions that are needed to implement library-specific
@@ -5416,7 +6053,7 @@ following values:
 
 
 
-File: conceptual.info,  Node: Environment Variables,  Next: Referenced Applications,  Prev: Backend Developer's Reference,  Up: Top
+File: conceptual.info,  Node: Environment Variables,  Next: Cache Variables,  Prev: Backend Developer's Reference,  Up: Top
 
 Appendix C Environment Variables
 ********************************
@@ -5453,13 +6090,13 @@ CONCEPTUAL program (any backend):
      Buffering data in memory enables that sort of "two-dimensional"
      logging.  However, it is not robust to computer crashes or
      uncatchable signals (e.g., `SIGKILL').  Consequently, every `LOGS'
-     statement (*note Writing to a log file::) which is executed at
-     least `NCPTL_CHECKPOINT' seconds after the previous one forces the
-     CONCEPTUAL run-time library to write its partial data to the log
-     file.  Specifically, the library flushes its partial-data buffers
-     then rewinds the write pointer to the beginning of that partial
-     data.  Hence, the partial data is overwritten by a later
-     checkpoint or by the complete data set.
+     statement (*note Writing to a log file::) that is executed at least `NCPTL_CHECKPOINT'
+     seconds after the previous one forces the CONCEPTUAL run-time
+     library to write its partial data to the log file.  Specifically,
+     the library flushes its partial-data buffers then rewinds the
+     write pointer to the beginning of that partial data.  Hence, the
+     partial data is overwritten by a later checkpoint or by the
+     complete data set.
 
      Smaller values of `NCPTL_CHECKPOINT' provide more robustness to
      crashes and uncatchable signals.  Larger values put less stress on
@@ -5473,9 +6110,9 @@ CONCEPTUAL program (any backend):
      may be useful during the development of a CONCEPTUAL program or
      compiler backend to enable shorter turnaround times.  If set to
      `0', `NCPTL_FAST_INIT' forces a thorough initialization even for
-     backends which do not rely on timing measurements, for instance
-     the `picl' backend (*note The picl backend::).  *Note Variables
-     and data types::, for more information.
+     backends that do not rely on timing measurements, for instance the `picl'
+     backend (*note The picl backend::).  *Note Variables and data
+     types::, for more information.
 
 `NCPTL_LOG_DELAY'
      Artificially delay each log-file open and flush operation by a
@@ -5485,14 +6122,14 @@ CONCEPTUAL program (any backend):
      probabilistically ensure that a log-file creation request will be
      issued only once every 2000/1000 = 2 milliseconds instead of all
      at once.  `NCPTL_LOG_DELAY' is intended to help CONCEPTUAL
-     programs run atop broken filesystems which are unable to handle
+     programs run atop broken filesystems that are unable to handle
      large numbers of concurrent accesses--an all-too-common problem on
      large-scale workstation clusters and parallel computers in which
      hundreds or thousands of diskless compute nodes compete for access
      to the same filesystem.
 
 `NCPTL_LOG_ONLY'
-     Limit the set of processes which produce log files.  `NCPTL_LOG_ONLY'
+     Limit the set of processes that produce log files.  `NCPTL_LOG_ONLY'
      accepts a comma-separated list of dash-separated process ranges
      such as `0-3,12-16,24,25,32-48'.  Only processes included in the
      list produce log files.  *Note Running coNCePTuaL programs::, for
@@ -5507,7 +6144,554 @@ CONCEPTUAL program (any backend):
      such havoc.
 
 
-File: conceptual.info,  Node: Referenced Applications,  Next: License,  Prev: Environment Variables,  Up: Top
+File: conceptual.info,  Node: Cache Variables,  Next: Referenced Applications,  Prev: Environment Variables,  Up: Top
+
+Appendix D `configure' Cache Variables
+**************************************
+
+The `configure' script that is used to build CONCEPTUAL internally uses
+a number of Autoconf cache variables to store configuration information
+that it discovers while it runs.  If these variables are set on the `./configure
+' command line, the given value will be used instead of an
+automatically determined value.  This feature gives the user precise
+control over many aspects of CONCEPTUAL configuration.  For example, to
+prevent the CONCEPTUAL run-time library from using the `gethostbyname()'
+function you can specify `ac_cv_func_gethostbyname=no' on the `./configure
+' command line to convince `configure' that `gethostbyname()' does not
+exist.
+
+   The variables and descriptions in the following list were extracted
+mechanically from `configure.ac' and `config.log'.  Consequently, some
+variables may be missing, and some descriptions may be inaccurate or
+hard to understand.
+
+`ac_cv_func__strtoi64'
+     the `_strtoi64()' function is available (`yes' or `no')
+
+`ac_cv_func_cbrt'
+     the `cbrt()' function is available (`yes' or `no')
+
+`ac_cv_func_floor'
+     the `floor()' function is available (`yes' or `no')
+
+`ac_cv_func_fmod'
+     the `fmod()' function is available (`yes' or `no')
+
+`ac_cv_func_fork'
+     the `fork()' function is available (`yes' or `no')
+
+`ac_cv_func_fork_works'
+     the `fork_works()' function is available (`yes' or `no')
+
+`ac_cv_func_getcwd'
+     the `getcwd()' function is available (`yes' or `no')
+
+`ac_cv_func_geteuid'
+     the `geteuid()' function is available (`yes' or `no')
+
+`ac_cv_func_gethostbyname'
+     the `gethostbyname()' function is available (`yes' or `no')
+
+`ac_cv_func_getinvent'
+     the `getinvent()' function is available (`yes' or `no')
+
+`ac_cv_func_getpagesize'
+     the `getpagesize()' function is available (`yes' or `no')
+
+`ac_cv_func_getpwuid'
+     the `getpwuid()' function is available (`yes' or `no')
+
+`ac_cv_func_getrusage'
+     the `getrusage()' function is available (`yes' or `no')
+
+`ac_cv_func_getuid'
+     the `getuid()' function is available (`yes' or `no')
+
+`ac_cv_func_glob'
+     the `glob()' function is available (`yes' or `no')
+
+`ac_cv_func_ibv_get_device_list'
+     the `ibv_get_device_list()' function is available (`yes' or `no')
+
+`ac_cv_func_ibv_get_devices'
+     the `ibv_get_devices()' function is available (`yes' or `no')
+
+`ac_cv_func_kill'
+     the `kill()' function is available (`yes' or `no')
+
+`ac_cv_func_llabs'
+     the `llabs()' function is available (`yes' or `no')
+
+`ac_cv_func_nanosleep'
+     the `nanosleep()' function is available (`yes' or `no')
+
+`ac_cv_func_nearbyint'
+     the `nearbyint()' function is available (`yes' or `no')
+
+`ac_cv_func_popen'
+     the `popen()' function is available (`yes' or `no')
+
+`ac_cv_func_realpath'
+     the `realpath()' function is available (`yes' or `no')
+
+`ac_cv_func_rint'
+     the `rint()' function is available (`yes' or `no')
+
+`ac_cv_func_round'
+     the `round()' function is available (`yes' or `no')
+
+`ac_cv_func_sched_getaffinity'
+     the `sched_getaffinity()' function is available (`yes' or `no')
+
+`ac_cv_func_setitimer'
+     the `setitimer()' function is available (`yes' or `no')
+
+`ac_cv_func_sigaction'
+     the `sigaction()' function is available (`yes' or `no')
+
+`ac_cv_func_signal'
+     the `signal()' function is available (`yes' or `no')
+
+`ac_cv_func_sleep'
+     the `sleep()' function is available (`yes' or `no')
+
+`ac_cv_func_strcasestr'
+     the `strcasestr()' function is available (`yes' or `no')
+
+`ac_cv_func_strerror'
+     the `strerror()' function is available (`yes' or `no')
+
+`ac_cv_func_strsignal'
+     the `strsignal()' function is available (`yes' or `no')
+
+`ac_cv_func_strtok'
+     the `strtok()' function is available (`yes' or `no')
+
+`ac_cv_func_strtoll'
+     the `strtoll()' function is available (`yes' or `no')
+
+`ac_cv_func_strtoq'
+     the `strtoq()' function is available (`yes' or `no')
+
+`ac_cv_func_sysconf'
+     the `sysconf()' function is available (`yes' or `no')
+
+`ac_cv_func_sysctl'
+     the `sysctl()' function is available (`yes' or `no')
+
+`ac_cv_func_sysmp'
+     the `sysmp()' function is available (`yes' or `no')
+
+`ac_cv_func_syssgi'
+     the `syssgi()' function is available (`yes' or `no')
+
+`ac_cv_func_time'
+     the `time()' function is available (`yes' or `no')
+
+`ac_cv_func_trunc'
+     the `trunc()' function is available (`yes' or `no')
+
+`ac_cv_func_uname'
+     the `uname()' function is available (`yes' or `no')
+
+`ac_cv_func_vfork'
+     the `vfork()' function is available (`yes' or `no')
+
+`ac_cv_func_vfork_works'
+     the `vfork_works()' function is available (`yes' or `no')
+
+`ac_cv_func_vfprintf'
+     the `vfprintf()' function is available (`yes' or `no')
+
+`ac_cv_func_vsnprintf'
+     the `vsnprintf()' function is available (`yes' or `no')
+
+`ac_cv_func_vsprintf'
+     the `vsprintf()' function is available (`yes' or `no')
+
+`ac_cv_header_bglpersonality_h'
+     the `bglpersonality.h' header file is available (`yes' or `no')
+
+`ac_cv_header_cf_h'
+     the `cf.h' header file is available (`yes' or `no')
+
+`ac_cv_header_common_bgp_personality_h'
+     the `common/bgp_personality.h' header file is available (`yes' or
+     `no')
+
+`ac_cv_header_dlfcn_h'
+     the `dlfcn.h' header file is available (`yes' or `no')
+
+`ac_cv_header_errno_h'
+     the `errno.h' header file is available (`yes' or `no')
+
+`ac_cv_header_glob_h'
+     the `glob.h' header file is available (`yes' or `no')
+
+`ac_cv_header_ieeefp_h'
+     the `ieeefp.h' header file is available (`yes' or `no')
+
+`ac_cv_header_infiniband_verbs_h'
+     the `infiniband/verbs.h' header file is available (`yes' or `no')
+
+`ac_cv_header_inttypes_h'
+     the `inttypes.h' header file is available (`yes' or `no')
+
+`ac_cv_header_invent_h'
+     the `invent.h' header file is available (`yes' or `no')
+
+`ac_cv_header_libhal_h'
+     the `libhal.h' header file is available (`yes' or `no')
+
+`ac_cv_header_machine_hal_sysinfo_h'
+     the `machine/hal_sysinfo.h' header file is available (`yes' or
+     `no')
+
+`ac_cv_header_memory_h'
+     the `memory.h' header file is available (`yes' or `no')
+
+`ac_cv_header_mpi_h'
+     the `mpi.h' header file is available (`yes' or `no')
+
+`ac_cv_header_netdb_h'
+     the `netdb.h' header file is available (`yes' or `no')
+
+`ac_cv_header_odmi_h'
+     the `odmi.h' header file is available (`yes' or `no')
+
+`ac_cv_header_papi_h'
+     the `papi.h' header file is available (`yes' or `no')
+
+`ac_cv_header_pci_pci_h'
+     the `pci/pci.h' header file is available (`yes' or `no')
+
+`ac_cv_header_popt_h'
+     the `popt.h' header file is available (`yes' or `no')
+
+`ac_cv_header_pwd_h'
+     the `pwd.h' header file is available (`yes' or `no')
+
+`ac_cv_header_rms_rmscall_h'
+     the `rms/rmscall.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sched_h'
+     the `sched.h' header file is available (`yes' or `no')
+
+`ac_cv_header_signal_h'
+     the `signal.h' header file is available (`yes' or `no')
+
+`ac_cv_header_stdint_h'
+     the `stdint.h' header file is available (`yes' or `no')
+
+`ac_cv_header_stdlib_h'
+     the `stdlib.h' header file is available (`yes' or `no')
+
+`ac_cv_header_string_h'
+     the `string.h' header file is available (`yes' or `no')
+
+`ac_cv_header_strings_h'
+     the `strings.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_cfgodm_h'
+     the `sys/cfgodm.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_mman_h'
+     the `sys/mman.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_param_h'
+     the `sys/param.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_resource_h'
+     the `sys/resource.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_select_h'
+     the `sys/select.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_stat_h'
+     the `sys/stat.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_sysctl_h'
+     the `sys/sysctl.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_sysinfo_h'
+     the `sys/sysinfo.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_sysmp_h'
+     the `sys/sysmp.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_syssgi_h'
+     the `sys/syssgi.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_time_h'
+     the `sys/time.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_types_h'
+     the `sys/types.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_utsname_h'
+     the `sys/utsname.h' header file is available (`yes' or `no')
+
+`ac_cv_header_sys_wait_h'
+     the `sys/wait.h' header file is available (`yes' or `no')
+
+`ac_cv_header_time_h'
+     the `time.h' header file is available (`yes' or `no')
+
+`ac_cv_header_unistd_h'
+     the `unistd.h' header file is available (`yes' or `no')
+
+`ac_cv_header_uuid_uuid_h'
+     the `uuid/uuid.h' header file is available (`yes' or `no')
+
+`ac_cv_header_vfork_h'
+     the `vfork.h' header file is available (`yes' or `no')
+
+`ac_cv_header_windows_h'
+     the `windows.h' header file is available (`yes' or `no')
+
+`ac_cv_lib_ibverbs_ibv_query_device'
+     `libibverbs.a' contains a function called `ibv_query_device()'
+     (`yes' or `no')
+
+`ac_cv_lib_m_fmod'
+     `libm.a' contains a function called `fmod()' (`yes' or `no')
+
+`ac_cv_lib_popt_poptGetContext'
+     `libpopt.a' contains a function called `poptGetContext()' (`yes'
+     or `no')
+
+`ac_cv_lib_sysfs_sysfs_open_class'
+     `libsysfs.a' contains a function called `sysfs_open_class()'
+     (`yes' or `no')
+
+`ac_cv_lib_uuid_uuid_unparse'
+     `libuuid.a' contains a function called `uuid_unparse()' (`yes' or
+     `no')
+
+`ac_cv_member_struct_CuAt_name'
+     the `CuAt' `struct' contains a field called `name' (`yes' or `no')
+
+`ac_cv_member_struct_hostent_h_name'
+     the `hostent' `struct' contains a field called `h_name' (`yes' or
+     `no')
+
+`ac_cv_path_DOT'
+     the fully qualified filename for `dot'
+
+`ac_cv_path_EGREP'
+     the fully qualified filename for `egrep'
+
+`ac_cv_path_FGREP'
+     the fully qualified filename for `fgrep'
+
+`ac_cv_path_GPERF'
+     the fully qualified filename for `gperf'
+
+`ac_cv_path_GREP'
+     the fully qualified filename for `grep'
+
+`ac_cv_path_GS'
+     the fully qualified filename for `gs'
+
+`ac_cv_path_HTMLTIDY'
+     the fully qualified filename for `htmltidy'
+
+`ac_cv_path_JYTHONC'
+     the fully qualified filename for `jythonc'
+
+`ac_cv_path_LDD'
+     the fully qualified filename for `ldd'
+
+`ac_cv_path_PERL'
+     the fully qualified filename for `perl'
+
+`ac_cv_path_PYTHON'
+     the fully qualified filename for `python'
+
+`ac_cv_path_SED'
+     the fully qualified filename for `sed'
+
+`ac_cv_path_SWIG'
+     the fully qualified filename for `swig'
+
+`ac_cv_prog_AWK'
+     command line for running `awk'
+
+`ac_cv_prog_CPP'
+     command line for running `cpp'
+
+`ac_cv_prog_EMACS'
+     command line for running `emacs'
+
+`ac_cv_prog_INDENT'
+     command line for running `indent'
+
+`ac_cv_prog_JAR'
+     command line for running `jar'
+
+`ac_cv_prog_JAVAC'
+     command line for running `javac'
+
+`ac_cv_prog_LATEX'
+     command line for running `latex'
+
+`ac_cv_prog_MAKE'
+     command line for running `make'
+
+`ac_cv_prog_MPICC'
+     command line for running `mpicc'
+
+`ac_cv_prog_MSGDIGEST'
+     command line for running `msgdigest'
+
+`ac_cv_prog_PDFTEX'
+     command line for running `pdftex'
+
+`ac_cv_prog_PKGCONFIG'
+     command line for running `pkgconfig'
+
+`ac_cv_prog_TEX'
+     command line for running `tex'
+
+`ac_cv_search_MPI_Init'
+     linker flags/libraries needed to use the `MPI_Init()' function or
+     `none required'
+
+`ac_cv_search_clock_gettime'
+     linker flags/libraries needed to use the `clock_gettime()'
+     function or `none required'
+
+`ac_cv_search_kstat_data_lookup'
+     linker flags/libraries needed to use the `kstat_data_lookup()'
+     function or `none required'
+
+`ac_cv_search_nanosleep'
+     linker flags/libraries needed to use the `nanosleep()' function or
+     `none required'
+
+`ac_cv_search_pci_scan_bus'
+     linker flags/libraries needed to use the `pci_scan_bus()' function
+     or `none required'
+
+`ac_cv_sizeof_long_double'
+     size in bytes of the `long double' datatype
+
+`ac_cv_sizeof_u_int128_t'
+     size in bytes of the `u_int128_t' datatype
+
+`ac_cv_sizeof_unsigned___int128'
+     size in bytes of the `unsigned __int128' datatype
+
+`ac_cv_sizeof_unsigned_long_long_long'
+     size in bytes of the `unsigned long long long' datatype
+
+`ac_cv_type_int64_t'
+     the `int64_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_pid_t'
+     the `pid_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_signal'
+     the `signal' datatype exists (`yes' or `no')
+
+`ac_cv_type_ssize_t'
+     the `ssize_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uid_t'
+     the `uid_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uint128_t'
+     the `uint128_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uint16_t'
+     the `uint16_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uint32_t'
+     the `uint32_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uint64_t'
+     the `uint64_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uint8_t'
+     the `uint8_t' datatype exists (`yes' or `no')
+
+`ac_cv_type_uintptr_t'
+     the `uintptr_t' datatype exists (`yes' or `no')
+
+`ax_cv_const_nics_valid'
+     `$NICS' is a valid printf conversion specifier for `ncptl_int'
+
+`ax_cv_decl_double_smallest'
+     a definition of the largest double value
+
+`ax_cv_decl_suffix_valid'
+     `$NCPTL_INT_SUFFIX' is a valid suffix for an `ncptl_int' constant
+
+`ax_cv_file_cray_xt_nid'
+     `_my_pnid' is definable from a file
+
+`ax_cv_func_mpicc_requires_libm'
+     `$MPICC' wants the math library to be linked explicitly
+
+`ax_cv_func_round_works'
+     `round' is likely to work
+
+`ax_cv_prog_cc_ansic'
+     `$CC' supports some basic ANSI C features
+
+`ax_cv_prog_eval_break_works'
+     `eval break' successfully breaks out of a loop
+
+`ax_cv_prog_gperf_recent'
+     `gperf' is sufficiently recent
+
+`ax_cv_prog_jar_e'
+     `$JAR' supports `-e'
+
+`ax_cv_prog_ld_interp'
+     we can store symbols in `.interp'
+
+`ax_cv_prog_ld_so'
+     the name of the dynamic linker
+
+`ax_cv_prog_make_RM'
+     `$am_make' predefines \$(RM)
+
+`ax_cv_prog_make_RM_qeq'
+     `$am_make' supports `?='
+
+`ax_cv_prog_perl_logextract'
+     `$PERL' can run `ncptl-logextract'
+
+`ax_cv_prog_swig_version'
+     `swig' version number
+
+`ax_cv_prog_swig_works'
+     `swig' works
+
+`ax_cv_sys_null_device'
+     the null device is called
+
+`ax_cv_type_MT_STATE_size'
+     number of words of random-number-generator state
+
+`ax_cv_type_long_big_enough'
+     a long can hold both an `int64_t' and an `ncptl_int' type
+
+`ax_cv_type_ncptl_int_max'
+     we can find the maximum `ncptl_int' value
+
+`ax_cv_type_ncptl_int_min'
+     we can find the minimum `ncptl_int' value
+
+`ax_cv_var___cpu_mhz'
+     `__cpu_mhz' is defined
+
+`ax_cv_var__my_pnid'
+     `_my_pnid' is defined
+
+
+File: conceptual.info,  Node: Referenced Applications,  Next: License,  Prev: Cache Variables,  Up: Top
 
 Referenced Applications
 ***********************
@@ -5519,14 +6703,23 @@ each application's home page.
 a2ps
      `http://www.gnu.org/software/a2ps/'
 
+Dimemas
+     See Paraver.
+
 dot
      See Graphviz.
 
 Emacs
      `http://www.gnu.org/software/emacs/'
 
+Extrae
+     See Paraver.
+
 Environment Modules
      `http://modules.sourceforge.net/'
+
+GeSHi
+     `http://qbnz.com/highlighter/'
 
 Graphviz
      `http://www.graphviz.org/'
@@ -5534,11 +6727,20 @@ Graphviz
 LaTeX
      `http://www.latex-project.org/'
 
+LibSea
+     `http://www.caida.org/tools/visualization/libsea/'
+
+Mediawiki
+     `http://www.mediawiki.org/'
+
 MPICL
      `http://www.csm.ornl.gov/picl/'
 
 ParaGraph
      `http://www.csar.uiuc.edu/software/paragraph/'
+
+Paraver
+     `http://www.bsc.es/paraver'
 
 PICL
      See MPICL.
@@ -5564,17 +6766,20 @@ TeX
 Vim
      `http://www.vim.org/'
 
+Walrus
+     `http://www.caida.org/tools/visualization/walrus/'
+
 
 File: conceptual.info,  Node: License,  Next: Index,  Prev: Referenced Applications,  Up: Top
 
 License
 *******
 
-Copyright (C) 2009, Los Alamos National Security, LLC
+Copyright (C) 2011, Los Alamos National Security, LLC
 All rights reserved.
 
 
-   Copyright (2009).  Los Alamos National Security, LLC.  This software
+   Copyright (2011).  Los Alamos National Security, LLC.  This software
 was produced under U.S. Government contract DE-AC52-06NA25396 for Los
 Alamos National Laboratory (LANL), which is operated by Los Alamos
 National Security, LLC (LANS) for the U.S. Department of Energy. The

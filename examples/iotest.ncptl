@@ -1,0 +1,56 @@
+#########################################################
+# Gauge the impact of I/O-node placement on bandwidth   #
+# by simulating coordinated checkpoints from a set of   #
+# compute nodes to a (usually smaller) set of I/O nodes #
+#                                                       #
+# By Scott Pakin <pakin@lanl.gov>                       #
+#########################################################
+
+# IMPORTANT: For meaningful results, run with only one task per node.
+
+Require language version "1.3".
+
+# Parse the command line.
+reps is "Number of repetitions of each message size" and comes from "--reps" or "-r" with default 1.
+msgMB is "Number of megabytes per message" and comes from "--mbytes" or "-m" with default 1K.
+randiters is "Number of random variations" and comes from "--rand" or "-v" with default 1.
+minIO is "Minimum number of I/O nodes" and comes from "--min-io" or "-n" with default 1.
+
+Assert that "This program requires at least two tasks" with num_tasks>=2.
+
+# Perform the test repeatedly, each time with a different layout of I/O nodes.
+For each layout in {1, ..., 2+randiters} {
+  # Describe the I/O-node layout we're about to measure.
+  all tasks t are assigned to processor t then
+  if layout = 1 then
+    task 0 outputs "Variation 1 of " and 2+randiters and ": Every nth node is an I/O node."
+  otherwise if layout = 2 then
+    task 0 outputs "Variation 2 of " and 2+randiters and ": The first k nodes are I/O nodes."
+  otherwise if layout >= 3 then
+    task 0 outputs "Variation " and layout and " of " and 2+randiters and ": I/O nodes appear at random positions." then
+
+  # Run with decreasing numbers of I/O nodes spread uniformly throughout the system.
+  for each ionodes in {num_tasks/2, num_tasks/4, num_tasks/8, ..., minIO}
+    let iofreq be num_tasks/ionodes while {
+      # Say what we're about to do.
+      task 0 outputs "    Measuring the bandwidth when " and ionodes and " (" and 100*ionodes/num_tasks and "%) of the nodes are I/O nodes..." then
+
+      # Modify the virtual-to-physical task mapping to control I/O-node placement.
+      if layout = 2 then
+        tasks io such that iofreq divides io are assigned to processor io/iofreq
+      otherwise if layout >= 3 then
+        all tasks are assigned to a random processor then
+
+      # Perform the test with the current task mapping.
+      all tasks reset their counters then
+      for reps repetitions plus 1 warmup repetition and a synchronization
+        tasks compnode such that compnode mod iofreq <> 0 send a msgMB megabyte message to task (compnode/iofreq)*iofreq then
+      all tasks synchronize then
+      all tasks self log layout as "Layout #"
+                     and self as "Me"
+                     and ionodes as "# of I/O nodes"
+                     and floor(self/iofreq)*iofreq as "My I/O node"
+                     and 1E6*msgMB*reps/elapsed_usecs as "Per-node BW (MB/s)"
+    } then
+  task 0 outputs ""
+}

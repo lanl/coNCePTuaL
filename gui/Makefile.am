@@ -4,10 +4,10 @@
 ###################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -80,9 +80,9 @@ PARENT_PY = $(addprefix $(top_builddir)/,$(GUIPY_PARENT))
 LOCAL_PY = GUIPyInterface.py gui_patches.py
 GENERATED_PY = strop.py resource.py
 
-# Support indexing of our Java source files.
-ETAGS_ARGS = $(GUIJAVA)
-TAGS_DEPENDENCIES = $(GUIJAVA)
+# Support indexing of our Java source files and Python wrappers.
+ETAGS_ARGS = $(GUIJAVA) $(LOCAL_PY)
+TAGS_DEPENDENCIES = $(GUIJAVA) $(LOCAL_PY)
 
 PYJARCONTENTS = $(PARENT_PY) $(LOCAL_PY)
 JARDIR = jarbuild

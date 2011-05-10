@@ -2,7 +2,7 @@
 #
 # By Scott Pakin <pakin@lanl.gov>
 
-Require language version "1.2".
+Require language version "1.3".
 
 xdim is "Torus x dimension (tasks)" and comes from "--xdim" or "-x" with default 1.
 ydim is "Torus y dimension (tasks)" and comes from "--ydim" or "-y" with default 1.
@@ -22,7 +22,7 @@ For reps repetitions plus 2 warmup repetitions {
         if ydim-2 >= ydelta then
           for each zdelta in {-1, 0, 1}
             if zdim-2 >= zdelta then
-              tasks self such that self <> torus_neighbor(self, xdim, xdelta, ydim, ydelta, zdim, zdelta) asynchronously send a msgsize-byte message to task torus_neighbor(self, xdim, xdelta, ydim, ydelta, zdim, zdelta) then
+              tasks self such that self <> mesh_neighbor((xdim*, ydim*, zdim*), self, (xdelta, ydelta, zdelta)) asynchronously send a msgsize-byte message to task mesh_neighbor((xdim*, ydim*, zdim*), self, (xdelta, ydelta, zdelta)) then
   all tasks await completion then
   all tasks log (total_bytes/elapsed_usecs)*(1E6/1M) as "Bandwidth (MB/s)"
 }

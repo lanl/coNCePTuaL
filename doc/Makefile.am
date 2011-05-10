@@ -4,10 +4,10 @@
 ##############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -54,7 +54,7 @@ GENERATED_TEXIS_DIST = ncptl-logextract-man.texi ncptl-logmerge-man.texi \
 GENERATED_TEXIS_NODIST = keywords.texi variables.texi methods.texi           \
 			 c_hooks.texi eventlist.texi aggregates.texi         \
 			 placeholders.texi grammar-summary.texi license.texi \
-			 langversion.texi
+			 langversion.texi cachevars.texi
 GENERATED_TEXIS = $(GENERATED_TEXIS_DIST) $(GENERATED_TEXIS_NODIST)
 TEXIMAGES = @TEXIMAGES@
 TEXTIMAGES = @TEXTIMAGES@
@@ -67,7 +67,7 @@ JPEGIMAGES = @JPEGIMAGES@
 PNGIMAGES = @PNGIMAGES@
 IMAGEBYPRODUCTS=$(LOGIMAGES) $(AUXIMAGES) $(DVIIMAGES)
 DISTIMAGES=$(TEXIMAGES) $(TEXTIMAGES) $(EPSIMAGES) \
-	   backend-deps.dot gui.xcf gui.png
+	   backend-deps.dot gui.xcf gui.png walrus.xcf walrus.png
 BUILTIMAGES=@BUILTIMAGES@
 
 all-local: $(GENERATED_TEXIS)
@@ -89,7 +89,7 @@ MOSTLYCLEANFILES = $(DOCFILES) $(BUILTIMAGES) $(CLEANTEXIS)             \
 		   conceptual.{al,cps,ev,fi,fnd,kw,mn,nt,op,out,vr,vrs} \
 		   conceptual.{als,tmp,tmps}
 CLEANFILES = $(GENERATED_TEXIS_NODIST)
-MAINTAINERCLEANFILES = conceptual.pdf gui.png gui.eps
+MAINTAINERCLEANFILES = conceptual.pdf gui.png gui.eps walrus.png walrus.eps
 
 ###########################################################################
 
@@ -193,6 +193,11 @@ aggregates.texi: $(top_srcdir)/ncptl.h.in
 	  $(AWK) '/NCPTL_FUNC_/ {fname=$$1; sub(/,$$/, "", fname); $$1=""; printf "@item %s\n%s\n\n", fname, substr($$0,2)}' >> $@
 	echo "@end table" >> $@
 
+# Produce a list of cache variables that are used by configure.
+cachevars.texi: $(top_srcdir)/makehelper.py \
+		$(top_srcdir)/configure.ac $(top_builddir)/config.log
+	$(PYTHON) $(top_srcdir)/makehelper.py cache-vars $(top_srcdir)/configure.ac $(top_builddir)/config.log > $@
+
 # Convert the ncptl-logextract, ncptl-logmerge, and ncptl-logunmerge man pages to Texinfo format.
 if LOGEXTRACT_WORKS
 ncptl-logextract-man.texi: $(top_builddir)/ncptl-logextract $(top_srcdir)/Pod2NCPTLTexi.pm
@@ -280,6 +285,8 @@ pdf: conceptual.pdf $(top_srcdir)/makehelper.py
 	echo '\entry{HPET}{\see\ High-Precision\ Event\ Timers}{HPET}' >> conceptual.al
 	echo '\entry{PLY}{\see\ Python\ Lex--Yacc}{PLY}' >> conceptual.al
 	$(PYTHON) $(top_srcdir)/makehelper.py xeatspaces conceptual.al > conceptual.tmp
+	$(PYTHON) $(top_srcdir)/makehelper.py canon-keywords conceptual.tmp > conceptual.tmp2
+	mv conceptual.tmp2 conceptual.tmp
 	texindex conceptual.tmp
 	(echo '\def\see{{\it see\/}}' ; \
 	 cat conceptual.tmps | \
@@ -311,8 +318,13 @@ if HAVE_TEX
 	  $(TEX) $< ;                                  \
 	fi
 
+# Dvips "sees" only text, which means that graphics are not included
+# in the resulting bounding box.  As a hack, we explicitly add a small
+# border around each image we process.
 .dvi.eps:
-	dvips -E -Ppdf -Pcmz -o $@ $<
+	$(DVIPS) -E -Ppdf -Pcmz -o - $< | \
+	  $(PERL) -ne 's/^(\%\%(?:HiRes)?BoundingBox:) ([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)/sprintf "%s %s %s %s %s", $$1, $$2-5, $$3-5, $$4+5, $$5+5/e; print' > $@
+
 
 ## Matches "HAVE_TEX"
 else
@@ -356,9 +368,10 @@ endif
 
 ###########################################################################
 
-# We have some special cases for gui.*, which are generated from a GIMP image.
+# We have some special cases for gui.* and walrus.*, which are
+# generated from GIMP images.
 
-gui.png: $(srcdir)/gui.xcf
+gui.png: gui.xcf
 	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/gui.xcf" "gui.xcf")))' ; \
 	 echo '       (drawable (car (gimp-image-merge-visible-layers image 0))))' ; \
 	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
@@ -368,13 +381,28 @@ gui.png: $(srcdir)/gui.xcf
 	 echo '(gimp-quit FALSE)') | \
 	  gimp --no-interface --batch -
 
-gui.eps: $(srcdir)/gui.xcf
-	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/gui.xcf" "gui.xcf")))' ; \
+walrus.png: walrus.xcf
+	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/walrus.xcf" "walrus.xcf")))' ; \
+	 echo '       (drawable (car (gimp-image-merge-visible-layers image 0))))' ; \
+	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
+	 echo '  (file-png-save RUN-NONINTERACTIVE image drawable' ; \
+	 echo '		        "walrus.png" "walrus.png"' ; \
+	 echo '		        FALSE 9 TRUE FALSE FALSE FALSE TRUE))' ; \
+	 echo '(gimp-quit FALSE)') | \
+	  gimp --no-interface --batch -
+
+.xcf.eps:
+	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/$<" "$<")))' ; \
 	 echo '       (drawable (car (gimp-image-flatten image))))' ; \
 	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
 	 echo '  (file-eps-save RUN-NONINTERACTIVE image drawable' ; \
-	 echo '		        "gui.eps" "gui.eps"' ; \
+	 echo '		        "$@" "$@"' ; \
 	 echo '		        0.0 0.0 0.0 0.0' ; \
 	 echo '		        0 1 0 1 0 2))' ; \
 	 echo '(gimp-quit FALSE)') | \
 	  gimp --no-interface --batch -
+
+
+gui.eps: $(srcdir)/gui.xcf
+
+walrus.eps: $(srcdir)/walrus.xcf

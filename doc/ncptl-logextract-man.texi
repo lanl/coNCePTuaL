@@ -2,10 +2,10 @@
 * ncptl-logextract manual page::   The result of running ``ncptl-logextract --man''
 @end menu
 
-@c Copyright (C) 2009, Los Alamos National Security, LLC
+@c Copyright (C) 2011, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2009).  Los Alamos National Security, LLC.  This software
+@c Copyright (2011).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -295,6 +295,9 @@ Specify the text used to end quoted text [default: same as @code{quote}]
 @item @copt{excel}
 Output strings in a format readable by Microsoft Excel
 
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
+
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
@@ -363,6 +366,9 @@ Specify the text used to end quoted text [default: same as @code{quote}]
 @item @copt{excel}
 Output strings in a format readable by Microsoft Excel
 
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
+
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
@@ -427,6 +433,9 @@ Specify the text used to begin quoted text [default: @w{``@code{}''}]
 
 @item @coptargs{unquote, }@var{string}
 Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
 
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
@@ -493,6 +502,9 @@ Specify the text used to begin quoted text [default: @w{``@code{"}''}]
 @item @coptargs{unquote, }@var{string}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
+
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
@@ -554,6 +566,9 @@ Specify the text used to begin quoted text [default: @w{``@code{}''}]
 
 @item @coptargs{unquote, }@var{string}
 Specify the text used to end quoted text [default: same as @code{quote}]
+
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
 
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
@@ -623,6 +638,9 @@ Specify the text used to end quoted text [default: same as @code{quote}]
 @item @copt{excel}
 Output strings in a format readable by Microsoft Excel
 
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
+
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
@@ -642,6 +660,9 @@ Use the booktabs package for a more professionally typeset look
 
 @item @copt{longtable}
 Use the longtable package to enable multi-page tables
+
+@item @coptargs{keep-columns, }@var{string}
+Enumerate the columns that should be included in the output [default: all columns]
 
 @item @coptargs{merge, }@var{function}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
@@ -999,6 +1020,12 @@ The following are examples of the different arguments to the
 @copt{exclude} can be specified repeatedly on the command line.
 
 @item
+@copt{keep-columns} accepts a list of comma-separated column ranges.
+For example, @coptargs{keep-columns, 1@comma{}3-6@comma{}8} tells @file{ncptl-logextract} to
+ignore all but the first, third through sixth, and eighth columns of
+data.
+
+@item
 @copt{merge} takes one of @code{mean} (arithmetic mean), @code{hmean} (harmonic
 mean), @code{min} (minimum), @code{max} (maximum), @code{median} (median), @code{sum}
 (sum), @code{all} (all values from each column), or @code{concat} (horizontal
@@ -1018,6 +1045,11 @@ difference between @coptargs{merge, all} and @coptargs{merge, concat} is that th
 former merges three files each with columns @var{A} and @var{B} as @{@var{A},
 @var{A}, @var{A}, @var{B}, @var{B}, @var{B}@} while the latter merges the same files
 as @{@var{A}, @var{B}, @var{A}, @var{B}, @var{A}, @var{B}@}.
+
+Note that @copt{merge} is applied @var{after} @copt{keep-columns}.  Hence, if
+@copt{keep-columns} specifies that only three columns be kept,
+@copt{merge} should list exactly three operations (or a single operation
+that applies to all three columns).
 
 @item
 @copt{showfnames} prepends to each data table in the input file an extra

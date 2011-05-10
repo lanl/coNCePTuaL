@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -63,13 +63,61 @@
 #define GMEAN 100            /* Mean for the Gaussian RNG */
 #define GSTD 10              /* Standard deviation for the Gaussian RNG */
 #define PMEAN 50             /* Mean for the Poisson RNG */
+#define RSHAPE 2             /* Shape of the Pareto RNGs */
+#define RLOW 30              /* Low input for the bounded Pareto RNG */
+#define RHIGH 70             /* High input for the bounded Pareto RNG */
+#define R2MEAN 60            /* Mean for the Pareto RNG */
+#define R3MEAN 42            /* Mean for the bounded Pareto RNG */
+
+/* Check if an array is stuck at a constant value. */
+#define CHECK_STUCK(ANAME, ADATA, AFMT)                                    \
+  do {                                                                     \
+    for (i=0; i<TRIALS && ADATA[i] == ADATA[0]; i++)                       \
+      ;                                                                    \
+    if (i == TRIALS) {                                                     \
+      debug_printf ("\t   %s: values are apparently stuck at %" AFMT "\n", \
+                    ANAME, ADATA[0]);                                      \
+      RETURN_FAILURE();                                                    \
+    }                                                                      \
+  }                                                                        \
+  while (0)
+
+/* Check if the mean of an integer array is out of bounds. */
+#define CHECK_MEAN(ANAME, ADATA, EXPECTED)                                    \
+  do {                                                                        \
+    ncptl_int imean = integer_mean (ADATA);                                   \
+    if (imean<(EXPECTED)-MTOLERANCE || imean>(EXPECTED)+MTOLERANCE) {         \
+      debug_printf ("\t   %s: expected a mean around %d but saw %" NICS "\n", \
+                    ANAME, EXPECTED, imean);                                  \
+      RETURN_FAILURE();                                                       \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
+/* Check if the mean of a floating-point array is out of bounds. */
+#define CHECK_MEAN_D(ANAME, ADATA, EXPECTED)                                  \
+  do {                                                                        \
+    double dmean = fp_mean (ADATA);                                           \
+    if (dmean<(double)((EXPECTED)-MTOLERANCE)                                 \
+        || dmean>(double)((EXPECTED)+MTOLERANCE)) {                           \
+      debug_printf ("\t   %s: expected a mean around %d but saw %g\n",        \
+                    ANAME, EXPECTED, dmean);                                  \
+      RETURN_FAILURE();                                                       \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
 
 ncptl_int uniform[TRIALS];   /* Random integers from a uniform distribution */
 ncptl_int gaussian[TRIALS];  /* Random integers from a Gaussian distribution */
 ncptl_int poisson[TRIALS];   /* Random integers from a Poisson distribution */
+ncptl_int pareto2[TRIALS];   /* Random integers from a Pareto distribution */
+ncptl_int pareto3[TRIALS];   /* Random integers from a bounded Pareto distribution */
 double uniform_d[TRIALS];    /* Random doubles from a uniform distribution */
 double gaussian_d[TRIALS];   /* Random doubles from a Gaussian distribution */
 double poisson_d[TRIALS];    /* Random doubles from a Poisson distribution */
+double pareto2_d[TRIALS];    /* Random doubles from a Pareto distribution */
+double pareto3_d[TRIALS];    /* Random doubles from a bounded Pareto distribution */
 
 
 /* Return the mean of an array of integers. */
@@ -98,7 +146,6 @@ double fp_mean (double *array)
 
 int main (void)
 {
-  ncptl_int imean;
   double dmean;
   ncptl_int i;
 
@@ -110,10 +157,27 @@ int main (void)
     uniform[i] = ncptl_func_random_uniform ((ncptl_int)ULOW, (ncptl_int)UHIGH);
     gaussian[i] = ncptl_func_random_gaussian ((ncptl_int)GMEAN, (ncptl_int)GSTD);
     poisson[i] = ncptl_func_random_poisson ((ncptl_int)PMEAN);
+    pareto2[i] = ncptl_func_random_pareto ((ncptl_int)RSHAPE, (ncptl_int)RLOW, (ncptl_int)RLOW);
+    pareto3[i] = ncptl_func_random_pareto ((ncptl_int)RSHAPE, (ncptl_int)RLOW, (ncptl_int)RHIGH);
     uniform_d[i] = ncptl_dfunc_random_uniform ((double)ULOW, (double)UHIGH);
     gaussian_d[i] = ncptl_dfunc_random_gaussian ((double)GMEAN, (double)GSTD);
     poisson_d[i] = ncptl_dfunc_random_poisson ((double)PMEAN);
+    pareto2_d[i] = ncptl_dfunc_random_pareto ((double)RSHAPE, (double)RLOW, (double)RLOW);
+    pareto3_d[i] = ncptl_dfunc_random_pareto ((double)RSHAPE, (double)RLOW, (double)RHIGH);
   }
+
+  /* Ensure that we're not seeing the name number over and over again. */
+  debug_printf ("\tTesting pseudorandom-number variability ...\n");
+  CHECK_STUCK("uniform",  uniform,    NICS);
+  CHECK_STUCK("gaussian", gaussian,   NICS);
+  CHECK_STUCK("poisson",  poisson,    NICS);
+  CHECK_STUCK("pareto2",  pareto2,    NICS);
+  CHECK_STUCK("pareto3",  pareto3,    NICS);
+  CHECK_STUCK("uniform",  uniform_d,  "%g");
+  CHECK_STUCK("gaussian", gaussian_d, "%g");
+  CHECK_STUCK("poisson",  poisson_d,  "%g");
+  CHECK_STUCK("pareto2",  pareto2_d,  "%g");
+  CHECK_STUCK("pareto3",  pareto3_d,  "%g");
 
   /* Ensure that the uniform values are within the specified range. */
   debug_printf ("\tTesting the range of ncptl_*_random_uniform() ...\n");
@@ -130,47 +194,47 @@ int main (void)
     }
   }
 
-  /* Ensure that all of the integer means are within a given tolerance. */
-  debug_printf ("\tTesting the mean of ncptl_func_random_*() ...\n");
-  imean = integer_mean (uniform);
-  if (imean<(ULOW+UHIGH)/2-MTOLERANCE || imean>(ULOW+UHIGH)/2+MTOLERANCE) {
-    debug_printf ("\t   uniform: expected a mean around %d but saw %" NICS "\n",
-                  (ULOW+UHIGH)/2, imean);
-    RETURN_FAILURE();
-  }
-  imean = integer_mean (gaussian);
-  if (imean<GMEAN-MTOLERANCE || imean>GMEAN+MTOLERANCE) {
-    debug_printf ("\t   gaussian: expected a mean around %d but saw %" NICS "\n",
-                  GMEAN, imean);
-    RETURN_FAILURE();
-  }
-  imean = integer_mean (poisson);
-  if (imean<PMEAN-MTOLERANCE || imean>PMEAN+MTOLERANCE) {
-    debug_printf ("\t   poisson: expected a mean around %d but saw %" NICS "\n",
-                  PMEAN, imean);
-    RETURN_FAILURE();
+  /* Ensure that the Pareto values are within the specified range. */
+  debug_printf ("\tTesting the range of ncptl_*_random_pareto() ...\n");
+  for (i=0; i<TRIALS; i++) {
+    if (pareto2[i]<RLOW) {
+      debug_printf ("\t   pareto2: generated value %" NICS " is outside the range [%d, +inf)\n",
+                    pareto2[i], RLOW);
+      RETURN_FAILURE();
+    }
+    if (pareto2_d[i]<(double)RLOW) {
+      debug_printf ("\t   pareto2: generated value %g is outside the range [%g, +inf)\n",
+                    pareto2_d[i], (double)RLOW);
+      RETURN_FAILURE();
+    }
+    if (pareto3[i]<RLOW || pareto3[i]>RHIGH) {
+      debug_printf ("\t   pareto3: generated value %" NICS " is outside the range [%d, %d]\n",
+                    pareto3[i], RLOW, RHIGH);
+      RETURN_FAILURE();
+    }
+    if (pareto3_d[i]<(double)RLOW || pareto3_d[i]>(double)RHIGH) {
+      debug_printf ("\t   pareto3: generated value %g is outside the range [%g,%g)\n",
+                    pareto3_d[i], (double)RLOW, (double)RHIGH);
+      RETURN_FAILURE();
+    }
   }
 
-  /* Ensure that all of the floating-point means are within a given tolerance. */
+  /* Ensure that all of the integer means are within a given tolerance. */
+  debug_printf ("\tTesting the mean of ncptl_func_random_*() ...\n");
+  CHECK_MEAN("uniform",  uniform,  (ULOW+UHIGH)/2);
+  CHECK_MEAN("gaussian", gaussian, GMEAN);
+  CHECK_MEAN("poisson",  poisson,  PMEAN);
+  CHECK_MEAN("pareto2",  pareto2,  R2MEAN);
+  CHECK_MEAN("pareto3",  pareto3,  R3MEAN);
+
+  /* Ensure that all of the floating-point means are within a given
+   * tolerance. */
   debug_printf ("\tTesting the mean of ncptl_dfunc_random_*() ...\n");
-  dmean = fp_mean (uniform_d);
-  if (dmean<(ULOW+UHIGH)/2.0-MTOLERANCE || dmean>(ULOW+UHIGH)/2.0+MTOLERANCE) {
-    debug_printf ("\t   uniform: expected a mean around %g but saw %g\n",
-                  (ULOW+UHIGH)/2.0, dmean);
-    RETURN_FAILURE();
-  }
-  dmean = fp_mean (gaussian_d);
-  if (dmean<(double)(GMEAN-MTOLERANCE) || dmean>(double)(GMEAN+MTOLERANCE)) {
-    debug_printf ("\t   gaussian: expected a mean around %g but saw %g\n",
-                  (double)GMEAN, dmean);
-    RETURN_FAILURE();
-  }
-  dmean = fp_mean (poisson_d);
-  if (dmean<(double)(PMEAN-MTOLERANCE) || dmean>(double)(PMEAN+MTOLERANCE)) {
-    debug_printf ("\t   poisson: expected a mean around %g but saw %g\n",
-                  (double)PMEAN, dmean);
-    RETURN_FAILURE();
-  }
+  CHECK_MEAN_D("uniform",  uniform_d,  (ULOW+UHIGH)/2.0);
+  CHECK_MEAN_D("gaussian", gaussian_d, GMEAN);
+  CHECK_MEAN_D("poisson",  poisson_d,  PMEAN);
+  CHECK_MEAN_D("pareto2",  pareto2_d,  R2MEAN);
+  CHECK_MEAN_D("pareto3",  pareto3_d,  R3MEAN);
 
   /* Re-seed with the original seed and ensure that the generated
    * numbers are the same as before. */
@@ -196,6 +260,16 @@ int main (void)
                     poisson[i], newvalue);
       RETURN_FAILURE();
     }
+    if (pareto2[i] != (newvalue=ncptl_func_random_pareto ((ncptl_int)RSHAPE, (ncptl_int)RLOW, (ncptl_int)RLOW))) {
+      debug_printf ("\t   pareto2: The same seed produced different values [%" NICS " != %" NICS "]\n",
+                    pareto2[i], newvalue);
+      RETURN_FAILURE();
+    }
+    if (pareto3[i] != (newvalue=ncptl_func_random_pareto ((ncptl_int)RSHAPE, (ncptl_int)RLOW, (ncptl_int)RHIGH))) {
+      debug_printf ("\t   pareto3: The same seed produced different values [%" NICS " != %" NICS "]\n",
+                    pareto3[i], newvalue);
+      RETURN_FAILURE();
+    }
 
     /* Check the floating-point functions. */
     if (fabs(uniform_d[i] - (newvalue_d=ncptl_dfunc_random_uniform ((double)ULOW, (double)UHIGH))) > FPZERO) {
@@ -211,6 +285,16 @@ int main (void)
     if (fabs(poisson_d[i] - (newvalue_d=ncptl_dfunc_random_poisson ((double)PMEAN))) > FPZERO) {
       debug_printf ("\t   poisson: The same seed produced different values [%g != %g]\n",
                     poisson_d[i], newvalue_d);
+      RETURN_FAILURE();
+    }
+    if (fabs(pareto2_d[i] - (newvalue_d=ncptl_dfunc_random_pareto ((double)RSHAPE, (double)RLOW, (double)RLOW))) > FPZERO) {
+      debug_printf ("\t   pareto2: The same seed produced different values [%g != %g]\n",
+                    pareto2_d[i], newvalue_d);
+      RETURN_FAILURE();
+    }
+    if (fabs(pareto3_d[i] - (newvalue_d=ncptl_dfunc_random_pareto ((double)RSHAPE, (double)RLOW, (double)RHIGH))) > FPZERO) {
+      debug_printf ("\t   pareto3: The same seed produced different values [%g != %g]\n",
+                    pareto3_d[i], newvalue_d);
       RETURN_FAILURE();
     }
   }

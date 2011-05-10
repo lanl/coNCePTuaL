@@ -14,10 +14,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2009, Los Alamos National Security, LLC
+ * Copyright (C) 2011, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2009).  Los Alamos National Security, LLC.  This software
+ * Copyright (2011).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -258,7 +258,7 @@ public class Program extends AbstractComponent
         addKeyListener( this );
         try {
             fileChooser = new JFileChooser();
-            fileChooser.addChoosableFileFilter( new ncptlFileFilter() );
+            fileChooser.setFileFilter( new ncptlFileFilter() );
         } catch( AccessControlException error ) {
             fileChooser = null;
         }
@@ -1591,7 +1591,8 @@ public class Program extends AbstractComponent
             }
         }
         catch( Exception e ){
-            System.err.println( "info: unable to enumerate task description\n" );
+            System.err.println( "info: unable to enumerate task description \""
+				+ sourceDescription + "\"");
             SourceTarget sourceTarget = new SourceTarget( 0, 0 );
             sourceTarget.unknown = true;
             sourceTargets.add( sourceTarget );
@@ -1618,7 +1619,17 @@ public class Program extends AbstractComponent
             // references external variables that are undefined in
             // process_node in which case a single tuple of (0,0) is
             // returned for source and target
-            pyInterface.process_node( node );
+	    try{
+	        pyInterface.process_node( node );
+	    }
+	    catch( Exception e ){
+	        // If the original was a receive statement, try again
+	        // with the source and target reversed.
+	        node =
+		  doParse( targetDescription + " sends a message to " + sourceDescription,
+			   "internal", "send_stmt" );
+	        pyInterface.process_node( node );
+	    }
             PyList eventLists = (PyList)pyInterface.get_eventlists();
             for( int i = 0; i < eventLists.__len__(); i++ ){
                 PyObject eventList = (PyObject)eventLists.__finditem__( i );
@@ -1636,7 +1647,10 @@ public class Program extends AbstractComponent
         }
         catch( Exception e ){
             // failed so return one tuple (i,i) for each source and target
-            System.err.println( "info: unable to enumerate task description\n" );
+            System.err.println( "info: unable to enumerate task descriptions \""
+				+ sourceDescription + "\" and \""
+				+ targetDescription + "\"");
+
             for ( int i = 0; i < numTasks; i++ ) {
               SourceTarget sourceTarget = new SourceTarget( i, i );
               sourceTarget.unknown = true;

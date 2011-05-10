@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -120,6 +120,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         "Define some macros to simplify the generated C code."
         newmacros = []
         newmacros.extend([
+            "/* Define a macro that increments REDUCE's alternate buffer pointer by a byte offset. */",
+            "#define CONC_GETALTBUFPTR(S) ((void *)((char *)thisev->s.S.altbuffer + thisev->s.S.bufferofs))",
+            "",
             "/* Estimate the number of unique communicators that this program will need.",
             " * (The tradeoff is one of initialization time versus memory consumption.) */",
             "#define ESTIMATED_COMMUNICATORS 128",
@@ -388,10 +391,19 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             self.push("%s.handle = &recvrequests[%s.pendingrecvs-1];" %
                       (struct, struct),
                       handlecode)
+        elif tag == "EV_MCAST":
+            self.pushmany([
+                    "if (%s.source == -1)" % struct,
+                    "%s.buffer2 = ncptl_malloc_message (%s.bufferofs2 + %s.size2," % \
+                        (struct, struct, struct),
+                    "%s.alignment," % struct,
+                    "%s.buffernum + 1," % struct,
+                    "%s.misaligned);" % struct],
+                          stack=handlecode)
         elif tag == "EV_REDUCE":
             self.pushmany([
                 "if (!%s.altbuffer && %s.receiving)" % (struct, struct),
-                "%s.altbuffer = ncptl_malloc_message (%s.numitems * %s.itemsize," % (struct, struct, struct),
+                "%s.altbuffer = ncptl_malloc_message (%s.numitems * %s.itemsize + %s.bufferofs," % (struct, struct, struct, struct),
                 "%s.alignment," % struct,
                 "%s.buffernum+1,   /* Note that reduces use _two_ buffers. */" % struct,
                 "%s.misaligned);" % struct],
@@ -428,25 +440,29 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
     def code_def_procev_send_BODY(self, localvars):
         "Send a message down a given channel (blocking)."
         return [
-            "(void) %s (thisev->s.send.buffer, (int)thisev->s.send.size, MPI_BYTE," % self.send_function,
+            "(void) %s (CONC_GETBUFPTR(send)," % self.send_function,
+            "(int)thisev->s.send.size, MPI_BYTE,",
             "(int)thisev->s.send.dest, 0, MPI_COMM_WORLD);"]
 
     def code_def_procev_recv_BODY(self, localvars):
         "Receive a message from a given channel (blocking)."
         return [
-            "(void) MPI_Recv (thisev->s.recv.buffer, (int)thisev->s.recv.size, MPI_BYTE,",
+            "(void) MPI_Recv (CONC_GETBUFPTR(recv),",
+            "(int)thisev->s.recv.size, MPI_BYTE,",
             "(int)thisev->s.recv.source, 0, MPI_COMM_WORLD, &status);"]
 
     def code_def_procev_asend_BODY(self, localvars):
         "Perform an asynchronous send."
         return [
-            "(void) %s (thisev->s.send.buffer, (int)thisev->s.send.size, MPI_BYTE," % self.isend_function,
+            "(void) %s (CONC_GETBUFPTR(send)," % self.isend_function,
+            "(int)thisev->s.send.size, MPI_BYTE,",
             "(int)thisev->s.send.dest, 0, MPI_COMM_WORLD, thisev->s.send.handle);"]
 
     def code_def_procev_arecv_BODY(self, localvars):
         "Perform an asynchronous receive."
         return [
-            "(void) MPI_Irecv (thisev->s.recv.buffer, (int)thisev->s.recv.size, MPI_BYTE,",
+            "(void) MPI_Irecv (CONC_GETBUFPTR(recv),",
+            "(int)thisev->s.recv.size, MPI_BYTE,",
             "(int)thisev->s.recv.source, 0, MPI_COMM_WORLD, thisev->s.recv.handle);"]
 
     def code_def_procev_wait_BODY_SENDS(self, localvars):
@@ -492,7 +508,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             self.code_declare_var(type="char *", name="procflags", rhs="NULL",
                                   comment="Flags indicating whether each task is in or out",
                                   stack=stack)
-            self.code_declare_var(type="MPI_Comm", name="subcom",
+            self.code_declare_var(type="MPI_Comm", name="subcomm",
                                   comment="MPI subcommunicator to use",
                                   stack=stack)
             if source_task[0] == "task_expr":
@@ -509,10 +525,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "for (%s=0; %s<var_num_tasks; %s++)" % (loopvar, loopvar, loopvar),
                 "procflags[ncptl_virtual_to_physical(procmap, %s)] = %s;" % (loopvar, expression),
                 "",
-                "subcom = define_MPI_communicator (procflags);",
+                "subcomm = define_MPI_communicator (procflags);",
                 "ncptl_free (procflags);"],
                           stack)
-            return "subcom"
+            return "subcomm"
         else:
             self.errmsg.error_internal('unable to declare an MPI communicator for source task "%s"' % source_task[0])
 
@@ -544,13 +560,285 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
     def code_declare_datatypes_MCAST_STATE(self, localvars):
         "Declare fields in the CONC_MCAST_EVENT structure for multicast events."
         newfields = []
+        self.code_declare_var(name="size2",
+                              comment="Number of bytes to receive in the many-to-many case",
+                              stack=newfields)
+        self.code_declare_var(name="bufferofs2",
+                              comment="Byte offset into the message buffer in the many-to-many case",
+                              stack=newfields)
+        self.code_declare_var(type="void *", name="buffer2",
+                              comment="Pointer to receive-message memory in the many-to-many case",
+                              stack=newfields)
         self.code_declare_var(type="MPI_Comm", name="communicator",
                               comment="Set of tasks to multicast to/from",
                               stack=newfields)
         self.code_declare_var(type="int", name="root",
                               comment="source's rank within communicator",
                               stack=newfields)
+        self.code_declare_var(type="int *", name="sndvol",
+                              comment="Volume of data to send to each rank in the communicator",
+                              stack=newfields)
+        self.code_declare_var(type="int *", name="snddisp",
+                              comment="Offset from buffer of each message to send",
+                              stack=newfields)
+        self.code_declare_var(type="int *", name="rcvvol",
+                              comment="Volume of data to receive from each rank in the communicator",
+                              stack=newfields)
+        self.code_declare_var(type="int *", name="rcvdisp",
+                              comment="Offset from buffer2 of each message to receive",
+                              stack=newfields)
         return newfields
+
+    def n_mcast_stmt_MANY_MANY(self, localvars):
+        "Take over the handling of n_mcast_stmt for many-to-many multicasts."
+        mcastcode = []
+
+        # Copy values from n_mcast_stmt's scope.
+        node = localvars["node"]
+        attributes = localvars["attributes"]
+        target_tasks = localvars["target_tasks"]
+        message_spec = localvars["message_spec"]
+        source_task = localvars["source_task"]
+        num_messages = localvars["num_messages"]
+        if message_spec[3] != "0LL":
+            self.errmsg.error_fatal("aligned/misaligned many-to-one and many-to-many multicast messages are not yet implemented by the %s backend" % self.backend_name,
+                                    lineno0=node.lineno0, lineno1=node.lineno1)
+        if message_spec[5] != "no_touching":
+            self.errmsg.error_fatal("touched/verified many-to-one and many-to-many multicast messages are not yet implemented by the %s backend" % self.backend_name,
+                                    lineno0=node.lineno0, lineno1=node.lineno1)
+        self.push_marker(mcastcode)
+        self.push(" /* %s MULTICAST...TO %s */" % (self.tasks_to_text(source_task), self.tasks_to_text(target_tasks)),
+                  mcastcode)
+
+        # Declare some of the variables we'll need for MPI_Alltoallv().
+        self.push("{", mcastcode)
+        self.code_declare_var(name="numsenders", rhs="0"+self.ncptl_int_suffix,
+                              comment="Number of sending tasks",
+                              stack=mcastcode)
+        self.code_declare_var(type="int *", name="sndvol",
+                              comment="Number of bytes we send to each other task",
+                              stack=mcastcode)
+        self.code_declare_var(type="int *", name="snddisp",
+                              comment="Buffer offset of each send",
+                              stack=mcastcode)
+        self.code_declare_var(type="int", name="sndnum", rhs="0",
+                              comment="Total number of sends from us",
+                              stack=mcastcode)
+        self.code_declare_var(type="int *", name="rcvvol",
+                              comment="Number of bytes sent to us from each other task",
+                              stack=mcastcode)
+        self.code_declare_var(type="int *", name="rcvdisp",
+                              comment="Buffer offset of each receive",
+                              stack=mcastcode)
+        self.code_declare_var(type="int", name="rcvnum", rhs="0",
+                              comment="Total number of sends to us",
+                              stack=mcastcode)
+        self.code_declare_var(type="int", name="peervar",
+                              comment="Physical rank of one of our peer tasks",
+                              stack=mcastcode)
+        self.code_declare_var(type="char *", name="procflags",
+                              rhs="(char *) ncptl_malloc (var_num_tasks*sizeof(char), 0)",
+                              comment="Flags indicating whether each task is in or out",
+                              stack=mcastcode)
+        self.communicator = self.code_declare_var(type="MPI_Comm", name="subcomm",
+                                                  comment="MPI subcommunicator to use",
+                                                  stack=mcastcode)
+        self.push("", mcastcode)
+
+        # Create a communicator holding all sources and all targets.
+        self.push(" /* Determine all participants in the many-to-many multicast. */", mcastcode)
+        self.push("memset(procflags, 0, var_num_tasks);", mcastcode)
+        if source_task[0] == "task_expr":
+            sloopvar = None
+            self.pushmany([
+                    "procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % source_task[1],
+                    "numsenders = (%s) >= 0 && (%s) < var_num_tasks ? 1 : 0;" % (source_task[1], source_task[1])],
+                          stack=mcastcode)
+        else:
+            self.push("{", mcastcode)
+            sloopvar = self.code_declare_var(name=source_task[1], stack=mcastcode)
+            sexpression = source_task[2]
+            if sexpression == None:
+                # ALL TASKS
+                sexpression = "1"
+            self.pushmany([
+                    "",
+                    "for (%s=0; %s<var_num_tasks; %s++)" % (sloopvar, sloopvar, sloopvar),
+                    "if (%s) {" % sexpression,
+                    "numsenders++;",
+                    "procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % sloopvar],
+                          stack=mcastcode)
+        if target_tasks[0] == "task_expr":
+            self.push("procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % target_tasks[1],
+                      mcastcode)
+        else:
+            tloopvar = target_tasks[1]
+            texpression = target_tasks[2]
+            self.push("{", mcastcode)
+            tloopvar = self.code_declare_var(name=tloopvar, stack=mcastcode)
+            if texpression == None:
+                # ALL OTHER TASKS
+                if sloopvar == None:
+                    # From a single task
+                    texpression = "%s != %s" % (tloopvar, source_task[1])
+                else:
+                    # From potentially more than one task
+                    texpression = "%s != %s" % (tloopvar, sloopvar)
+            self.pushmany([
+                    "",
+                    "for (%s=0; %s<var_num_tasks; %s++)" % (tloopvar, tloopvar, tloopvar),
+                    "if (%s)" % texpression,
+                    "procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % tloopvar,
+                    "}"],
+                          stack=mcastcode)
+        if source_task[0] != "task_expr":
+            self.push("}", mcastcode)
+            self.push("}", mcastcode)
+        self.push("subcomm = define_MPI_communicator(procflags);", mcastcode)
+
+        # As a special case, use MPI_Bcast() for one-to-one and
+        # one-to-many multicasts.
+        self.pushmany([
+                "",
+                " /* The following steps are performed only by those tasks who are",
+                "  * involved in the communication (as senders and/or receivers). */",
+                "if (numsenders > 0 && procflags[physrank]) {"],
+                      stack=mcastcode)
+        self.code_declare_var(type="int", name="groupsize", rhs="0",
+                              comment="Number of MPI ranks represented by subcomm",
+                              stack=mcastcode)
+        loopvar = self.code_declare_var(suffix="loop", stack=mcastcode)
+        self.pushmany([
+                "",
+                "if (numsenders == 1) {",
+                " /* As a special case, use MPI_Bcast() if there's a single sender. */"],
+                      stack=mcastcode)
+        if sloopvar != None:
+            self.code_declare_var(name=sloopvar, rhs="virtrank", stack=mcastcode)
+        one = "1" + self.ncptl_int_suffix
+        if num_messages == "1":
+            num_messages = one
+        if num_messages != one:
+            self.push("for (%s=0; %s<%s; %s++) {" %
+                      (loopvar, loopvar, num_messages, loopvar),
+                      mcastcode)
+        self.code_allocate_event("EV_MCAST", mcastcode)
+        struct = "thisev->s.mcast"
+        self.code_fill_in_comm_struct(struct, message_spec, attributes,
+                                      source_task[1], "source", mcastcode)
+        self.pushmany(self.invoke_hook("n_mcast_stmt_INIT", locals(),
+                                       before=[""]),
+                      stack=mcastcode)
+        if num_messages != one:
+            self.push("}", mcastcode)
+        self.push("}", mcastcode)
+
+        # Allocate memory for MPI_Alltoallv()'s use.
+        self.pushmany([
+                "else {",
+                " /* We have more than one sender.",
+                "  * Allocate memory for MPI_Alltoallv() to use. */",
+                "for (%s=0; %s<var_num_tasks; %s++)" % (loopvar, loopvar, loopvar),
+                "groupsize += procflags[%s];" % loopvar,
+                "sndvol = (int *) ncptl_malloc(groupsize*sizeof(int), 0);",
+                "memset(sndvol, 0, groupsize*sizeof(int));",
+                "snddisp = (int *) ncptl_malloc(groupsize*sizeof(int), 0);",
+                "memset(snddisp, 0, groupsize*sizeof(int));",
+                "rcvvol = (int *) ncptl_malloc(groupsize*sizeof(int), 0);",
+                "memset(rcvvol, 0, groupsize*sizeof(int));",
+                "rcvdisp = (int *) ncptl_malloc(groupsize*sizeof(int), 0);",
+                "memset(rcvdisp, 0, groupsize*sizeof(int));",
+                ""],
+                      stack=mcastcode)
+
+        # Determine all of the tasks the caller will send to.
+        self.push(" /* Determine each task to which I will send data. */", mcastcode)
+        self.code_begin_source_scope(source_task, mcastcode)
+        if target_tasks[0] == "all_others":
+            targetvar = self.code_declare_var(suffix="loop", stack=mcastcode)
+            self.pushmany([
+                "for (%s=0; %s<var_num_tasks; %s++)" % (targetvar, targetvar, targetvar),
+                "if (%s != virtrank) {" % targetvar],
+                          mcastcode)
+        elif target_tasks[0] == "task_expr":
+            targetvar = target_tasks[1]
+            self.code_declare_var(name="virtdest", rhs=targetvar, stack=mcastcode)
+            self.push("if (virtdest>=0 && virtdest<var_num_tasks) {",
+                      stack=mcastcode)
+        elif target_tasks[0] == "task_restricted":
+            targetvar = self.code_declare_var(name=target_tasks[1], stack=mcastcode)
+            self.pushmany([
+                "for (%s=0; %s<var_num_tasks; %s++)" % (targetvar, targetvar, targetvar),
+                "if (%s) {" % target_tasks[2]],
+                          mcastcode)
+        else:
+            self.errmsg.error_internal('unknown target task type "%s"' % target_tasks[0])
+        self.pushmany([
+                " /* In this scope, %s represents a single receiver. */" % targetvar,
+                "peervar = rank_in_MPI_communicator (subcomm, ncptl_virtual_to_physical(procmap, %s));" % targetvar,
+                "sndvol[peervar] = (int) (%s);" % message_spec[2],
+                "snddisp[peervar] = (int) (sndnum * (%s));" % message_spec[2],
+                "sndnum++;",
+                "}"],
+                      stack=mcastcode)
+        self.code_end_source_scope(source_task, mcastcode)
+
+        # Determine all of the tasks who will send to the caller.
+        self.push(" /* Determine each task who will send data to me. */", mcastcode)
+        sourcevar = self.code_begin_target_loop(source_task, target_tasks, mcastcode)
+        self.pushmany([
+                " /* Register that task %s will send us data. */" % sourcevar,
+                "peervar = rank_in_MPI_communicator (subcomm, ncptl_virtual_to_physical(procmap, %s));" % sourcevar,
+                "rcvvol[peervar] = (int) (%s);" % message_spec[2],
+                "rcvdisp[peervar] = (int) (rcvnum * (%s));" % message_spec[2],
+                "rcvnum++;"],
+                      stack=mcastcode)
+        self.code_end_target_loop(source_task, target_tasks, mcastcode)
+        self.push("", mcastcode)
+
+        # Perform the correct number of multicasts.
+        one = "1" + self.ncptl_int_suffix
+        if num_messages == "1":
+            num_messages = one
+        if num_messages == one:
+            self.push(" /* Prepare to multicast a message. */", mcastcode)
+            self.push("{", mcastcode)
+        else:
+            self.pushmany([
+                " /* Prepare to multicast %s messages. */" % num_messages,
+                "{"],
+                          mcastcode)
+            loopvar = self.code_declare_var(suffix="loop", stack=mcastcode)
+            self.push("for (%s=0; %s<%s; %s++) {" %
+                      (loopvar, loopvar, num_messages, loopvar),
+                      mcastcode)
+        self.code_allocate_event("EV_MCAST", mcastcode)
+        struct = "thisev->s.mcast"
+        alt_message_spec = list(message_spec)
+        alt_message_spec[2] = "sndnum * (%s)" % message_spec[2]
+        self.code_fill_in_comm_struct(struct, alt_message_spec, attributes, None, None, mcastcode)
+        self.pushmany([
+                "%s.size2 = rcvnum * (%s);" % (struct, message_spec[2]),
+                "(void) ncptl_malloc_message (%s.size2 + %s.bufferofs2, %s.alignment, %s.buffernum+1, %s.misaligned);" % (struct, struct, struct, struct, struct),
+                "%s.buffer2 = NULL;" % struct,
+                "%s.communicator = subcomm;" % struct],
+                      stack=mcastcode)
+        for a2av_var in ["sndvol", "snddisp", "rcvvol", "rcvdisp"]:
+            self.push("%s.%s = %s;" % (struct, a2av_var, a2av_var), mcastcode)
+        self.push("%s.source = -1;    /* Indicates many-to-many instead of one-to-many. */" % struct, mcastcode)
+        if num_messages != one:
+            self.push("}", mcastcode)
+        self.push("}", mcastcode)
+
+        # Close all open scopes.
+        self.pushmany([
+                "}",
+                "}",
+                "ncptl_free(procflags);",
+                "}"],
+                      stack=mcastcode)
+        self.combine_to_marker(mcastcode)
+        return mcastcode
 
     def n_mcast_stmt_DECL(self, localvars):
         "Declare a communicator representing the tasks to multicast to/from."
@@ -569,9 +857,14 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
 
     def code_def_procev_mcast_BODY(self, localvars):
         "Multicast a message to a set of tasks."
+        struct = "thisev->s.mcast"
         return [
-            "(void) MPI_Bcast (thisev->s.mcast.buffer, thisev->s.mcast.size, MPI_BYTE,",
-            "thisev->s.mcast.root, thisev->s.mcast.communicator);"]
+            "if (%s.source == -1)" % struct,
+            "(void) MPI_Alltoallv (CONC_GETBUFPTR(mcast), %s.sndvol, %s.snddisp, MPI_BYTE," % (struct, struct),
+            "(void *)((char *)%s.buffer2 + %s.bufferofs2), %s.rcvvol, %s.rcvdisp, MPI_BYTE, %s.communicator);" % (struct, struct, struct, struct, struct),
+            "else",
+            "(void) MPI_Bcast (CONC_GETBUFPTR(mcast), %s.size, MPI_BYTE," % struct,
+            "%s.root, %s.communicator);" % (struct, struct)]
 
     def code_declare_datatypes_REDUCE_STATE(self, localvars):
         "Declare fields in the CONC_REDUCE_EVENT structure for reduction events."
@@ -729,12 +1022,12 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             alignment = localvars["alignment"]
             self.push("if (%s.receiving)" % struct, initcode)
             if localvars["misaligned"]:
-                self.push("%s.altbuffer = ncptl_malloc_misaligned (message_size, %s);" %
-                          (struct, alignment),
+                self.push("%s.altbuffer = ncptl_malloc_misaligned (message_size + %s.bufferofs, %s);" %
+                          (struct, struct, alignment),
                           initcode)
             else:
-                self.push("%s.altbuffer = ncptl_malloc (message_size, %s);" %
-                          (struct, alignment),
+                self.push("%s.altbuffer = ncptl_malloc (message_size + %s.bufferofs, %s);" %
+                          (struct, struct, alignment),
                           initcode)
             self.push("else", initcode)
             self.push("%s.altbuffer = NULL;" % struct, initcode)
@@ -759,8 +1052,8 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "}",
             "%s.sendcomm = sendcomm;" % struct,
             "%s.recvcomm = recvcomm;" % struct,
-            "(void) ncptl_malloc_message (message_size, %s.alignment, %s.buffernum+1, %s.misaligned);   /* altbuffer uses buffernum+1. */" %
-            (struct, struct, struct)],
+            "(void) ncptl_malloc_message (message_size + %s.bufferofs, %s.alignment, %s.buffernum+1, %s.misaligned);   /* altbuffer uses buffernum+1. */" %
+            (struct, struct, struct, struct)],
                       stack=initcode)
         return initcode
 
@@ -772,28 +1065,25 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "switch (%s.reducetype) {" % struct,
             "case 0:",
             " /* Reduce to a single task. */",
-            "(void) MPI_Reduce (%s.buffer, %s.altbuffer, %s.numitems," %
-            (struct, struct, struct),
+            "(void) MPI_Reduce (CONC_GETBUFPTR(reduce), CONC_GETALTBUFPTR(reduce), %s.numitems," % struct,
             "%s.datatype, REDUCE_OPERATION, %s.reduceroot, %s.sendcomm);" %
             (struct, struct, struct),
             "break;",
             "",
             "case 1:",
             " /* Reduce from a set of tasks to the same set of tasks. */",
-            "(void) MPI_Allreduce (%s.buffer, %s.altbuffer, %s.numitems," %
-            (struct, struct, struct),
+            "(void) MPI_Allreduce (CONC_GETBUFPTR(reduce), CONC_GETALTBUFPTR(reduce), %s.numitems," % struct,
             "%s.datatype, REDUCE_OPERATION, %s.sendcomm);" % (struct, struct),
             "break;",
             "",
             "case 2:",
             " /* Reduce from one set of tasks to a different set. */",
             "if (%s.sending)" % struct,
-            "(void) MPI_Reduce (%s.buffer, %s.altbuffer, %s.numitems," %
-            (struct, struct, struct),
+            "(void) MPI_Reduce (CONC_GETBUFPTR(reduce), CONC_GETALTBUFPTR(reduce), %s.numitems," % struct,
             "%s.datatype, REDUCE_OPERATION, %s.reduceroot, %s.sendcomm);" %
             (struct, struct, struct),
             "if (%s.receiving)" % struct,
-            "(void) MPI_Bcast (%s.altbuffer, %s.numitems," % (struct, struct),
+            "(void) MPI_Bcast (CONC_GETALTBUFPTR(reduce), %s.numitems," % struct,
             "%s.datatype, %s.bcastroot, %s.recvcomm);" % ((struct,)*3),
             "break;",
             "",

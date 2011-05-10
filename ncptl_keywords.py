@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2009, Los Alamos National Security, LLC
+# Copyright (C) 2011, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2009).  Los Alamos National Security, LLC.  This software
+# Copyright (2011).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -114,6 +114,7 @@ class Keywords:
         "geometric",
         "gigabyte",
         "greater",
+        "group",
         "halfword",
         "halfwords",
         "harmonic",
@@ -144,8 +145,9 @@ class Keywords:
         "median",
         "megabyte",
         "memory",
-        "mesh_neighbor",
         "mesh_coordinate",
+        "mesh_distance",
+        "mesh_neighbor",
         "message",
         "messages",
         "microsecond",
@@ -160,6 +162,7 @@ class Keywords:
         "mod",
         "multicast",
         "multicasts",
+        "my",
         "nonunique",
         "not",
         "odd",
@@ -178,6 +181,7 @@ class Keywords:
         "quadwords",
         "random",
         "random_gaussian",
+        "random_pareto",
         "random_poisson",
         "random_uniform",
         "real",
@@ -226,8 +230,6 @@ class Keywords:
         "time",
         "times",
         "to",
-        "torus_neighbor",
-        "torus_coordinate",
         "touch",
         "touches",
         "touching",
