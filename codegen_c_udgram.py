@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -51,6 +51,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -81,6 +82,16 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 # Output a help message.
                 self.show_help()
                 raise SystemExit, 0
+
+
+    # ---------------------------- #
+    # Backend-specific helper code #
+    # ---------------------------- #
+
+    def code_reject_nonzero_tag(self, struct, statement):
+        "Check for a nonzero tag and abort if one is found."
+        return ["if (%s.tag != 0%s)" % (struct, self.ncptl_int_suffix),
+                'ncptl_fatal ("The %s backend does not support nonzero tags in %s statements");' % (self.backend_name, statement)]
 
 
     # ----------- #
@@ -1107,6 +1118,14 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
     # Point-to-point communication #
     # ---------------------------- #
 
+    def n_send_stmt_BODY(self, localvars):
+        "Disallow nonzero tags."
+        return self.code_reject_nonzero_tag(localvars["struct"], "SEND")
+
+    def n_recv_stmt_BODY(self, localvars):
+        "Disallow nonzero tags."
+        return self.code_reject_nonzero_tag(localvars["struct"], "RECEIVE")
+
     def code_def_procev_send_BODY(self, localvars):
         "Send a message down a given channel (blocking)."
         return ["conc_send_msg (&commstate[COMMSTATE_PT2PT], &thisev->s.send);"]
@@ -1173,6 +1192,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "for (%s=0; %s<var_num_tasks; %s++) {" %
             (self.mcast_sync_loop_var, self.mcast_sync_loop_var, self.mcast_sync_loop_var)],
                       stack=initcode)
+        if source_task[0] == "let_task":
+            source_task, srenamefrom, srenameto = self.task_group_to_task(source_task)
+            if srenamefrom != None:
+                self.code_declare_var(name=srenameto, rhs=srenamefrom, stack=mcastcode)
         if source_task[0] == 'task_expr':
             # Collectives involving a single task are fairly pointless
             # but we retain this case because task_restricted may
@@ -1252,10 +1275,18 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "thisev->s.sync.syncrank);"]
 
     def n_for_count_SYNC_ALL(self, localvars):
-        "Synchronize all of the tasks in the job."
+        "Prepare to synchronize all of the tasks in the job."
         return [
             "thisev_sync->s.sync.peerqueue = alltasksQ;",
             "thisev_sync->s.sync.syncrank = physrank;"]
+
+    def code_synchronize_all_BODY(self, localvars):
+        "Immediately synchronize all of the tasks in the job."
+        return [
+            "conc_synchronize (&commstate[COMMSTATE_COLL], ",
+            "ncptl_queue_contents (alltasksQ, 0),",
+            "ncptl_queue_length (alltasksQ) - 1,",
+            "physrank);"]
 
     def code_declare_datatypes_MCAST_STATE(self, localvars):
         "Declare fields in the CONC_MCAST_EVENT structure for multicast events."
@@ -1271,7 +1302,12 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
 
     def n_mcast_stmt_INIT(self, localvars):
         "Store all state needed to multicast a message a set of tasks."
-        return self.code_mcast_sync_initialize("multicast", "mcast", localvars["target_or_source"])
+        mcastcode = []
+        self.pushmany(self.code_reject_nonzero_tag(localvars["struct"], "MULTICAST"), stack=mcastcode)
+        self.push("", stack=mcastcode)
+        self.pushmany(self.code_mcast_sync_initialize("multicast", "mcast", localvars["target_or_source"]),
+                      stack=mcastcode)
+        return mcastcode
 
     def code_def_procev_mcast_BODY(self, localvars):
         "Multicast a message to a set of tasks."
@@ -1360,12 +1396,15 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         "Store our peer list in the reduce event."
         struct = localvars["struct"]
         reducecode = []
+        self.pushmany(self.code_reject_nonzero_tag(localvars["struct"], "REDUCE"),
+                      stack=reducecode)
         self.pushmany([
+            "",
             " /* Store the list of senders and receivers and our offset into each list. */",
             "%s.all_senders = ncptl_queue_init (sizeof(ncptl_int));" % struct,
             "%s.all_receivers = ncptl_queue_init (sizeof(ncptl_int));" % struct,
             "for (i=0; i<var_num_tasks; i++) {"],
-                      reducecode)
+                  reducecode)
         self.code_declare_var(name="physrank_i", rhs="ncptl_virtual_to_physical (procmap, i)",
                               comment="Physical rank corresponding to virtual task ID i",
                               stack=reducecode)

@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -51,6 +51,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -177,15 +178,17 @@ class NCPTL_CodeGen:
         self.program_uses_touching = 0     # 1=need to touch data somewhere
         self.program_uses_randomness = 0   # 2=need to choose and broadcast a seed; 1=choose only; 0=no randomness
         self.program_uses_range_lists = 0  # 1=generate helper code for sequences
+        self.program_uses_string2int = 0   # 1=generate a function to hash a string to an ncptl_int
         self.logcolumn = 0                 # Current column in the log file
         self.nextvarnum = 0                # Next sequential variable number
+        self.for_each_placeholder = "FOR_EACH_placeholder_%s" % repr(time.time())   # String unlikely to appear in a user program
         self.global_parameters = self.base_global_parameters
         self.errmsg = NCPTL_Error(filesource)
 
         # Walk the AST in postorder fashion.
         self.postorder_traversal(ast)
         if len(self.codestack) != 1:
-            self.errmsg.error_internal("code stack contains %s" % str(self.codestack[0:-1]))
+            self.errmsg.error_internal("Code stack contains %s" % str(self.codestack[0:-1]))
         return self.codestack[0]
 
     def compile_only(self, progfilename, codelines, outfilename, verbose, keepints):
@@ -556,6 +559,7 @@ class NCPTL_CodeGen:
         for orig_range in orig_rangelist:
             # Canonicalize each entry into a tuple of {initial
             # value(s), final value} to avoid special cases later on.
+            # Ordinary list
             if orig_range[1] == None:
                 for singleton in orig_range[0]:
                     rangelist.append(([singleton], singleton))
@@ -569,6 +573,7 @@ class NCPTL_CodeGen:
 
         # Figure out the pattern used in each range in RANGELIST and
         # convert each range to an element of a C struct.
+        ni_1 = "1" + self.ncptl_int_suffix
         self.code_declare_var("LOOPBOUNDS",
                               name="loopbounds[%d]" % len(rangelist),
                               comment="List of range descriptions",
@@ -588,16 +593,22 @@ class NCPTL_CodeGen:
         for enumvals, finalval in rangelist:
             prefix = "loopbounds[%d]" % loopindex
             self.push("", wrapper_code)
-            self.push(" /* Write range %d's loop bounds, \"next\" function, and termination function to %s. */" %
-                      (loopindex, prefix),
-                      wrapper_code)
             loopindex = loopindex + 1
+            self.push(" /* Write range %d's loop bounds, \"next\" function, and termination function to %s. */" % (loopindex-1, prefix), wrapper_code)
+            if finalval == "list_comp":
+                # List comprehension
+                self.push("%s.list_comp = %s;" % (prefix, enumvals), wrapper_code)
+                enumvals = ["0" + self.ncptl_int_suffix]
+                finalval = "ncptl_queue_length(%s.list_comp)-%s" % (prefix, ni_1)
+            else:
+                # Not a list comprehension
+                self.push("%s.list_comp = NULL;" % prefix, wrapper_code)
             for i in range(0, len(enumvals)):
                 self.push("initial_vals[%d] = %s;" % (i, enumvals[i]),
                           wrapper_code)
             self.pushmany([
                 "final_val = %s;" % finalval,
-                "%s.integral = 1;       /* Default to an integral sequence. */" % prefix,
+                "%s.integral = 1;" % prefix,
                 "%s.u.i.startval = initial_vals[0];" % prefix,
                 "%s.u.i.endval = final_val;" % prefix],
                           wrapper_code)
@@ -607,7 +618,7 @@ class NCPTL_CodeGen:
                     self.pushmany([
                         "%s.comparator = CONC_LEQ;" % prefix,
                         "%s.increment = CONC_ADD;" % prefix,
-                        "%s.u.i.incval = 1;" % prefix],
+                        "%s.u.i.incval = %s;" % (prefix, ni_1)],
                                   wrapper_code)
                 else:
                     # Two element range: Increment is second minus first.
@@ -615,8 +626,8 @@ class NCPTL_CodeGen:
                         "%s.comparator = initial_vals[0]<=final_val ? CONC_LEQ : CONC_GEQ;" %
                         prefix,
                         "%s.increment = CONC_ADD;" % prefix,
-                        "%s.u.i.incval = initial_vals[0]<=final_val ? 1 : -1;" %
-                        prefix],
+                        "%s.u.i.incval = initial_vals[0]<=final_val ? %s : -%s;" %
+                        (prefix, ni_1, ni_1)],
                                   wrapper_code)
             elif len(enumvals) == 2:
                 # Two initial elements dictate an arithmetic progression.
@@ -627,8 +638,8 @@ class NCPTL_CodeGen:
                     "%s.increment = CONC_ADD;" % prefix,
                     "%s.u.i.incval = initial_vals[1]-initial_vals[0];" % prefix,
                     "if (!%s.u.i.incval)" % prefix,
-                    "%s.u.i.incval = 1;   /* Handle {x,x,x,...,x} case (constant value) */" %
-                    prefix],
+                    "%s.u.i.incval = %s;   /* Handle {x,x,x,...,x} case (constant value) */" %
+                    (prefix, ni_1)],
                               wrapper_code)
             else:
                 # Range containing a few initial elements: Find the pattern.
@@ -646,8 +657,8 @@ class NCPTL_CodeGen:
                     "%s.increment = CONC_ADD;" % prefix,
                     "%s.u.i.incval = initial_vals[1]-initial_vals[0];" % prefix,
                     "if (!%s.u.i.incval)" % prefix,
-                    "%s.u.i.incval = 1;   /* Handle {x,x,x,...,x} case (constant value) */" %
-                    prefix,
+                    "%s.u.i.incval = %s;   /* Handle {x,x,x,...,x} case (constant value) */" %
+                    (prefix, ni_1),
                     "}"],
                               wrapper_code)
 
@@ -763,7 +774,7 @@ class NCPTL_CodeGen:
             "",
             " /* Now that we've defined all of our ranges we iterate over each range",
             "  * and each element within each range. */",
-            "for (rangenum=0; rangenum<%d; rangenum++) {" % len(rangelist)],
+            "for (rangenum=0%s; rangenum<%d; rangenum++) {" % (self.ncptl_int_suffix, len(rangelist))],
                       wrapper_code)
         self.code_declare_var("LOOPBOUNDS *", name="thisrange",
                               rhs="&loopbounds[rangenum]",
@@ -776,7 +787,22 @@ class NCPTL_CodeGen:
             "conc_seq_next (thisrange)) {"],
                       wrapper_code)
         self.combine_to_marker(wrapper_code)
-        return (wrapper_code[0], ["}", "}", "}"])
+
+        # Generate cleanup code.
+        cleanup_code = ["}", "}"]
+        list_comp_indices = []
+        for i in range(len(rangelist)):
+            if rangelist[i][1] == "list_comp":
+                list_comp_indices.append(i)
+        if list_comp_indices != []:
+            self.push("", cleanup_code)
+            self.push(" /* Free the memory allocated for storing list-comprehension values. */", cleanup_code)
+            for idx in list_comp_indices:
+                self.pushmany(["ncptl_queue_empty(loopbounds[%d].list_comp);" % idx,
+                               "ncptl_free(loopbounds[%d].list_comp);" % idx],
+                              stack=cleanup_code)
+        self.push("}", cleanup_code)
+        return (wrapper_code[0], cleanup_code)
 
     def search_stack_for_task_group(self, varname):
         "Walk the code stack for the definition of a task-group variable."
@@ -807,6 +833,49 @@ class NCPTL_CodeGen:
         else:
             tasktuple = taskgroup[2:]
         return [tuple(tasktuple), renamefrom, renameto]
+
+    def find_child_ident_nodes(self, node):
+        "Return a list of all ident nodes beneath a given node."
+        if node.type == "ident":
+            return [node]
+        identlist = []
+        for kid in node.kids:
+            identlist.extend(self.find_child_ident_nodes(kid))
+        return identlist
+
+    def find_variables_used(self, node):
+        "Return a list of all variables used but not defined by a given node."
+        variables_used = {}
+        var_nodes = self.find_child_ident_nodes(node)
+        try:
+            # If we have a reference to a list-comprehension
+            # expression node, pretend that its a child of ours.
+            var_nodes.extend(self.find_child_ident_nodes(node.sem["lc_expr_node"]))
+        except KeyError:
+            pass
+
+        defined_nodes = filter(lambda n: n.sem.has_key("definition"), var_nodes)
+        for used_node in var_nodes:
+            varname = used_node.attr
+            varnode = used_node.sem["varscope"][varname]
+            if varnode not in defined_nodes:
+                variables_used["var_" + varname] = 1
+        variables_used = variables_used.keys()
+        return variables_used
+
+    def replace_list_comp_placeholders(self, expr):
+        "Replace the first instance of placeholder text in extra_func_decls[]."
+        placeholder_re = re.compile(re.escape(self.for_each_placeholder))
+        for declnum in range(len(self.extra_func_decls)-1, -1, -1):
+            decl = self.extra_func_decls[declnum]
+            totalchanges = 0
+            for i in range(len(decl)):
+                decl[i], numchanges = placeholder_re.subn(expr, decl[i])
+                totalchanges += numchanges
+            if totalchanges > 0:
+                self.extra_func_decls[declnum] = decl
+                return
+        self.errmsg.error_internal("Failed to replace %s with %s" % (repr(self.for_each_placeholder), repr(expr)))
 
 
     #------------------------------#
@@ -1070,7 +1139,7 @@ class NCPTL_CodeGen:
                                  targetvar, rankvar, stack=None,
                                  verification=1):
         "Fill in common fields of various communication-state structures."
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, tag, buffer_ofs, buffer_num = message_spec
 
         # Fill in most of the fields.
         if rankvar != None and targetvar != None:
@@ -1085,6 +1154,7 @@ class NCPTL_CodeGen:
             self.push("%s.touching = %d;" % (struct, int(touching=="touching")), stack)
             if verification:
                 self.push("%s.verification = %d;" % (struct, int(touching=="verification")), stack)
+        self.push("%s.tag = %s;" % (struct, tag), stack)
         self.push("%s.pendingsends = pendingsends;" % struct, stack)
         self.push("%s.pendingrecvs = pendingrecvs;" % struct, stack)
         if buffer_ofs != None:
@@ -1127,13 +1197,82 @@ class NCPTL_CodeGen:
                     "%s.buffer = NULL;" % struct],
                               stack)
 
+    def code_for_each_func(self, node, expr, expr_type, ident, rangelist, cond_expr):
+        "Return a definition of a function for a FOR EACH expression."
+        # Acquire a list of variables used in the expression or range list.
+        variables_used = self.find_variables_used(node)
+
+        # Map the given arguments to a function name.
+        must_define_helper = 0
+        arguments = repr((expr, expr_type, ident, rangelist, cond_expr))
+        try:
+            # Look for an existing name for this expression.
+            funcname = self.for_each_to_func_name[arguments]
+        except AttributeError:
+            # First function used -- create and populate the hash table.
+            funcname = self.newvar(prefix="conc_FOR_EACH")
+            self.for_each_to_func_name = {arguments: funcname}
+            must_define_helper = 1
+        except KeyError:
+            # First time this function is used -- add it to the hash table.
+            funcname = self.newvar(prefix="conc_FOR_EACH")
+            self.for_each_to_func_name[arguments] = funcname
+            must_define_helper = 1
+
+        # Generate code for the helper function.
+        if must_define_helper:
+            helper_code = []
+            wrapper_main, wrapper_after = self.range_list_wrapper(rangelist)
+            wrapper_before = []
+            self.push_marker(wrapper_before)
+            arglist = string.join(map(lambda v: "ncptl_int " + v, variables_used), ", ")
+            if arglist == "":
+                arglist = "void"
+            self.pushmany([
+                    "/* Define a function that returns a list of %s for each %s in %s. */" % (expr, ident, rangelist),
+                    "static NCPTL_QUEUE *%s (%s)" % (funcname, arglist),
+                    "{"],
+                          stack=wrapper_before)
+            self.code_declare_var("NCPTL_QUEUE *", name="list_values",
+                                  rhs="ncptl_queue_init(sizeof(ncptl_int))",
+                                  stack=wrapper_before)
+            self.pushmany(wrapper_main, stack=wrapper_before)
+            self.code_declare_var(name=ident,
+                                  rhs="thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar)",
+                                  stack=wrapper_before)
+            self.combine_to_marker(wrapper_before)
+            self.pushmany(wrapper_before[0], stack=helper_code)
+            if expr_type == "list_expr":
+                self.code_declare_var("NCPTL_QUEUE *", name="multiple_values",
+                                      rhs=expr, stack=helper_code)
+                self.pushmany(["ncptl_queue_push_all(list_values, multiple_values);",
+                               "ncptl_queue_empty(multiple_values);",
+                               "ncptl_free(multiple_values);"],
+                              stack=helper_code)
+            elif cond_expr == None:
+                self.code_declare_var(name="one_value", rhs=expr, stack=helper_code)
+                self.push("ncptl_queue_push(list_values, &one_value);", helper_code)
+            else:
+                self.push("if (%s) {" % cond_expr, helper_code)
+                self.code_declare_var(name="one_value", rhs=expr, stack=helper_code)
+                self.push("ncptl_queue_push(list_values, &one_value);", helper_code)
+                self.push("}", helper_code)
+            self.pushmany(wrapper_after, stack=helper_code)
+            self.push("return list_values;", helper_code)
+            self.push("}", helper_code)
+            self.extra_func_decls.append(helper_code)
+
+        # Return an invocation of the helper function.
+        if variables_used == []:
+            actual_args = ""
+        else:
+            actual_args = string.join(variables_used, ", ")
+        return "%s(%s)" % (funcname, actual_args)
+
     def code_in_range_list(self, node, expression, rangelist):
         'Return code for "expression IS IN {...}".'
-        # Acquire a list of variables used in either the LHS or RHS.
-        variables_used = {}
-        for varname in re.findall(r'\b(var_\w+)\b', repr(expression) + " " + repr(rangelist)):
-            variables_used[varname] = 1
-        variables_used = variables_used.keys()
+        # Acquire a list of variables used but not defined.
+        variables_used = self.find_variables_used(node)
 
         # Map the printable version of the IS IN expression to a function name.
         must_define_helper = 0
@@ -1160,11 +1299,18 @@ class NCPTL_CodeGen:
             else:
                 formal_args = string.join(map(lambda vn: "ncptl_int " + vn, variables_used), ", ")
             self.push("/* Return 1 if %s; 0 if not. */" % node.printable, helper_code)
-            self.push("int %s (%s)" % (funcname, formal_args), helper_code)
+            self.push("static int %s (%s)" % (funcname, formal_args), helper_code)
             self.push("{", helper_code)
             helper_main, helper_after = self.range_list_wrapper(rangelist)
             self.pushmany(helper_main, helper_code)
-            self.pushmany(["if ((%s) == (thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar)))" % expression,
+            self.code_declare_var(name="value", stack=helper_code)
+            self.pushmany(["if (thisrange->list_comp == NULL)",
+                           " /* The loopvar field contains the value to compare against. */",
+                           "value = thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar);",
+                           "else",
+                           " /* The queue of list-comprehension values provides the value to compare against. */",
+                           "value = *(ncptl_int *)ncptl_queue_pop(thisrange->list_comp);",
+                           "if ((%s) == value)" % expression,
                            "return 1;"],
                           stack=helper_code)
             self.pushmany(helper_after, helper_code)
@@ -1180,6 +1326,17 @@ class NCPTL_CodeGen:
         else:
             actual_args = string.join(variables_used, ", ")
         return "%s(%s)" % (funcname, actual_args)
+
+    # All derived backends will need to define
+    # code_synchronize_all_BODY in order to support the FOR <time>
+    # statement.
+    def code_synchronize_all(self, needed_for, stack=None):
+        "Return a backend-specific piece of code that synchronizes all tasks."
+        self.pushmany(self.invoke_hook("code_synchronize_all_BODY", locals(),
+                                       alternatepy=lambda loc:
+                                       loc["self"].errmsg.error_fatal("the %s backend does not support %s" %
+                                                                      (loc["self"].backend_name, needed_for))),
+                      stack=stack)
 
 
     #-------#
@@ -1254,10 +1411,44 @@ class NCPTL_CodeGen:
             expr = self.pop()
             expr_list = self.pop()
             self.push((expr_list, expr))
+        elif node.attr == "list_comp":
+            # List comprehension
+            list_comp_info = self.pop()
+            expr = self.pop()
+            self.replace_list_comp_placeholders(expr)
+            self.push((list_comp_info, "list_comp"))
         else:
             # A, B, C, D, E, F, G
             expr_list = self.pop()
             self.push((expr_list, None))
+
+    def n_where_expr(self, node):
+        "WHERE expressions are primarily handled as part of FOR EACH processing."
+        pass
+
+    def n_for_each_expr(self, node):
+        """FOR EACH expressions (part of a list comprehension) are
+        converted to a call to a helper function."""
+        cond_expr = None
+        if len(node.kids) == 2 or node.kids[2].type == "where_expr":
+            # We're the most deeply nested FOR EACH expression.  We
+            # don't yet know what expression precedes us so we include
+            # a placeholder.
+            expr = self.for_each_placeholder
+            expr_type = "ordinary_expr"
+            if len(node.kids) != 2:
+                # We have a WHERE clause.
+                cond_expr = self.pop()
+        else:
+            # We're not the most deeply nested FOR EACH expression.
+            # We therefore have to wrap our child expression with the
+            # preceding expression.
+            expr = self.pop()
+            expr_type = "list_expr"
+        rangelist = self.pop()
+        ident = self.pop()
+        self.push(self.code_for_each_func(node, expr, expr_type, ident,
+                                          rangelist, cond_expr))
 
     def n_expr_list(self, node):
         """Gather a number of expressions from the stack and re-push
@@ -1337,6 +1528,13 @@ class NCPTL_CodeGen:
         else:
             self.push("not_unique")
 
+    def n_tag(self, node):
+        if node.kids == []:
+            self.push("0%s" % self.ncptl_int_suffix)
+        elif node.kids[0].type == "string":
+            self.push("conc_string_to_int(%s)" % self.pop())
+            self.program_uses_string2int = 1
+
     def n_verification(self, node):
         self.push(node.type)
         self.program_uses_touching = 1
@@ -1380,6 +1578,7 @@ class NCPTL_CodeGen:
         # Store all message-specification parameters in a single tuple.
         buffer_num = self.pop()
         buffer_ofs = self.pop()
+        tag = self.pop()
         touching = self.pop()
         alignment = self.pop()
         message_size = self.pop()
@@ -1387,12 +1586,13 @@ class NCPTL_CodeGen:
         num_messages = self.pop()
         misaligned = node.attr
         self.push((num_messages, uniqueness, message_size, alignment,
-                   misaligned, touching, buffer_ofs, buffer_num))
+                   misaligned, touching, tag, buffer_ofs, buffer_num))
 
     def n_reduce_message_spec(self, node):
         # Store all message-specification parameters in a single tuple.
         buffer_num = self.pop()
         buffer_ofs = self.pop()
+        tag = self.pop()
         touching = self.pop()
         data_type = self.pop()
         alignment = self.pop()
@@ -1400,7 +1600,7 @@ class NCPTL_CodeGen:
         item_count = self.pop()
         misaligned = node.attr
         self.push((item_count, uniqueness, data_type, alignment,
-                   misaligned, touching, buffer_ofs, buffer_num))
+                   misaligned, touching, tag, buffer_ofs, buffer_num))
 
     def n_send_attrs(self, node):
         self.push(node.attr)
@@ -1863,15 +2063,14 @@ class NCPTL_CodeGen:
             "",
             "/* Specify the number of trial iterations in each FOR <time> loop and the",
             " * minimum number of microseconds for which the trials need to run. */",
-            "#define CONC_FOR_TIME_TRIALS 10",
-            "#define CONC_FOR_TIME_MIN_USECS 10000",
+            "#define CONC_FOR_TIME_TRIALS 1",
+            "#define CONC_FOR_TIME_MIN_USECS 1000000",
             "",
             "/* Define a macro that rounds a double to a ncptl_int. */",
             "#define CONC_DBL2INT(D) ((ncptl_int)((D)+0.5))",
             "",
             "/* Define a macro that increments a buffer pointer by a byte offset. */",
-            "#define CONC_GETBUFPTR(S) ((void *)((char *)thisev->s.S.buffer + thisev->s.S.bufferofs))",
-            ""])
+            "#define CONC_GETBUFPTR(S) ((void *)((char *)thisev->s.S.buffer + thisev->s.S.bufferofs))"])
         self.pushmany(self.invoke_hook("code_define_macros_POST", locals(),
                                        before=[""]))
 
@@ -1930,6 +2129,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to send from */",
             "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
+            "ncptl_int tag;          /* Tag to use for selective receives */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word before sending */",
             "int verification;       /* 1=fill message buffer with known contents */",
@@ -1947,6 +2147,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to receive into */",
             "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
+            "ncptl_int tag;          /* Tag to use for selective receives */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word after reception */",
             "int verification;       /* 1=verify that all bits are correct */",
@@ -1997,6 +2198,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to send/receive from */",
             "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
+            "ncptl_int tag;          /* Tag to use for selective receives */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word before sending */",
             "int verification;       /* 1=verify that all bits are correct */",
@@ -2014,6 +2216,7 @@ class NCPTL_CodeGen:
             "ncptl_int pendingrecvs; /* # of outstanding receives */",
             "ncptl_int buffernum;    /* Buffer # to send/receive from */",
             "ncptl_int bufferofs;    /* Byte offset into the message buffer */",
+            "ncptl_int tag;          /* Tag to use for selective receives */",
             "int misaligned;         /* 1=misaligned from a page; 0=align as specified */",
             "int touching;           /* 1=touch every word before sending/after receiving */",
             "int sending;            /* 1=we're a sender */",
@@ -2125,6 +2328,7 @@ class NCPTL_CodeGen:
         self.pushmany([
             "/* Fully specify an arbitrary for() loop (used by FOR EACH). */",
             "typedef struct {",
+            "NCPTL_QUEUE *list_comp;  /* NULL=ordinary list; other=list comprehension values */",
             "int integral;        /* 1=integral values; 0=floating-point values */",
             "enum {               /* Comparison of loop variable to end variable */",
             "CONC_LEQ,                /* Increasing progression */",
@@ -2360,6 +2564,24 @@ class NCPTL_CodeGen:
                 "}",
                 "}",
                 "}"])
+        if self.program_uses_string2int:
+            self.pushmany([
+                    "/* Hash a string to an integer. */",
+                    "static ncptl_int conc_string_to_int (const char *strval)",
+                    "{"]),
+            self.code_declare_var(name="retval",
+                                  rhs="1234567891%s" % self.ncptl_int_suffix,
+                                  comment="Value to return, initialized to a large prime number")
+            self.code_declare_var(name="bigprime", type="const ncptl_int",
+                                  rhs="1073741789%s" % self.ncptl_int_suffix,
+                                  comment="Large prime number to use for hashing")
+            self.code_declare_var(type="const char *", name="c")
+            self.pushmany([
+                    "",
+                    "for (c=strval; *c; c++)",
+                    "retval = retval * bigprime + (*c);",
+                    "return retval;",
+                    "}"])
         self.pushmany(self.invoke_hook("code_def_small_funcs_POST", locals(),
                                        before=[""]))
 
@@ -3275,6 +3497,7 @@ class NCPTL_CodeGen:
             for var in self.referenced_exported_vars.keys():
                 if var not in ["var_num_tasks", "var_elapsed_usecs"]:
                     self.push("beginev->%s = %s;" % (var, var))
+            self.code_synchronize_all("FOR <time>")
             self.pushmany([
                 "beginev->starttime = ncptl_time();",
                 "}",
@@ -3296,14 +3519,18 @@ class NCPTL_CodeGen:
                 "if (beginev->timing_trial) {",
                 " /* We're currently performing some trial runs. */",
                 "if (!--beginev->itersleft) {",
-                " /* We just finished our trial runs. */"])
+                " /* We just finished the current set of trial runs. */"])
             self.code_declare_var("uint64_t", name="elapsedtime",
-                                  rhs="ncptl_time() - beginev->starttime",
                                   comment="Time taken to perform the trial iterations")
             self.code_declare_var("uint64_t", name="minelapsedtime",
                                   comment="Minimum value of elapsedtime across all tasks")
             self.push("")
-            self.push(" /* Acquire global agreement on the # of iterations that each task will execute. */")
+            self.push(" /* Stop the clock after the slowest task finishes. */")
+            self.code_synchronize_all("FOR <time>")
+            self.pushmany([
+                    "elapsedtime = ncptl_time() - beginev->starttime;",
+                    "",
+                    " /* Acquire global agreement on the # of iterations that each task will execute. */"])
 
             # The following hook needs to reduce all tasks'
             # elapsedtime to the global minimum across all tasks and
@@ -3314,13 +3541,15 @@ class NCPTL_CodeGen:
                                                                           loc["self"].backend_name)))
             self.pushmany([
                 "beginev->itersleft = (minelapsedtime<=0) ? 1 : (beginev->usecs*beginev->previters)/minelapsedtime;",
-                "beginev->itersleft += beginev->itersleft/4 + 1;   /* Add a 25% fudge factor. */",
+                "if (beginev->itersleft < 1)",
+                "beginev->itersleft = 1;",
                 "",
                 " /* Determine if we need to perform another set of trial iterations. */",
-                "if (minelapsedtime < beginev->usecs/10 && minelapsedtime < CONC_FOR_TIME_MIN_USECS) {",
+                "if ((minelapsedtime < beginev->usecs/10 && minelapsedtime < CONC_FOR_TIME_MIN_USECS) || beginev->previters == CONC_FOR_TIME_TRIALS) {",
                 " /* itersleft doesn't correspond to at least 10% of the desired execution",
-                "  * time or 100% of the minimum trial time.  We therefore try again using",
-                "  * 10X the number of iterations. */"])
+                "  * time or 100% of the minimum trial time, or this was just a warmup",
+                "  * set of trial iterations.  We therefore try again using 10X the",
+                "  * number of iterations. */"])
             self.code_declare_var("uint64_t", name="now",
                                   comment="Current time in microseconds")
             self.pushmany([
@@ -3865,9 +4094,14 @@ class NCPTL_CodeGen:
         self.push_marker(wrapper_before)
         self.push(" /* FOR EACH %s IN %s... */" % (ident, rangelist), wrapper_before)
         self.pushmany(wrapper_main, stack=wrapper_before)
-        self.code_declare_var("ncptl_int", name=ident,
-                              rhs="thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar)",
-                              stack=wrapper_before)
+        self.code_declare_var("ncptl_int", name=ident, stack=wrapper_before)
+        self.pushmany(["if (thisrange->list_comp == NULL)",
+                       " /* The loopvar field contains the value for %s. */" % ident,
+                       "%s = thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar);" % ident,
+                       "else",
+                       " /* The queue of list-comprehension values provides the value for %s. */" % ident,
+                       "%s = *(ncptl_int *)ncptl_queue_pop(thisrange->list_comp);" % ident],
+                      stack=wrapper_before)
         self.push("{", wrapper_before)
         self.combine_to_marker(wrapper_before)
         self.wrap_stack(wrapper_before[0], wrapper_after + ["}"])
@@ -3985,7 +4219,7 @@ class NCPTL_CodeGen:
         attributes = self.pop()
         message_spec = self.pop()
         source_task = self.pop()
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, tag, buffer_ofs, buffer_num = message_spec
 
         # Blocking all-to-all communication currently deadlocks.
         if "asynchronously" not in attributes and \
@@ -4111,7 +4345,7 @@ class NCPTL_CodeGen:
         istack = self.init_elements
         self.push_marker(istack)
         self.push(" /* %s RECEIVES FROM %s */" % (self.tasks_to_text(source_task), self.tasks_to_text(target_tasks)), istack)
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, tag, buffer_ofs, buffer_num = message_spec
 
         # Determine the set of tasks we're receiving from.
         if node.sem["receive_dir"] == "S2T":
@@ -4615,7 +4849,7 @@ class NCPTL_CodeGen:
 
         # We haven't yet implemented target message specifications.
         if source_message_spec != target_message_spec:
-            self.errmsg.error_fatal('WHO RECEIVES THE RESULT is not yet implemented by the %s backend' % self.backend_name,
+            self.errmsg.error_fatal('WHO RECEIVES THE RESULT with a different specification is not yet implemented by the %s backend' % self.backend_name,
                                     lineno0=node.lineno0, lineno1=node.lineno1)
 
         # Determine if we're a sender.
@@ -4749,7 +4983,7 @@ class NCPTL_CodeGen:
                               comment="Message size as the product of the number of items and the item size",
                               stack=istack)
         struct = "thisev->s.reduce"
-        item_count, uniqueness, data_type, alignment, misaligned, touching, buffer_ofs, buffer_num = source_message_spec
+        item_count, uniqueness, data_type, alignment, misaligned, touching, tag, buffer_ofs, buffer_num = source_message_spec
         self.pushmany(self.invoke_hook("n_reduce_stmt_INIT", locals(),
                                        before=[""]),
                       stack=istack)
@@ -4760,7 +4994,7 @@ class NCPTL_CodeGen:
             "%s.receiving = reduce_receivers[virtrank];" % struct,
             "message_size = %s.numitems * %s.itemsize;" % (struct, struct)],
                       stack=istack)
-        faked_message_spec = (1, uniqueness, None, alignment, misaligned, touching, buffer_ofs, buffer_num)
+        faked_message_spec = (1, uniqueness, None, alignment, misaligned, touching, tag, buffer_ofs, buffer_num)
         self.code_fill_in_comm_struct(struct, faked_message_spec, [], None, None, stack=istack, verification=0)
 
         # Handle the buffer field differently based on whether the
@@ -4810,7 +5044,7 @@ class NCPTL_CodeGen:
         if "asynchronously" in attributes:
             self.errmsg.error_fatal('asynchronous multicasts are not yet implemented by the %s backend' % self.backend_name,
                                     lineno0=node.lineno0, lineno1=node.lineno1)
-        num_messages, uniqueness, message_size, alignment, misaligned, touching, buffer_ofs, buffer_num = message_spec
+        num_messages, uniqueness, message_size, alignment, misaligned, touching, tag, buffer_ofs, buffer_num = message_spec
         istack = self.init_elements
 
         # If a derived backend directly supports many-to-many
@@ -4828,6 +5062,11 @@ class NCPTL_CodeGen:
                 (self.tasks_to_text(source_task), self.tasks_to_text(target_tasks)),
                 "{"],
                       stack=istack)
+        close_curlies = 1
+        if source_task[0] == "let_task":
+            source_task, srenamefrom, srenameto = self.task_group_to_task(source_task)
+            if srenamefrom != None:
+                self.code_declare_var(name=srenameto, rhs=srenamefrom, stack=istack)
         if source_task[0] == "task_expr":
             sourcevar = self.code_declare_var(suffix="task", rhs=source_task[1],
                                               comment="Source task for a single one-to-many multicast",
@@ -4852,6 +5091,14 @@ class NCPTL_CodeGen:
                           stack=istack)
         else:
             self.errmsg.error_internal('unknown source task type "%s"' % source_task[0])
+
+        # Convert target task groups to ordinary tasks.
+        if target_tasks[0] == "let_task":
+            target_tasks, trenamefrom, trenameto = self.task_group_to_task(target_tasks)
+            if trenamefrom != None:
+                self.push("{", istack)
+                close_curlies += 1
+                self.code_declare_var(name=trenameto, rhs=trenamefrom, stack=istack)
 
         # Assign target_or_source the union of the source and target tasks.
         if target_tasks[0] == "task_expr":
@@ -4901,7 +5148,8 @@ class NCPTL_CodeGen:
         self.code_end_source_scope(target_or_source, istack)
 
         # Close any scopes we opened.
-        self.push("}", istack)
+        for i in range(close_curlies):
+            self.push("}", istack)
         self.pushmany(self.invoke_hook("n_mcast_stmt_POST", locals(),
                                        before=[""]),
                       stack=istack)

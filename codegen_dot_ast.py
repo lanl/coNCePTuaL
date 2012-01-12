@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -51,6 +51,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -87,6 +88,7 @@ class NCPTL_CodeGen:
         self.node_code_chars = 0        # Number of characters at which to truncate node code (0=no node code; -1=all code lines)
         self.show_lines = 1             # 1=output line numbers; 0=don't
         self.show_source_code = 1       # 1=show the complete source code; 0=don't
+        self.compress_graph = 0         # 1=save space by eliding chains; 0=show everything
         for arg in range(0, len(options)):
             arg_match = re.match(r'--(format|extra-dot|node-code)=(.*)', options[arg])
             if arg_match:
@@ -101,6 +103,8 @@ class NCPTL_CodeGen:
                         self.node_code_chars = sys.maxint
                     else:
                         self.node_code_chars = argvalue
+            elif options[arg] == "--compress":
+                self.compress_graph = 1
             elif options[arg] == "--no-attrs":
                 self.show_attrs = 0
             elif options[arg] == "--no-lines":
@@ -116,9 +120,10 @@ class NCPTL_CodeGen:
         print """\
 Usage: dot_ast [OPTION...]
   --format=<string>          Output format for dot [default: "ps"]
-  --extra-dot=<string>       Extra dot code to process within the digraph
   --node-code=<number>       Maximum number of characters of coNCePTuaL code
                              to display within a dot node [default: infinity]
+  --extra-dot=<string>       Extra dot code to process within the digraph
+  --compress                 Save space on the page by eliding chains of nodes
   --no-attrs                 Don't display AST node attributes
   --no-lines                 Don't display AST node line numbers
   --no-source                Don't display the coNCePTuaL source program
@@ -179,6 +184,8 @@ Help options:
         self.dotcode.append("  subgraph cluster_parse_tree {")
         self.dotcode.append('    style = "invis";')
         self.nextnodenum = 1
+        if self.compress_graph:
+            self.elide_chains(ast)
         self.postorder_traversal(ast)
         self.dotcode.append("  }")
         self.dotcode.append("")
@@ -299,6 +306,21 @@ Help options:
     # Output DOT code #
     #-----------------#
 
+    def elide_chains(self, node):
+        "Elide chains of single-child nodes from the graph."
+        if len(node.kids) == 1 and len(node.kids[0].kids) == 1 and len(node.kids[0].kids[0].kids) == 1:
+            elided_node = node.kids[0]
+            num_elided = 0
+            while len(node.kids) == 1 and len(node.kids[0].kids) == 1:
+                node.kids = node.kids[0].kids
+                num_elided = num_elided + 1
+            elided_node.type = "(%d nodes)" % num_elided
+            elided_node.attr = None
+            elided_node.kids = node.kids
+            node.kids = [elided_node]
+        for kid in node.kids:
+            self.elide_chains(kid)
+
     def postorder_traversal(self, node):
         "Write a node to the graph and connect it to its children."
 
@@ -335,8 +357,11 @@ Help options:
 
         # Merge the label rows into a single label string and generate
         # a graph node.
-        self.dotcode.append('    n%d [label="{%s}"];' %
-                            (node.nodenum, string.join(map(lambda r: "{%s}" % r, labelrows), " | ")))
+        if node.type[-6:] == "nodes)":
+            self.dotcode.append('    n%d [label="%s",color=invis];' % (node.nodenum, node.type))
+        else:
+            labelstr = string.join(map(lambda r: "{%s}" % r, labelrows), " | ")
+            self.dotcode.append('    n%d [label="{%s}"];' % (node.nodenum, labelstr))
 
         # Connect the node to its children (if any).
         for child in node.kids:

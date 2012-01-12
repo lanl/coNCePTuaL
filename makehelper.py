@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -50,6 +50,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -562,7 +563,7 @@ def c_hooks():
         a c_hooks.texi Texinfo file.
     """
     # Acquire a list of hook functions.
-    hook_re = re.compile(r'invoke_hook.*code')
+    hook_re = re.compile(r'self.invoke_hook')
     hooklist = []
     oneline = sys.stdin.readline()
     while oneline:

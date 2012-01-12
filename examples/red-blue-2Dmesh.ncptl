@@ -5,6 +5,8 @@
 # and again in February 2011                 #
 ##############################################
 
+Require language version "1.4".
+
 # Parse the command line.
 SX is "Mesh width" and comes from "--width" or "-w" with default 1.
 SY is "Mesh height" and comes from "--height" or "-h" with default 1.

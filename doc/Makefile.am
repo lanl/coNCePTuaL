@@ -4,10 +4,10 @@
 ##############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -46,6 +46,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 # ----------------------------------------------------------------------
 
 info_TEXINFOS = conceptual.texi
@@ -67,7 +68,7 @@ JPEGIMAGES = @JPEGIMAGES@
 PNGIMAGES = @PNGIMAGES@
 IMAGEBYPRODUCTS=$(LOGIMAGES) $(AUXIMAGES) $(DVIIMAGES)
 DISTIMAGES=$(TEXIMAGES) $(TEXTIMAGES) $(EPSIMAGES) \
-	   backend-deps.dot gui.xcf gui.png walrus.xcf walrus.png
+	   backend-deps.dot gui.xcf gui.png walrus.xcf walrus.png tridiagonal.asy
 BUILTIMAGES=@BUILTIMAGES@
 
 all-local: $(GENERATED_TEXIS)
@@ -355,14 +356,14 @@ endif
 	epstopdf --outfile=$@ $<
 
 .eps.jpg:
-	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=96 	     \
-	  -dDEVICEYRESOLUTION=96 -sDEVICE=pbmraw -sOutputFile=- $< | \
-	  pnmcrop | ppmtojpeg > $@
+	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=1000	       \
+	  -dDEVICEYRESOLUTION=1000 -sDEVICE=ppmraw -sOutputFile=- $< | \
+	  pnmcrop | pnmscale 0.1 | ppmtojpeg > $@
 
 .eps.png:
-	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=96 	     \
-	  -dDEVICEYRESOLUTION=96 -sDEVICE=pbmraw -sOutputFile=- $< | \
-	  pnmcrop | pnmtopng -transparent white > $@
+	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=1000 	       \
+	  -dDEVICEYRESOLUTION=1000 -sDEVICE=ppmraw -sOutputFile=- $< | \
+	  pnmcrop | pnmscale 0.1 | pnmtopng -transparent white > $@
 
 .PRECIOUS: $(EPSIMAGES)
 
@@ -370,6 +371,8 @@ endif
 
 # We have some special cases for gui.* and walrus.*, which are
 # generated from GIMP images.
+
+if HAVE_GIMP
 
 gui.png: gui.xcf
 	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/gui.xcf" "gui.xcf")))' ; \
@@ -406,3 +409,24 @@ walrus.png: walrus.xcf
 gui.eps: $(srcdir)/gui.xcf
 
 walrus.eps: $(srcdir)/walrus.xcf
+
+## Matches "HAVE_GIMP"
+endif
+
+###########################################################################
+
+# We have a special cases for tridiagonal.*, which are generated from
+# Asymptote code.
+
+if HAVE_ASY
+
+tridiagonal.eps: tridiagonal.asy
+	asy tridiagonal.asy
+
+tridiagonal.pdf: tridiagonal.asy
+	asy -f pdf tridiagonal.asy
+
+## Matches "HAVE_ASY"
+endif
+
+###########################################################################

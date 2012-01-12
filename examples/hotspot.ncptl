@@ -1,6 +1,6 @@
 # Hot-spot bandwidth
 
-Require language version "1.3".
+Require language version "1.4".
 
 maxbytes is "Maximum message size in bytes" and comes from "--maxbytes" or
   "-x" with default 1024.

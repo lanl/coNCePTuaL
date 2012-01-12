@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2011, Los Alamos National Security, LLC
+ * Copyright (C) 2012, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2011).  Los Alamos National Security, LLC.  This software
+ * Copyright (2012).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -49,6 +49,7 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  *
  * ----------------------------------------------------------------------
  */
@@ -163,4 +164,31 @@ void *ncptl_queue_pop_tail (NCPTL_QUEUE *queue)
     return NULL;
   else
     return (void *) ((char *)queue->array + queue->eltbytes*--queue->used);
+}
+
+
+/* Given two compatible queues (same element size), push all elements
+ * of the second queue onto the first queue.  The second queue is left
+ * unmodified. */
+void ncptl_queue_push_all (NCPTL_QUEUE *targetQ, NCPTL_QUEUE *sourceQ)
+{
+  ncptl_int numnewelts;    /* Number of new elements to push onto targetQ */
+  void *firstnewelt;       /* Pointer to the first new element in targetQ */
+  ncptl_int i;
+
+  /* Validate our arguments. */
+  if (targetQ->eltbytes != sourceQ->eltbytes)
+    ncptl_fatal("ncptl_queue_push_all() requires compatible queues (%" NICS " vs. %" NICS ")",
+                targetQ->eltbytes, sourceQ->eltbytes);
+  numnewelts = sourceQ->used;
+  if (numnewelts == 0)
+    return;
+
+  /* Allocate space for numnewelts new elements. */
+  firstnewelt = ncptl_queue_allocate(targetQ);
+  for (i=1; i<numnewelts; i++)
+    ncptl_queue_allocate(targetQ);
+
+  /* Copy all elements en masse. */
+  memcpy(firstnewelt, ncptl_queue_contents(sourceQ, 0), numnewelts*sourceQ->eltbytes);
 }

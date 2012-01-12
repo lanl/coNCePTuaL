@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -51,6 +51,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -169,6 +170,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.code_declare_var(type="MPI_Errhandler", name="mpi_error_handler",
                               comment="Handle to handle_MPI_error()",
                               stack=newvars)
+        self.code_declare_var(name="mpi_tag_ub",
+                              comment="Upper bound on an MPI tag value",
+                              stack=newvars)
 
         # Make all declarations static.
         static_newvars = []
@@ -193,6 +197,16 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.code_declare_var(type="MPI_Comm", name="comm_world", rhs="MPI_COMM_WORLD",
                               comment="Copy of MPI_COMM_WORLD that we can take the address of",
                               stack=newvars)
+        self.code_declare_var(type="void *", name="attr_val",
+                              comment="Pointed to the value of MPI_TAG_UB",
+                              stack=newvars)
+        self.code_declare_var(type="int", name="attr_flag", rhs="0",
+                              comment="true=MPI_TAG_UB was extracted; false=not extracted",
+                              stack=newvars)
+        if self.program_uses_log_file:
+            self.code_declare_var(type="char", name="tag_range_str", arraysize="50",
+                                  comment="String representing the range of valid MPI tags",
+                                  stack=newvars)
         return newvars
 
     def code_def_init_init_PRE(self, localvars):
@@ -209,7 +223,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "(void) MPI_Errhandler_set (MPI_COMM_WORLD, mpi_error_handler);",
             "(void) MPI_Comm_rank(MPI_COMM_WORLD, &physrank);",
             "(void) MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);",
-            "var_num_tasks = (ncptl_int) num_tasks;"]
+            "var_num_tasks = (ncptl_int) num_tasks;",
+            "(void) MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &attr_val, &attr_flag);",
+            "mpi_tag_ub = (ncptl_int) (attr_flag ? *(int *)attr_val : 32767);"]
 
     def code_define_functions_PRE(self, localvars):
         "Define some additional functions we need at run time."
@@ -243,6 +259,18 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "  return subrank;",
             "}",
             "",
+            "/* Map an arbitrary tag to within MPI's valid range of [0, mpi_tag_ub]. */",
+            "static ncptl_int map_tag_into_MPI_range (ncptl_int tag)",
+            "{",
+            "if (tag == NCPTL_INT_MIN)",
+            " /* Avoid taking the absolute value of NCPTL_INT_MIN. */",
+            "tag = 555666773%s;   /* Arbitrary value */" % self.ncptl_int_suffix,
+            "tag = ncptl_func_abs (tag);   /* Only nonnegatives values are allowed. */",
+            "if (mpi_tag_ub < NCPTL_INT_MAX)",
+            "tag %= mpi_tag_ub + 1;",
+            "return tag;",
+            "}",
+            "",
             "/* Given an array of task in/out booleans return an MPI",
             ' * communicator that represents the "in" tasks. */',
             "static MPI_Comm define_MPI_communicator (char *procflags)",
@@ -274,7 +302,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             extraloglines.extend([
                 'ncptl_log_add_comment ("MPI send routines", "%s() and %s()");' %
                 (self.send_function, self.isend_function),
-                'ncptl_log_add_comment ("MPI reduction operation", REDUCE_OPERATION_NAME);'])
+                'ncptl_log_add_comment ("MPI reduction operation", REDUCE_OPERATION_NAME);',
+                'sprintf (tag_range_str, "[0, %" NICS "]", mpi_tag_ub);',
+                'ncptl_log_add_comment ("MPI tag range", tag_range_str);'])
         return extraloglines
 
     def code_def_init_misc_EXTRA(self, localvars):
@@ -412,21 +442,29 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
 
     def n_send_stmt_BODY(self, localvars):
         "Allocate memory for additional pending sends."
+        hookcode = []
+        self.push("%s.tag = map_tag_into_MPI_range (%s.tag);" %
+                  (localvars["struct"], localvars["struct"]),
+                  hookcode)
         if "asynchronously" in localvars["attributes"]:
-            return [
-                "(void *) ncptl_queue_allocate (sendreqQ);",
-                "(void *) ncptl_queue_allocate (sendstatQ);"]
-        else:
-            return []
+            self.pushmany([
+                    "(void *) ncptl_queue_allocate (sendreqQ);",
+                    "(void *) ncptl_queue_allocate (sendstatQ);"],
+                          stack=hookcode)
+        return hookcode
 
     def n_recv_stmt_BODY(self, localvars):
         "Allocate memory for additional pending receives."
+        hookcode = []
+        self.push("%s.tag = map_tag_into_MPI_range (%s.tag);" %
+                  (localvars["struct"], localvars["struct"]),
+                  hookcode)
         if "asynchronously" in localvars["attributes"]:
-            return [
+            self.pushmany([
                 "(void *) ncptl_queue_allocate (recvreqQ);",
-                "(void *) ncptl_queue_allocate (recvstatQ);"]
-        else:
-            return []
+                "(void *) ncptl_queue_allocate (recvstatQ);"],
+                          stack=hookcode)
+        return hookcode
 
     def code_def_procev_DECL(self, localvars):
         "Declare a status variable for MPI_Recv()."
@@ -442,28 +480,31 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         return [
             "(void) %s (CONC_GETBUFPTR(send)," % self.send_function,
             "(int)thisev->s.send.size, MPI_BYTE,",
-            "(int)thisev->s.send.dest, 0, MPI_COMM_WORLD);"]
+            "(int)thisev->s.send.dest, (int)thisev->s.send.tag, MPI_COMM_WORLD);"]
 
     def code_def_procev_recv_BODY(self, localvars):
         "Receive a message from a given channel (blocking)."
         return [
             "(void) MPI_Recv (CONC_GETBUFPTR(recv),",
             "(int)thisev->s.recv.size, MPI_BYTE,",
-            "(int)thisev->s.recv.source, 0, MPI_COMM_WORLD, &status);"]
+            "(int)thisev->s.recv.source, (int)thisev->s.recv.tag,",
+            "MPI_COMM_WORLD, &status);"]
 
     def code_def_procev_asend_BODY(self, localvars):
         "Perform an asynchronous send."
         return [
             "(void) %s (CONC_GETBUFPTR(send)," % self.isend_function,
             "(int)thisev->s.send.size, MPI_BYTE,",
-            "(int)thisev->s.send.dest, 0, MPI_COMM_WORLD, thisev->s.send.handle);"]
+            "(int)thisev->s.send.dest, (int)thisev->s.send.tag,",
+            "MPI_COMM_WORLD, thisev->s.send.handle);"]
 
     def code_def_procev_arecv_BODY(self, localvars):
         "Perform an asynchronous receive."
         return [
             "(void) MPI_Irecv (CONC_GETBUFPTR(recv),",
             "(int)thisev->s.recv.size, MPI_BYTE,",
-            "(int)thisev->s.recv.source, 0, MPI_COMM_WORLD, thisev->s.recv.handle);"]
+            "(int)thisev->s.recv.source, (int)thisev->s.recv.tag,",
+            "MPI_COMM_WORLD, thisev->s.recv.handle);"]
 
     def code_def_procev_wait_BODY_SENDS(self, localvars):
         "Retry all of the sends that blocked."
@@ -494,6 +535,13 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
              Note that the source_task argument is allowed to be of
              target_tasks type.
         """
+        # Convert source task groups to ordinary tasks.
+        if source_task[0] == "let_task":
+            source_task, srenamefrom, srenameto = self.task_group_to_task(source_task)
+            if srenamefrom != None:
+                self.code_declare_var(name=srenameto, rhs=srenamefrom, stack=mcastcode)
+
+        # Declare a communicator representing source_task.
         base_comm = "MPI_COMM_WORLD"
         if source_task[0]=="task_all" or source_task[0]=="all_others":
             return base_comm
@@ -550,6 +598,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
     def n_for_count_SYNC_ALL(self, localvars):
         "Prepare to synchronize all of the tasks in the job."
         return ["thisev_sync->s.sync.communicator = MPI_COMM_WORLD;"]
+
+    def code_synchronize_all_BODY(self, localvars):
+        "Immediately synchronize all of the tasks in the job."
+        return ["(void) MPI_Barrier (MPI_COMM_WORLD);"]
 
     def code_def_procev_etime_REDUCE_MIN(self, localvars):
         "Find the global minimum of the elapsedtime variable."
@@ -643,6 +695,12 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.communicator = self.code_declare_var(type="MPI_Comm", name="subcomm",
                                                   comment="MPI subcommunicator to use",
                                                   stack=mcastcode)
+
+        # Convert source task groups to ordinary tasks.
+        if source_task[0] == "let_task":
+            source_task, srenamefrom, srenameto = self.task_group_to_task(source_task)
+            if srenamefrom != None:
+                self.code_declare_var(name=srenameto, rhs=srenamefrom, stack=mcastcode)
         self.push("", mcastcode)
 
         # Create a communicator holding all sources and all targets.
@@ -672,6 +730,13 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             self.push("procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % target_tasks[1],
                       mcastcode)
         else:
+            # Convert target task groups to ordinary tasks.
+            if target_tasks[0] == "let_task":
+                target_tasks, trenamefrom, trenameto = self.task_group_to_task(target_tasks)
+                if trenamefrom != None:
+                    self.code_declare_var(name=trenameto, rhs=trenamefrom, stack=stack)
+
+            # Identify the tasks that will receive a message.
             tloopvar = target_tasks[1]
             texpression = target_tasks[2]
             self.push("{", mcastcode)
@@ -726,6 +791,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         struct = "thisev->s.mcast"
         self.code_fill_in_comm_struct(struct, message_spec, attributes,
                                       source_task[1], "source", mcastcode)
+        self.pushmany([
+                "if (var_num_tasks == 1)",
+                "%s.source = 0%s;" % (struct, self.ncptl_int_suffix)],
+                      stack=mcastcode)
         self.pushmany(self.invoke_hook("n_mcast_stmt_INIT", locals(),
                                        before=[""]),
                       stack=mcastcode)
@@ -754,6 +823,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         # Determine all of the tasks the caller will send to.
         self.push(" /* Determine each task to which I will send data. */", mcastcode)
         self.code_begin_source_scope(source_task, mcastcode)
+        if target_tasks[0] == "let_task":
+            target_tasks, trenamefrom, trenameto = self.task_group_to_task(target_tasks)
+            if trenamefrom != None:
+                self.code_declare_var(name=trenameto, rhs=trenamefrom, stack=mcastcode)
         if target_tasks[0] == "all_others":
             targetvar = self.code_declare_var(suffix="loop", stack=mcastcode)
             self.pushmany([
@@ -818,10 +891,13 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         alt_message_spec[2] = "sndnum * (%s)" % message_spec[2]
         self.code_fill_in_comm_struct(struct, alt_message_spec, attributes, None, None, mcastcode)
         self.pushmany([
+                "%s.bufferofs2 = %s;" % (struct, alt_message_spec[7]),
                 "%s.size2 = rcvnum * (%s);" % (struct, message_spec[2]),
                 "(void) ncptl_malloc_message (%s.size2 + %s.bufferofs2, %s.alignment, %s.buffernum+1, %s.misaligned);" % (struct, struct, struct, struct, struct),
                 "%s.buffer2 = NULL;" % struct,
-                "%s.communicator = subcomm;" % struct],
+                "%s.communicator = subcomm;" % struct,
+                "if (%s.tag != 0%s)" % (struct, self.ncptl_int_suffix),
+                'ncptl_fatal ("The %s backend does not support nonzero tags in MULTICAST statements");' % self.backend_name],
                       stack=mcastcode)
         for a2av_var in ["sndvol", "snddisp", "rcvvol", "rcvdisp"]:
             self.push("%s.%s = %s;" % (struct, a2av_var, a2av_var), mcastcode)
@@ -853,7 +929,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         return [
             "%s.communicator = %s;" % (struct, self.communicator),
             "%s.root = rank_in_MPI_communicator (%s.communicator, %s.source);" %
-            (struct, struct, struct)]
+            (struct, struct, struct),
+            "if (%s.tag != 0%s)" % (struct, self.ncptl_int_suffix),
+            'ncptl_fatal ("The %s backend does not support nonzero tags in MULTICAST statements");' % self.backend_name]
 
     def code_def_procev_mcast_BODY(self, localvars):
         "Multicast a message to a set of tasks."
@@ -1007,7 +1085,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 " /* Fill in the remainder of the reduce structure. */",
                 "%s.reduceroot = rank_in_MPI_communicator (sendcomm, ncptl_virtual_to_physical(procmap, first_shared));" % struct,
                 "%s.bcastroot = rank_in_MPI_communicator (recvcomm, ncptl_virtual_to_physical(procmap, first_shared));" % struct],
-                          stack=initcode)
+                      stack=initcode)
         return initcode
 
     def n_reduce_stmt_INIT2(self, localvars):
@@ -1017,7 +1095,11 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
 
         # Handle the alternate buffer field differently based on whether the
         # message buffer is supposed to be unique.
-        self.push(" /* Perform some c_mpi-specific structure initialization. */", initcode)
+        self.pushmany([
+                " /* Perform some c_mpi-specific structure initialization. */",
+                "if (%s.tag != 0%s)" % (struct, self.ncptl_int_suffix),
+                'ncptl_fatal ("The %s backend does not support nonzero tags in REDUCE statements");' % self.backend_name],
+                      stack=initcode)
         if string.upper(localvars["uniqueness"]) == "UNIQUE":
             alignment = localvars["alignment"]
             self.push("if (%s.receiving)" % struct, initcode)

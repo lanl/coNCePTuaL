@@ -2,10 +2,10 @@
 * ncptl-logunmerge manual page::   The result of running ``ncptl-logunmerge --man''
 @end menu
 
-@c Copyright (C) 2011, Los Alamos National Security, LLC
+@c Copyright (C) 2012, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2011).  Los Alamos National Security, LLC.  This software
+@c Copyright (2012).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -44,6 +44,7 @@
 @c WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 @c OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 @c EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+@c 
 
 @node ncptl-logunmerge manual page,  , ncptl-logunmerge, ncptl-logunmerge
 @subsubheading NAME

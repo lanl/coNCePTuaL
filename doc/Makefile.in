@@ -21,10 +21,10 @@
 ##############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -63,6 +63,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 # ----------------------------------------------------------------------
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
@@ -145,6 +146,7 @@ ALL_BACKENDS = @ALL_BACKENDS@
 AMTAR = @AMTAR@
 AP_ARCH = @AP_ARCH@
 AR = @AR@
+ASY = @ASY@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -176,6 +178,7 @@ EPSIMAGES = @EPSIMAGES@
 EXAMPLEFILES = @EXAMPLEFILES@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GIMP = @GIMP@
 GPERF = @GPERF@
 GREP = @GREP@
 GS = @GS@
@@ -326,7 +329,7 @@ GENERATED_TEXIS_NODIST = keywords.texi variables.texi methods.texi           \
 GENERATED_TEXIS = $(GENERATED_TEXIS_DIST) $(GENERATED_TEXIS_NODIST)
 IMAGEBYPRODUCTS = $(LOGIMAGES) $(AUXIMAGES) $(DVIIMAGES)
 DISTIMAGES = $(TEXIMAGES) $(TEXTIMAGES) $(EPSIMAGES) \
-	   backend-deps.dot gui.xcf gui.png walrus.xcf walrus.png
+	   backend-deps.dot gui.xcf gui.png walrus.xcf walrus.png tridiagonal.asy
 
 ALLTEXINFOS = $(info_TEXINFOS) $(GENERATED_TEXIS) $(srcdir)/stamp-vti $(srcdir)/version.texi
 EXTRA_DIST = $(DISTIMAGES) $(GENERATED_TEXIS_DIST) $(BUILTMANS) \
@@ -1085,14 +1088,14 @@ docbook: conceptual.xml
 	epstopdf --outfile=$@ $<
 
 .eps.jpg:
-	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=96 	     \
-	  -dDEVICEYRESOLUTION=96 -sDEVICE=pbmraw -sOutputFile=- $< | \
-	  pnmcrop | ppmtojpeg > $@
+	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=1000	       \
+	  -dDEVICEYRESOLUTION=1000 -sDEVICE=ppmraw -sOutputFile=- $< | \
+	  pnmcrop | pnmscale 0.1 | ppmtojpeg > $@
 
 .eps.png:
-	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=96 	     \
-	  -dDEVICEYRESOLUTION=96 -sDEVICE=pbmraw -sOutputFile=- $< | \
-	  pnmcrop | pnmtopng -transparent white > $@
+	$(GS) -dNOPAUSE -dBATCH -q -dDEVICEXRESOLUTION=1000 	       \
+	  -dDEVICEYRESOLUTION=1000 -sDEVICE=ppmraw -sOutputFile=- $< | \
+	  pnmcrop | pnmscale 0.1 | pnmtopng -transparent white > $@
 
 .PRECIOUS: $(EPSIMAGES)
 
@@ -1101,40 +1104,53 @@ docbook: conceptual.xml
 # We have some special cases for gui.* and walrus.*, which are
 # generated from GIMP images.
 
-gui.png: gui.xcf
-	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/gui.xcf" "gui.xcf")))' ; \
-	 echo '       (drawable (car (gimp-image-merge-visible-layers image 0))))' ; \
-	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
-	 echo '  (file-png-save RUN-NONINTERACTIVE image drawable' ; \
-	 echo '		        "gui.png" "gui.png"' ; \
-	 echo '		        FALSE 9 TRUE FALSE FALSE FALSE TRUE))' ; \
-	 echo '(gimp-quit FALSE)') | \
-	  gimp --no-interface --batch -
+@HAVE_GIMP_TRUE@gui.png: gui.xcf
+@HAVE_GIMP_TRUE@	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/gui.xcf" "gui.xcf")))' ; \
+@HAVE_GIMP_TRUE@	 echo '       (drawable (car (gimp-image-merge-visible-layers image 0))))' ; \
+@HAVE_GIMP_TRUE@	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
+@HAVE_GIMP_TRUE@	 echo '  (file-png-save RUN-NONINTERACTIVE image drawable' ; \
+@HAVE_GIMP_TRUE@	 echo '		        "gui.png" "gui.png"' ; \
+@HAVE_GIMP_TRUE@	 echo '		        FALSE 9 TRUE FALSE FALSE FALSE TRUE))' ; \
+@HAVE_GIMP_TRUE@	 echo '(gimp-quit FALSE)') | \
+@HAVE_GIMP_TRUE@	  gimp --no-interface --batch -
 
-walrus.png: walrus.xcf
-	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/walrus.xcf" "walrus.xcf")))' ; \
-	 echo '       (drawable (car (gimp-image-merge-visible-layers image 0))))' ; \
-	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
-	 echo '  (file-png-save RUN-NONINTERACTIVE image drawable' ; \
-	 echo '		        "walrus.png" "walrus.png"' ; \
-	 echo '		        FALSE 9 TRUE FALSE FALSE FALSE TRUE))' ; \
-	 echo '(gimp-quit FALSE)') | \
-	  gimp --no-interface --batch -
+@HAVE_GIMP_TRUE@walrus.png: walrus.xcf
+@HAVE_GIMP_TRUE@	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/walrus.xcf" "walrus.xcf")))' ; \
+@HAVE_GIMP_TRUE@	 echo '       (drawable (car (gimp-image-merge-visible-layers image 0))))' ; \
+@HAVE_GIMP_TRUE@	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
+@HAVE_GIMP_TRUE@	 echo '  (file-png-save RUN-NONINTERACTIVE image drawable' ; \
+@HAVE_GIMP_TRUE@	 echo '		        "walrus.png" "walrus.png"' ; \
+@HAVE_GIMP_TRUE@	 echo '		        FALSE 9 TRUE FALSE FALSE FALSE TRUE))' ; \
+@HAVE_GIMP_TRUE@	 echo '(gimp-quit FALSE)') | \
+@HAVE_GIMP_TRUE@	  gimp --no-interface --batch -
 
-.xcf.eps:
-	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/$<" "$<")))' ; \
-	 echo '       (drawable (car (gimp-image-flatten image))))' ; \
-	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
-	 echo '  (file-eps-save RUN-NONINTERACTIVE image drawable' ; \
-	 echo '		        "$@" "$@"' ; \
-	 echo '		        0.0 0.0 0.0 0.0' ; \
-	 echo '		        0 1 0 1 0 2))' ; \
-	 echo '(gimp-quit FALSE)') | \
-	  gimp --no-interface --batch -
+@HAVE_GIMP_TRUE@.xcf.eps:
+@HAVE_GIMP_TRUE@	(echo '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "$(srcdir)/$<" "$<")))' ; \
+@HAVE_GIMP_TRUE@	 echo '       (drawable (car (gimp-image-flatten image))))' ; \
+@HAVE_GIMP_TRUE@	 echo '  (plug-in-autocrop RUN-NONINTERACTIVE image drawable)' ; \
+@HAVE_GIMP_TRUE@	 echo '  (file-eps-save RUN-NONINTERACTIVE image drawable' ; \
+@HAVE_GIMP_TRUE@	 echo '		        "$@" "$@"' ; \
+@HAVE_GIMP_TRUE@	 echo '		        0.0 0.0 0.0 0.0' ; \
+@HAVE_GIMP_TRUE@	 echo '		        0 1 0 1 0 2))' ; \
+@HAVE_GIMP_TRUE@	 echo '(gimp-quit FALSE)') | \
+@HAVE_GIMP_TRUE@	  gimp --no-interface --batch -
 
-gui.eps: $(srcdir)/gui.xcf
+@HAVE_GIMP_TRUE@gui.eps: $(srcdir)/gui.xcf
 
-walrus.eps: $(srcdir)/walrus.xcf
+@HAVE_GIMP_TRUE@walrus.eps: $(srcdir)/walrus.xcf
+
+###########################################################################
+
+# We have a special cases for tridiagonal.*, which are generated from
+# Asymptote code.
+
+@HAVE_ASY_TRUE@tridiagonal.eps: tridiagonal.asy
+@HAVE_ASY_TRUE@	asy tridiagonal.asy
+
+@HAVE_ASY_TRUE@tridiagonal.pdf: tridiagonal.asy
+@HAVE_ASY_TRUE@	asy -f pdf tridiagonal.asy
+
+###########################################################################
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

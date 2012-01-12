@@ -1,14 +1,14 @@
 %!PS-Adobe-2.0 EPSF-2.0
-%%Creator: dvips(k) 5.99 Copyright 2010 Radical Eye Software
+%%Creator: dvips(k) 5.991 Copyright 2011 Radical Eye Software
 %%Title: 2nomial.dvi
-%%CreationDate: Mon May  9 20:16:32 2011
+%%CreationDate: Tue Jan 10 14:34:00 2012
 %%BoundingBox: 66 609 224 726
 %%DocumentFonts: CMR10
 %%EndComments
 %DVIPSWebPage: (www.radicaleye.com)
 %DVIPSCommandLine: dvips -E -Ppdf -Pcmz -o - 2nomial.dvi
 %DVIPSParameters: dpi=8000
-%DVIPSSource:  TeX output 2011.05.09:2016
+%DVIPSSource:  TeX output 2012.01.10:1433
 %%BeginProcSet: tex.pro 0 0
 %!
 /TeXDict 300 dict def TeXDict begin/N{def}def/B{bind def}N/S{exch}N/X{S
@@ -78,10 +78,10 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pstricks.pro 0 0
-% $Id: pstricks.pro 455 2011-01-30 11:19:19Z herbert $
+% $Id: pstricks.pro 622 2012-01-01 15:36:14Z herbert $
 %
 %% PostScript prologue for pstricks.tex.
-%% Version 1.07, 2009/04/30
+%% Version 1.09, 2011/10/31
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -253,6 +253,36 @@ tx@Dict begin
   grestore 
   pop pop } def
 %
+/DotFill {%	 on stack: dot radius
+  /dotRadius ED
+  abs CLW add /a ED 
+  a 0 dtransform round exch round exch
+  2 copy idtransform 
+  exch Atan rotate 
+  idtransform pop /a ED 
+  .25 .25 itransform 
+  pathbbox % llx lly urx ury of smallest bounding box
+  /y2 ED /x2 ED /y1 ED /x1 ED 
+  y2 y1 sub a div 2 add cvi /Ny ED
+  x2 x1 sub a div 2 add cvi /Nx ED
+  clip 
+  newpath 
+  /yA y1 dotRadius add CLW add def
+  /xA0 x1 dotRadius add CLW add def
+  Ny {
+     /xA xA0 def
+     Nx { 
+       newpath 
+       xA yA dotRadius 0 360 arc 
+       SolidDot { gsave fill grestore } if 
+       stroke
+       xA a add /xA ED
+     } repeat
+     yA a add /yA ED
+  } repeat
+  grestore
+} def
+%
 /PenroseFill {%	 on stack: scaling factor
   dup dup scale
   1 exch div round /penroseFactor ED 
@@ -411,9 +441,10 @@ tx@Dict begin
   /showpoints ED 
   counttomark 2 div dup cvi /n ED  	% n 2 div on stack 
   n eq not { exch pop } if		% even numbers of points? delete one
-  showpoints 
-    { ] aload /Points ED } 
-    { n 2 mul 1 add -1 roll pop } ifelse	% delete the mark symbol 
+  ] aload /Points ED 
+  showpoints not { Points aload pop } if
+%    { ] aload /Points ED } 
+%    { n 2 mul 1 add -1 roll pop } ifelse	% delete the mark symbol 
 } def
 %
 /Line { 
@@ -425,25 +456,27 @@ tx@Dict begin
 } def
 %
 /LineToYAxis {
+  /Ox ED		% Save the x origin value 
   NArray            % all x-y pairs on stack
   n { 2 copy moveto % go to current point
-    0 exch Lineto   % line to y-axis
+    Ox exch Lineto   % line to y-axis
     pop             % delete old x-value
   } repeat
 } def
 %
 /LineToXAxis{
+  /Oy ED		% Save the y origin value 
   NArray		% all x-y pairs on stack
   n 0 eq not
     { n 1 eq { 0 0 /n 2 def } if
       ArrowA
       /n n 2 sub def
-      CP 2 copy moveto pop 0 Lineto
-      n { 2 copy moveto pop 0 Lineto } repeat
+      CP 2 copy moveto pop Oy Lineto
+      n { 2 copy moveto pop Oy Lineto } repeat
       CP
       4 2 roll
       ArrowB
-      2 copy moveto pop 0
+      2 copy moveto pop Oy
       L
       pop pop } if
 } def
@@ -1093,10 +1126,10 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-algparser.pro 0 0
-% $Id: pst-algparser.pro 350 2010-06-18 05:18:55Z herbert $
+% $Id: pst-algparser.pro 594 2011-10-31 18:13:18Z herbert $
 %%
 %% PostScript prologue for PSTricks algorithm parser
-%% Version 0.02, 2010/06/08
+%% Version 0.04, 2011/10/21
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -1108,11 +1141,14 @@ end
 %
 /tx@CoreAnalyzerDict 100 dict def tx@CoreAnalyzerDict begin
 %
-% PS ANALYZER FOR ALGEBRAIC EXPRESSION V1.12
+% PS ANALYZER FOR ALGEBRAIC EXPRESSION V1.13
+%
+% 09/2011 DR factorial with ! added
+%
 % E->T|E+T
 % T->FS|T*FS
 % FS -> F | +FS | -FS
-% F->P|F^SF
+% F->P|F^SF|P!
 % P->(E)|literal
 % literal->number|var|var[E]|func(params)
 % params->E|E,param
@@ -1177,12 +1213,16 @@ end
   ifelse AnalyzePostHook
 } def
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% F->P|F^P
+%% F->P|F^P|P!
 %% STR index
 /AnalyzeFactor {
   AnalyzePreHook AnalyzePower IsEndingFactor
   { dup 0 ne { 32 eq { NextNonBlankChar } if } { pop } ifelse }
-  { { RollOp 1 add NextNonBlankChar pop AnalyzePower PreEvalHook EvalPower IsEndingFactor { pop exit } if} loop }
+  { { dup 33 eq%% is there a ! DR 09/2011
+      { pop 1 add NextNonBlankChar pop EvalFactorial }
+      { RollOp 1 add NextNonBlankChar pop AnalyzePower PreEvalHook EvalPower }
+      ifelse
+      IsEndingFactor { pop exit } if } loop }
   ifelse  AnalyzePostHook
 } def
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1321,6 +1361,10 @@ end
 /EvalPower {%
   /ExpressionVector ExpressionVector aload length dup 5 add -1 roll
   pop /exp cvx exch 1 add array astore def
+} def
+/EvalFactorial {% DR 09/2011
+  /ExpressionVector ExpressionVector aload length
+  /fact cvx exch 1 add array astore def
 } def
 /EvalLiteral {%
   ReadLiteral
@@ -1587,6 +1631,13 @@ end   %tx@CoreAnalyzerDict
   mark 11 -5 roll cleartomark 2 index 6 index dup 4 index exch sub getinterval exch 6 2 roll
 } def
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% No derivative for factorial ! only cst => null derivative
+/EvalFactorial {% DR 09/2011
+  4 index (0) eq
+  { (0) mark 8 -2 roll  cleartomark 2 index 7 index dup 4 index exch sub getinterval exch 6 2 roll }
+  { DERIVATIVE_ENGINE_ERROR_no_variable_in_factorial } ifelse
+} def
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% str -> true/false
 /IsStrNumber {%
   true exch
@@ -1602,7 +1653,7 @@ end   %tx@CoreAnalyzerDict
   ReadLiteral dup 40 eq%%% there is an open par -> function call
   { pop (EvalFunc_             ) 9 4 index StrConcat 0 exch getinterval cvn cvx exec }
   { dup 91 eq%%% there is an open bracket -> vector element
-    { ERROR_vector_not_yet_implemented }
+    { DERIVATIVE_ENGINE_ERROR_vector_not_yet_implemented }
     { pop EvalVariable }
     ifelse }
   ifelse
@@ -1662,7 +1713,7 @@ end   %tx@CoreAnalyzerDict
   { dup 0 eq { (1) StrConcat } { 1 sub } ifelse (/\(2*sqrt\() StrConcat 5 index StrConcat (\)\)) StrConcat } if
   PostCommonFunc } def
 /EvalFunc_Fact {%
-  PreCommonFunc { ERROR_no_variable_expression_in_Fact } if
+  PreCommonFunc { DERIVATIVE_ENGINE_ERROR_no_variable_expression_in_Fact } if
   PostCommonFunc } def
 /EvalFunc_sh {%
   PreCommonFunc
@@ -1837,27 +1888,180 @@ end%%%tx@CoreAnalyzerDict
 %% n -> n!
 /Fact { 1 exch 2 exch 1 exch { mul } for } bind def
 /fact { Fact } bind def
+/! { Fact } bind def
 end
 %
 % END pst-algparser.pro
 
 %%EndProcSet
 %%BeginProcSet: pst-tools.pro 0 0
-% $Id: pst-tools.pro 490 2011-04-23 09:25:30Z herbert $
+% $Id: pst-tools.pro 622 2012-01-01 15:36:14Z herbert $
 %
 %% PostScript tools prologue for pstricks.tex.
-%% Version 0.01, 2011/04/23
+%% Version 0.02, 2012/01/01
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
 %% in directory macros/latex/base/lppl.txt.
 %
 %
+/Pi2 1.57079632679489661925640 def
+/factorial { % n on stack, returns n! 
+  dup 0 eq { 1 }{ 
+    dup 1 gt { dup 1 sub factorial mul } if }
+  ifelse } def 
+%
+/MoverN { % m n on stack, returns the binomial coefficient m over n
+  2 dict begin
+  /n exch def /m exch def
+  n 0 eq { 1 }{
+    m n eq { 1 }{
+      m factorial n factorial m n sub factorial mul div } ifelse } ifelse 
+  end
+} def
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% subroutines for complex numbers, given as an array [a b] 
+% which is a+bi = Real+i Imag
+%
+/cxadd {		% [a1 b1] [a2 b2] = [a1+a2 b1+b2]
+  dup 0 get		% [a1 b1] [a2 b2] a2
+  3 -1 roll		% [a2 b2] a2 [a1 b1]
+  dup 0 get		% [a2 b2] a2 [a1 b1] a1
+  3 -1 roll		% [a2 b2] [a1 b1] a1 a2
+  add			% [a2 b2] [a1 b1] a1+a2
+  3 1 roll		% a1+a2 [a2 b2] [a1 b1]
+  1 get			% a1+a2 [a2 b2] b1
+  exch 1 get		% a1+a2 b1 b2
+  add 2 array astore
+} def
+%
+/cxneg {		% [a b]
+  dup 1 get		% [a b] b
+  exch 0 get		% b a
+  neg exch neg		% -a -b
+  2 array astore
+} def
+%
+/cxsub { cxneg cxadd } def  % same as negative addition
+%
+% [a1 b1][a2 b2] = [a1a2-b1b2 a1b2+b1a2] = [a3 b3]
+/cxmul {		% [a1 b1] [a2 b2]
+  dup 0 get		% [a1 b1] [a2 b2] a2
+  exch 1 get		% [a1 b1] a2 b2
+  3 -1 roll		% a2 b2 [a1 b1]
+  dup 0 get		% a2 b2 [a1 b1] a1
+  exch 1 get		% a2 b2 a1 b1
+  dup			% a2 b2 a1 b1 b1
+  5 -1 roll dup		% b2 a1 b1 b1 a2 a2
+  3 1 roll mul		% b2 a1 b1 a2 b1a2
+  5 -2 roll dup		% b1 a2 b1a2 b2 a1 a1
+  3 -1 roll dup		% b1 a2 b1a2 a1 a1 b2 b2
+  3 1 roll mul		% b1 a2 b1a2 a1 b2 a1b2
+  4 -1 roll add		% b1 a2 a1 b2 b3
+  4 2 roll mul		% b1 b2 b3 a1a2
+  4 2 roll mul sub	% b3 a3
+  exch 2 array astore
+} def
+%
+% [a b]^2 = [a^2-b^2 2ab] = [a2 b2]
+/cxsqr {		% [a b]   square root
+  dup 0 get exch 1 get	% a b
+  dup dup mul		% a b b^2
+  3 -1 roll		% b b^2 a
+  dup dup mul 		% b b^2 a a^2
+  3 -1 roll sub		% b a a2
+  3 1 roll mul 2 mul	% a2 b2	
+  2 array astore
+} def
+%
+/cxsqrt {		% [a b]
+%  dup cxnorm sqrt /r exch def
+%  cxarg 2 div RadtoDeg dup cos r mul exch sin r mul cxmake2 
+  cxlog 		% log[a b]
+  2 cxrdiv 		% log[a b]/2
+  aload pop exch	% b a
+  2.781 exch exp	% b exp(a)
+  exch cxconv exch	% [Re +iIm] exp(a)
+  cxrmul		%
+} def
+%
+/cxarg { 		% [a b] 
+  aload pop 		% a b
+  exch atan 		% arctan b/a
+  DegtoRad 		% arg(z)=atan(b/a)
+} def
+%
+% log[a b] = [a^2-b^2 2ab] = [a2 b2]
+/cxlog {		% [a b]
+  dup 			% [a b][a b]
+  cxnorm 		% [a b] |z|
+  log 			% [a b] log|z|
+  exch 			% log|z|[a b]
+  cxarg 		% log|z| Theta
+  cxmake2 		% [log|z| Theta]
+} def
+%
+% square of magnitude of complex number
+/cxnorm2 {		% [a b]
+  dup 0 get exch 1 get	% a b
+  dup mul			% a b^2
+  exch dup mul add	% a^2+b^2
+} def
+%
+/cxnorm {		% [a b]
+  cxnorm2 sqrt
+} def
+%
+/cxconj {		% conjugent complex
+  dup 0 get exch 1 get	% a b
+  neg 2 array astore	% [a -b]
+} def
+%
+/cxre { 0 get } def	% real value
+/cxim { 1 get } def	% imag value
+%
+% 1/[a b] = ([a -b]/(a^2+b^2)
+/cxrecip {		% [a b]
+  dup cxnorm2 exch	% n2 [a b]
+  dup 0 get exch 1 get	% n2 a b
+  3 -1 roll		% a b n2
+  dup			% a b n2 n2
+  4 -1 roll exch div	% b n2 a/n2
+  3 1 roll div		% a/n2 b/n2
+  neg 2 array astore
+} def
+%
+/cxmake1 { 0 2 array astore } def % make a complex number, real given
+/cxmake2 { 2 array astore } def	  % dito, both given
+%
+/cxdiv { cxrecip cxmul } def
+%
+% multiplikation by a real number
+/cxrmul {		% [a b] r
+  exch aload pop	% r a b
+  3 -1 roll dup		% a b r r
+  3 1 roll mul		% a r b*r
+  3 1 roll mul		% b*r a*r
+  exch 2 array astore   % [a*r b*r]
+} def
+%
+% division by a real number
+/cxrdiv {		% [a b] r
+  1 exch div		% [a b] 1/r
+  cxrmul
+} def
+%
+% exp(i theta) = cos(theta)+i sin(theta) polar<->cartesian
+/cxconv {		% theta
+  RadtoDeg dup sin exch cos cxmake2
+} def
+
 %%%%% ### bubblesort ###
 %% syntax : array bubblesort --> array2 trie par ordre croissant
 %% code de Bill Casselman
 %% http://www.math.ubc.ca/people/faculty/cass/graphics/text/www/
-/bubblesort {
+/bubblesort { % on stack must be an array [ ... ]
 4 dict begin
    /a exch def
    /n a length 1 sub def
@@ -1882,7 +2086,7 @@ end
          /n n 1 sub def
       } repeat
    } if
-   a
+   a % return the sorted array
 end
 } def
 %
@@ -2089,7 +2293,7 @@ end
 % $Id: pst-node.pro 440 2010-12-28 21:06:39Z herbert $
 %%
 %% PostScript prologue for pst-node.tex.
-%% Version 1.12, 2010/04/30.
+%% Version 1.13, 2011/11/21.
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -2102,6 +2306,7 @@ tx@Dict begin 			% from main pstricks dict
 end
 /NewNode { % on stack: { x y } boolean N@name type InitXnode 
   gsave 
+  NodeScale                     % a bugfix for xelatex, it's empty for dvips
   /next exch def 		% { x y } boolean N@name type  
   dict dup 			% { x y } boolean N@name dict dict
   3 1 roll def 			% { x y } boolean dict N@name dict def
@@ -3079,7 +3284,7 @@ currentpoint grestore moveto
  16177 1090 a 8486 1447 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0 11
-{InitCnode } NewNode end  end
+{InitCnode } /NodeScale {} def NewNode end  end
  8486 1447 a @beginspecial
 @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
@@ -3091,7 +3296,7 @@ stroke  grestore end
 @endspecial 276 w Fa(0)2808 4596 y
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  2808
 4596 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
@@ -3110,7 +3315,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-0 InitNC
  3361 4240 a 537 7746 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  537 7746 a @beginspecial
 @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
@@ -3129,7 +3334,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
 7389 a 537 10896 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  537 10896 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
  0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
@@ -3148,7 +3353,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
 10896 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  5079 10896 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
  0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
@@ -3166,7 +3371,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
  5632 10539 a 9621 7746 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  9621
 7746 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
@@ -3185,7 +3390,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-0 InitNC
  10175 7389 a 9622 10896 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  9622 10896 a @beginspecial
 @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
@@ -3204,7 +3409,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
 10539 a 14164 10896 a
 tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0
-11 {InitCnode } NewNode end  end
+11 {InitCnode } /NodeScale {} def NewNode end  end
  14164 10896 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
  0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy

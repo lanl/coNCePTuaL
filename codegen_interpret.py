@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -51,6 +51,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -107,6 +108,7 @@ class NCPTL_CodeGen:
         "rel_expr",
         "rel_primary_expr",
         "expr",
+        "for_each_expr",
         "primary_expr",
         "item_count"]
     sub_statement_nodes = \
@@ -165,7 +167,7 @@ class NCPTL_CodeGen:
 
     class Event:
         def __init__(self, operation, task, srclines, peers=None, msgsize=None,
-                     blocking=1, attributes=None, collective_id=None):
+                     tag=None, blocking=1, attributes=None, collective_id=None):
             "Define a new event, initially with no timing information."
             self.operation = operation
             self.task = task
@@ -175,6 +177,7 @@ class NCPTL_CodeGen:
             else:
                 self.peers = peers
             self.msgsize = msgsize
+            self.tag = tag
             self.blocking = blocking
             if attributes == None:
                 self.attributes = []
@@ -188,7 +191,7 @@ class NCPTL_CodeGen:
         def contents(self):
             "Return a tuple representing our internal state."
             return [self.operation, self.task, self.peers, self.msgsize,
-                    self.blocking, self.attributes, self.posttime,
+                    self.tag, self.blocking, self.attributes, self.posttime,
                     self.completetime, self.found_match]
 
 
@@ -343,40 +346,46 @@ class NCPTL_CodeGen:
         def __init__(self, errmsg):
             "Initialize a message queue."
             self.errmsg = errmsg        # Error-message object
-            self.queues = {}            # Map from source task to message size to an event queue
+            self.queues = {}            # Map from source task to tag to message size to an event queue
 
         def push(self, event):
             "Push a new event onto a message queue."
             source_task = event.task
+            tag = event.tag
             message_size = event.msgsize
             if not self.queues.has_key(source_task):
                 self.queues[source_task] = {}
-            if not self.queues[source_task].has_key(message_size):
-                self.queues[source_task][message_size] = []
-            self.queues[source_task][message_size].append(event)
+            if not self.queues[source_task].has_key(tag):
+                self.queues[source_task][tag] = {}
+            if not self.queues[source_task][tag].has_key(message_size):
+                self.queues[source_task][tag][message_size] = []
+            self.queues[source_task][tag][message_size].append(event)
 
         def pop_match(self, event):
             "Pop the first matching event from the queue or return None."
             result = self.peek_match(event)
             source_task = event.peers[0]
+            tag = event.tag
             message_size = event.msgsize
             if result != None:
-                self.queues[source_task][message_size].pop(0)
+                self.queues[source_task][tag][message_size].pop(0)
                 result.found_match = 1
             return result
 
         def unpop_match(self, event, matched_event):
             "Reinsert a previously popped event into the queue."
             source_task = event.peers[0]
+            tag = event.tag
             message_size = event.msgsize
-            self.queues[source_task][message_size].insert(0, matched_event)
+            self.queues[source_task][tag][message_size].insert(0, matched_event)
 
         def peek_match(self, event):
             "Return the first matching event from the queue or None."
             source_task = event.peers[0]
+            tag = event.tag
             message_size = event.msgsize
             try:
-                return self.queues[source_task][message_size][0]
+                return self.queues[source_task][tag][message_size][0]
             except KeyError:
                 return None
             except IndexError:
@@ -858,6 +867,29 @@ class NCPTL_CodeGen:
             event.suppressed = self.suppress_output
             self.eventlist[physrank].push(event)
 
+    def evaluate_for_each(self, for_each_node, expr_node):
+        "Evaluate an expression for each element in a list of ranges."
+        resulting_list = []
+        range_lists = self.process_node(for_each_node.kids[1])
+        self.scopes.insert(0, {})
+        for rlist in range_lists:
+            for var in rlist:
+                self.scopes[0][for_each_node.kids[0].attr] = var
+                if len(for_each_node.kids) < 3:
+                    # Base case 1 -- evaluate the expression.
+                    resulting_list.append(self.process_node(expr_node))
+                elif for_each_node.kids[2].type == "where_expr":
+                    # Base case 2 -- conditionally evaluate the expression
+                    condition = self.process_node(for_each_node.kids[2])
+                    if condition:
+                        resulting_list.append(self.process_node(expr_node))
+                else:
+                    # Recursive case -- evaluate the next part of the
+                    # list comprehension.
+                    resulting_list.extend(self.evaluate_for_each(for_each_node.kids[2], expr_node))
+        self.scopes.pop(0)
+        return resulting_list
+
 
     #---------------------------------#
     # AST interpretation: relational  #
@@ -935,6 +967,10 @@ class NCPTL_CodeGen:
             return 1
         else:
             self.errmsg.error_internal('Unknown eq_expr "%s"' % node.attr)
+
+    def n_where_expr(self, node):
+        "Return our child's value."
+        return self.process_node(node.kids[0])
 
 
     #--------------------------------#
@@ -1487,6 +1523,12 @@ class NCPTL_CodeGen:
         if node.attr == None:
             return self.process_node(node.kids[0])
 
+        # The next most easy case is a list comprehension because it
+        # produces a completely evaluated list that we can simply
+        # return.
+        if node.attr == "list_comp":
+            return self.evaluate_for_each(node.kids[1], node.kids[0])
+
         # Get the initial values (which define the sequence) and final value.
         initialvals = self.process_node(node.kids[0])
         if type(initialvals) != types.ListType:
@@ -1508,6 +1550,12 @@ class NCPTL_CodeGen:
         elif len(initialvals) == 2:
             # Two element range: Increment is second minus first.
             delta = initialvals[1] - initialvals[0]
+            if delta == 0:
+                return [initialvals[0]]
+            elif delta > 0 and finalval < initialvals[0]:
+                return []
+            elif delta < 0 and finalval > initialvals[0]:
+                return []
             result = range(initialvals[0], finalval+delta, delta)
             if delta > 0 and result[-1] > finalval:
                 result.pop()
@@ -1531,13 +1579,16 @@ class NCPTL_CodeGen:
 
                 # See if we have an increasing geometric progression.
                 deltas = map(lambda a, b: b/a, ivals[0:-1], ivals[1:])
-                if deltas[0] != zero and filter(lambda a, d0=deltas[0]: a!=d0, deltas) == []:
-                    expansion = []
-                    nextval = ivals[0]
-                    while nextval <= finalval:
-                        expansion.append(long(nextval))
-                        nextval = nextval * deltas[0]
-                    return expansion
+                if deltas[0] != zero:
+                    mapback = map(lambda a, b, d0=deltas[0]: b/d0==a, ivals[0:-1], ivals[1:])
+                    if (filter(lambda a, d0=deltas[0]: a!=d0, deltas) == [] and
+                        filter(lambda a: a==0, mapback) == []):
+                        expansion = []
+                        nextval = ivals[0]
+                        while nextval <= finalval:
+                            expansion.append(long(nextval))
+                            nextval = round(initialvals[0] * deltas[0]**len(expansion))
+                        return expansion
 
                 # See if we have a decreasing geometric progression.
                 # There are a few tricky cases here.  First, rounding
@@ -1601,15 +1652,29 @@ class NCPTL_CodeGen:
         item_size = self.process_node(node.kids[2])
         alignment = self.process_node(node.kids[3])
         touching = self.process_node(node.kids[4])
-        buffer_ofs = self.process_node(node.kids[5])
-        buffer_num = self.process_node(node.kids[6])
+        tag = self.process_node(node.kids[5])
+        buffer_ofs = self.process_node(node.kids[6])
+        buffer_num = self.process_node(node.kids[7])
         is_misaligned = long(node.attr)
         return (num_messages, is_unique, item_size, alignment, touching,
-                buffer_ofs, buffer_num, is_misaligned)
+                tag, buffer_ofs, buffer_num, is_misaligned)
 
     def n_touching_type(self, node):
         "Return a string describing how message data should be touched."
         return node.kids[0].type
+
+    def n_tag(self, node):
+        "Return a tag as a number."
+        if len(node.kids) == 0:
+            return 0L
+        else:
+            tag = self.process_node(node.kids[0])
+            try:
+                # Number
+                return tag + 0
+            except TypeError:
+                # String
+                return hash(tag)
 
     def n_buffer_offset(self, node):
         "Return a byte offset into a given buffer."
@@ -2089,8 +2154,9 @@ class NCPTL_CodeGen:
                 receiver = self.virtrank
                 for i in range(0, smsgspec[0]):
                     newevent = self.Event("SEND", task=sender, peers=[receiver],
-                                          srclines=srclines, msgsize=smsgspec[2],
-                                          blocking=sblocking, attributes=sattribs)
+                                          srclines=srclines, tag=smsgspec[5],
+                                          msgsize=smsgspec[2], blocking=sblocking,
+                                          attributes=sattribs)
                     newsends[sender].append(newevent)
 
                 # Keep track of the new receive events but only those
@@ -2103,8 +2169,9 @@ class NCPTL_CodeGen:
                     if "unsuspecting" not in rattribs:
                         for i in range(0, rmsgspec[0]):
                             newevent = self.Event("RECEIVE", task=receiver, peers=[sender],
-                                                  srclines=srclines, msgsize=rmsgspec[2],
-                                                  blocking=rblocking, attributes=rattribs)
+                                                  srclines=srclines, tag=rmsgspec[5],
+                                                  msgsize=rmsgspec[2], blocking=rblocking,
+                                                  attributes=rattribs)
                             try:
                                 newreceives[receiver].append(newevent)
                             except KeyError:
@@ -2171,7 +2238,8 @@ class NCPTL_CodeGen:
                     rmsgspec.append(rattribs)
                     for i in range(0, rmsgspec[0]):
                         event = self.Event("RECEIVE", task=receiver, peers=[sender],
-                                           srclines=srclines, msgsize=rmsgspec[2],
+                                           srclines=srclines, tag=rmsgspec[5],
+                                           msgsize=rmsgspec[2],
                                            blocking="asynchronously" not in rattribs,
                                            attributes=rattribs)
                         eventlist.append(event)
@@ -2194,7 +2262,8 @@ class NCPTL_CodeGen:
                     sender = self.virtrank
                     for i in range(0, rmsgspec[0]):
                         event = self.Event("RECEIVE", task=receiver, peers=[sender],
-                                           srclines=srclines, msgsize=rmsgspec[2],
+                                           srclines=srclines, tag=rmsgspec[5],
+                                           msgsize=rmsgspec[2],
                                            blocking="asynchronously" not in rattribs,
                                            attributes=rattribs)
                         eventlist.append(event)
@@ -2254,8 +2323,9 @@ class NCPTL_CodeGen:
                 tasklist = map(int, [self.virtrank]+rtasklist)
                 for task in tasklist:
                     event = self.Event("MCAST", task=task, peers=tasklist,
-                                       srclines=srclines, msgsize=smsgspec[2],
-                                       attributes=sattribs, collective_id=unique_id)
+                                       srclines=srclines, tag=smsgspec[5],
+                                       msgsize=smsgspec[2], attributes=sattribs,
+                                       collective_id=unique_id)
                     self.push_event(event)
         self.scopes.pop(0)
 
@@ -2268,6 +2338,7 @@ class NCPTL_CodeGen:
         self.scopes.insert(0, {})
         recv_spec_node = node.kids[1]
         data_type_node = recv_spec_node.kids[3]
+        tag = self.process_node(recv_spec_node.kids[5])
         data_type = data_type_node.attr
         message_size = self.process_node(recv_spec_node.kids[0])
         if data_type == "doublewords":
@@ -2299,7 +2370,7 @@ class NCPTL_CodeGen:
         unique_id = self.get_unique_id()
         for task in tasklist:
             event = self.Event("REDUCE", task=task, peers=peerlist,
-                               srclines=srclines, msgsize=message_size,
+                               srclines=srclines, tag=tag, msgsize=message_size,
                                attributes=data_type, collective_id=unique_id)
             self.push_event(event)
 

@@ -44,7 +44,7 @@
 @ifinfo
 This file describes the coNCePTuaL language and tool suite.
 
-Copyright (C) 2011, Los Alamos National Security, LLC
+Copyright (C) 2012, Los Alamos National Security, LLC
 @end ifinfo
 
 @c ===========================================================================
@@ -358,7 +358,7 @@ PLY
 @page
 @vskip 0pt plus 1filll
 @hfil
-Copyright @copyright{} 2011, Los Alamos National Security, LLC
+Copyright @copyright{} 2012, Los Alamos National Security, LLC
 @hfil
 @vskip 0pt plus 1filll
 This document describes @ncptl{} @w{version @value{VERSION}.}
@@ -580,16 +580,11 @@ and @cncp{Libtool}) to increase portability, to automate compilation,
 and to facilitate installation.  As of this writing, @ncptl{} has
 passed @kcmd{make check} (@pxref{make}) on the following platforms:
 
-@c As of this writing, the table just barely spills over onto the next
-@c page.  For now, we break the page manually.  When the table grows a
-@c bit it would be best to remove this comment and the following command.
-@page
-
 @c Put all compiler names in an equal-widthed box.
 @macro compbox {text}
 @iftex
 @tex
-@hbox to 4em{@filespec{\text\}}
+@hbox to 5em{@filespec{\text\}}
 @end tex
 @end iftex
 @ifnottex
@@ -597,49 +592,89 @@ passed @kcmd{make check} (@pxref{make}) on the following platforms:
 @end ifnottex
 @end macro
 
-@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMM} (PathScale)M}
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
 @item @b{Architecture} @tab @b{OS} @tab @b{Compiler}
-@item IA-32         @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{icc}    (Intel)
-@item               @tab           @tab @compbox{opencc} (Open64)
-@item               @tab FreeBSD   @tab @compbox{gcc}    (@GNU{})
-@item               @tab OpenBSD   @tab @compbox{gcc}    (@GNU{})
-@item               @tab NetBSD    @tab @compbox{gcc}    (@GNU{})
-@item               @tab Solaris   @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{cc}     (Sun)
-@item               @tab Syllable  @tab @compbox{gcc}    (@GNU{})
+@item IA-32         @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{icc}      (Intel)
+@item               @tab           @tab @compbox{opencc}   (Open64)
+@item               @tab FreeBSD   @tab @compbox{gcc}      (@GNU{})
+@item               @tab OpenBSD   @tab @compbox{gcc}      (@GNU{})
+@item               @tab NetBSD    @tab @compbox{gcc}      (@GNU{})
+@item               @tab Solaris   @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{cc}       (Sun)
+@item               @tab Syllable  @tab @compbox{gcc}      (@GNU{})
 @item               @tab Windows @* (via @cncp{Cygwin}) @tab @compbox{gcc} (@GNU{})
-@item               @tab           @tab
-@item @cncp{x86-64} @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{pgcc}   (PGI)
-@item               @tab           @tab @compbox{pathcc} (PathScale)
-@item               @tab Catamount @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{pgcc}   (PGI)
-@item               @tab           @tab
-@item IA-64         @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{ecc}    (Intel)
-@item               @tab           @tab
-@item PowerPC       @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{xlc}    (IBM)
-@item               @tab AIX       @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{xlc}    (IBM)
-@item               @tab MacOS X   @tab @compbox{gcc}    (@GNU{})
-@item               @tab BLRTS     @tab @compbox{xlc}    (IBM)
-@item               @tab           @tab
-@item Cell (Power)  @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
-@item Cray X1       @tab UNICOS/mp @tab @compbox{cc}     (Cray)
-@item               @tab           @tab
-@item UltraSPARC    @tab Solaris   @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{cc}     (Sun)
-@item               @tab           @tab
-@item MIPS          @tab IRIX      @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{cc}     (MIPSpro)
-@item               @tab           @tab
-@item Alpha         @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{ccc}    (HP)
-@item               @tab Tru64     @tab @compbox{gcc}    (@GNU{})
-@item               @tab           @tab @compbox{cc}     (HP)
-@item ARM           @tab @Linux{}  @tab @compbox{gcc}    (@GNU{})
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item @cncp{x86-64} @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{pgcc}     (PGI)
+@item               @tab           @tab @compbox{pathcc}   (PathScale)
+@item               @tab           @tab @compbox{llvm-gcc} (LLVM)
+@item               @tab           @tab @compbox{clang}    (LLVM)
+@item               @tab Catamount @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{pgcc}     (PGI)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item IA-64         @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{ecc}      (Intel)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item PowerPC       @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{xlc}      (IBM)
+@item               @tab AIX       @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{xlc}      (IBM)
+@item               @tab MacOS X   @tab @compbox{gcc}      (@GNU{})
+@item               @tab BLRTS     @tab @compbox{xlc}      (IBM)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item Cell (Power)  @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item Cray X1       @tab UNICOS/mp @tab @compbox{cc}       (Cray)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item UltraSPARC    @tab Solaris   @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{cc}       (Sun)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item MIPS          @tab IRIX      @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{cc}       (MIPSpro)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item Alpha         @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{ccc}      (HP)
+@item               @tab Tru64     @tab @compbox{gcc}      (@GNU{})
+@item               @tab           @tab @compbox{cc}       (HP)
+@end multitable
+
+@sp 1
+
+@multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
+@item ARM           @tab @Linux{}  @tab @compbox{gcc}      (@GNU{})
 @end multitable
 
 @sp 1
@@ -747,11 +782,11 @@ available timers.  (@xref{Time-related functions}, for a complete
 list).  The ramifications of @copt{with-mpi-wtime} are threefold:
 
 @enumerate
-@item The option requires that you link all @ncptl{}
-programs against an @MPI{} library and run them like any other @MPI{}
-program.  (You may need to set @envvar{CPPFLAGS}, @envvar{LIBS},
-@envvar{LDFLAGS}, or some of the other command-line variables
-described below.)
+@item
+The option requires that you link all @ncptl{} programs against an
+@MPI{} library and run them like any other @MPI{} program.  (You may
+need to set @envvar{CPPFLAGS}, @envvar{LIBS}, @envvar{LDFLAGS}, or
+some of the other command-line variables described below.)
 
 @item
 @ocodecf{MPI_Wtime} may be @emph{less} accurate than some of the other
@@ -1316,7 +1351,6 @@ following association in the @code{%file_extensions} hash:
   "ncptl" => "ncptl",    # coNCePTuaL
 @end example
 @end cartouche
-
 @end enumerate
 
 
@@ -3280,7 +3314,7 @@ and vertices.  The tools in the @cncp{Graphviz} suite typeset
 graph-layout algorithms.  @ncptl{}'s @backend{dot_ast} backend outputs
 in @cncp{dot} format the abstract-syntax tree corresponding to a given
 @ncptl{} program.  As an example, @backend{dot_ast} renders the
-one-line @ncptl{} program @samp{TASK 0 SLEEPS FOR 10 SECONDS.} as
+one-line @ncptl{} program @samp{TASK 0 SLEEPS FOR 10 SECONDS} as
 follows:
 
 @sp 1
@@ -3333,6 +3367,17 @@ draw nodes as rounded rectangles and specifying @kbd{--extra-dot='edge
 specified repeatedly on the command line; @backend{dot_ast}
 concatenates all of the extra @cncp{dot} code with intervening
 semicolons.
+
+@item @copt{compress}
+Normally, every node of the @AST{} is drawn.  The @copt{compress}
+option makes the resulting @cncp{dot} graph more readable by eliding
+chains of single-child nodes.  For example, @copt{compress} reduces
+the previous graph of @samp{TASK 0 SLEEPS FOR 10 SECONDS} to the
+following:
+
+@sp 1
+@center @image{compressed-AST}
+@sp 1
 
 @item @copt{no-lines}
 By default, each @AST{} node indicates the lines in the program's
@@ -4090,7 +4135,7 @@ either the item to the left or the item to the right but not both
 * Task descriptions::           Selecting groups of tasks at once
 * Communication statements::    Sending and receiving messages
 * I/O statements::              Relaying status and logging results
-* Counter and timer statements::
+* Counter and timer statements::  
 * Complex statements::          Combining statements into larger entities
 * Other statements::            Statements for neither communication nor I/O
 * Header declarations::         Language versioning and command-line parsing
@@ -4229,6 +4274,7 @@ expression during the run of a program.
                                 to all instances
 * Aggregate functions::         List of functions allowed in the above
 * Relational expressions::      Relating one expression to another
+* Range expressions::           Expression lists
 @end menu
 
 
@@ -5164,8 +5210,9 @@ The following functions, referred to collectively as
 @item @nonterm{aggr_func}
 @tab ::=
 @tab [@keyw{ARITHMETIC}] @keyw{MEAN} | @keyw{HARMONIC MEAN} | @keyw{GEOMETRIC MEAN} |
-     @keyw{MEDIAN} | @keyw{STANDARD DEVIATION} | @keyw{VARIANCE} | @keyw{SUM} |
-     @keyw{MINIMUM} | @keyw{MAXIMUM} | @keyw{FINAL}
+     @keyw{MEDIAN} | @keyw{STANDARD DEVIATION} | @keyw{VARIANCE} | 
+     @keyw{MEDIAN ABSOLUTE DEVIATION} | @keyw{SUM} | @keyw{MINIMUM} |
+     @keyw{MAXIMUM} | @keyw{FINAL}
 @end multitable
 
 @keyw{MEAN} and @keyw{ARITHMETIC MEAN} are equivalent.  @keyw{MEDIAN}
@@ -5176,7 +5223,7 @@ measured.  The interpretation of the remaining functions should be
 unambiguous.
 
 
-@node Relational expressions,  , Aggregate functions, Expressions
+@node Relational expressions, Range expressions, Aggregate functions, Expressions
 @subsection Relational expressions
 @cindex relational expressions
 @cindex expressions, relational
@@ -5234,32 +5281,16 @@ The binary relation @keyw{IS IN} has the form
 @item @tab @nonterm{expr} @keyw{IS IN} @nonterm{range} [@code{,} @nonterm{range}]*
 @end multitable
 
-@noindent
-in which a @nonterm{range} is a comma-separated list of
-@nonterm{expr}s within curly braces.  An ellipsis can be used to
-indicate that @ncptl{} should fill in the missing numbers.  More
-formally,
-
-@multitable {@nonterm{range}} {::=} {@nonterm{expr} [@samp{,} @nonterm{expr}]*}
-@item @nonterm{range}
-@tab ::=
-@tab @samp{@{}
-@item @tab @tab @nonterm{expr} [@samp{,} @nonterm{expr}]*
-@item @tab @tab [@samp{, ... ,} @nonterm{expr}]
-@item @tab @tab @samp{@}}
-@end multitable
-
-Ranges are described in detail in @ref{Range loops}, in the context of
-@keyw{FOR EACH} loops, but the same principles apply to @keyw{IS IN}
-tests as well.  In short, a @nonterm{range} represents a finite set of
-@nonterm{expr}s, either listed explicitly or described in terms of an
-arithmetic or geometric progression.  As an example, the relational
-expression @samp{x @keyw{IS IN} @w{@{1, ..., 5@}}} is @sc{true} if and
-only if @math{x} is one of 1, 2, 3, 4, or 5.  As a more complex
-example, @samp{p*2 @keyw{IS IN} @w{@{0@}, @{1, 2, 4, ...,
-num_tasks*2@}}} is @sc{true} if and only if twice @math{p} is either
-zero or a power of two less than or equal to twice the number of tasks
-being used.
+A @nonterm{range} represents a range expression.  Range expressions
+are described in @ref{Range expressions}.  In short, a range
+expression specifies a list of values by explicit enumeration, numeric
+progression, or predicated combinations of other range expressions.
+As an example, the relational expression @samp{x @keyw{IS IN} @w{@{1,
+..., 5@}}} is @sc{true} if and only if @math{x} is one of 1, 2, 3, 4,
+or 5.  As a more complex example, @samp{p*2 @keyw{IS IN} @w{@{0@},
+@{1, 2, 4, ..., num_tasks*2@}}} is @sc{true} if and only if twice
+@math{p} is either zero or a power of two less than or equal to twice
+the number of tasks being used.
 
 The complementary operation to @keyw{IS IN} is the binary relation
 @keyw{IS NOT IN}.  Hence, @samp{4 IS NOT IN @w{@{3, ..., 5@}}} is @sc{false}
@@ -5354,14 +5385,198 @@ which @ncptl{} parses relational expressions:
 @tab @nonterm{expr} @keyw{IS NOT IN} @nonterm{range} [@code{,} @nonterm{range}]*
 @end multitable
 
-@multitable {@nonterm{range}} {::=} {@nonterm{expr} [@samp{,} @nonterm{expr}]*}
+
+@node Range expressions,  , Relational expressions, Expressions
+@subsection Range expressions
+@cindex range expressions
+@cindex expressions, range
+
+Ranges are a powerful way of describing an ordered list of tasks.
+Ranges come in three forms:
+
+@enumerate
+@item
+Enumerated lists
+
+@item
+Arithmetic and geometric sequences
+
+@item
+List comprehensions
+@end enumerate
+
+@noindent
+These are described with the following syntax:
+
+@multitable {@nonterm{range}} {::=} {@samp{@{} @nonterm{expr} [@keyw{FOR EACH} @nonterm{ident} @keyw{IN} @nonterm{range} [@samp{,} @nonterm{range}]* ]+}
 @item @nonterm{range}
 @tab ::=
-@tab @samp{@{}
-@item @tab @tab @nonterm{expr} [@samp{,} @nonterm{expr}]*
-@item @tab @tab [@samp{, ... ,} @nonterm{expr}]
-@item @tab @tab @samp{@}}
+@tab @samp{@{} @nonterm{expr} [@samp{,} @nonterm{expr}]* [@samp{, ... ,} @nonterm{expr}] @samp{@}}
+@item
+@tab |
+@tab @samp{@{} @nonterm{expr} [@keyw{FOR EACH} @nonterm{ident} @keyw{IN} @nonterm{range} [@samp{,} @nonterm{range}]* ]+
+@item
+@tab @tab @ @ @ @ [@keyw{WHERE} @nonterm{rel_expr}] @samp{@}}
 @end multitable
+
+Enumerated lists are the simplest type of range.  They represent a
+list of explicitly specified values.  For example, the range
+@samp{@{2**3, 2+4, 14/2, 8-3, 1+1+1, 0, 5*2-1@}} represents each of
+the seven numbers 8, 6, 7, 5, 3, 0, and 9 in turn.  Duplicate values
+are allowed in enumerated lists so @samp{@{9, 3, 9, 5, 5, 5, 0, 1, 1,
+3@}} represents ten numbers even though not all of them are unique.
+
+Arithmetic and geometric progressions are specified by including the
+first few values of the progression, followed by an ellipsis, followed
+by the final value of the progression.  A single initial value implies
+an arithmetic progression with increment of @texmath{\pm 1, +/- 1},
+depending on whether the final value is greater or less than the
+initial value.  Two initial values imply an arithmetic progression
+with an increment of @var{second}@math{-}@var{first}.  If three or
+more initial values are provided, @ncptl{} first looks for an
+arithmetic progression, then a geometric progression.  If @ncptl{}
+finds neither an arithmetic nor a geometric progression, it
+re-evaluates all of the @nonterm{expr}s in floating-point context
+(@pxref{Arithmetic expressions}) and tries once again to find a
+geometric progression.  If a pattern is still not found, a run-time
+error message is generated.  As some examples of arithmetic and
+geometric range expressions, the range @samp{@{10, ..., 1E6@}}
+represents the values 10, 11, 12, 13, 14, 15, and so forth by ones up
+to 1,000,000; the range @samp{@{10, 12, ..., 1E6@}} represents the
+values 10, 12, 14, 16, and so forth by twos up to 1,000,000; and the
+range @samp{@{10, 100, 1000, ..., 1E6@}} represents the values 10,
+100, 1000, 10000, 100000, and 1000000.
+
+Arithmetic and geometric progressions do not necessarily include the
+final value.  For example, the range @samp{@{1, 4, ..., 15@}}
+represents the values 1, 4, 7, 10, and 13 but not 15, even though 15
+is specified as the final value of the range.  Similarly, @samp{@{15,
+12, ..., 1@}} represents the values 15, 12, 9, 6, and 3 but not 1,
+even though 1 is specified as the final value of the range.
+Progressions stop at or before the final value, never after.  If the
+number following the ellipsis is less than (respectively, greater
+than) the first number in an increasing (respectively, decreasing)
+range (as in @samp{@{15, 25, ..., 5@}}), then the range represents an
+empty list of values.
+
+List comprehensions provide a way to combine and filter ranges to
+describe complex sequences of values with comparatively little
+code.@footnote{Readers unfamilier with the concept of a list
+comprehension may want to consult
+@uref{http://en.wikipedia.org/wiki/List_comprehension, the Wikipedia
+article on list comprehensions} for more information.}  A simple
+example is @samp{@{n FOR EACH n IN @{1, ..., 10@}@}}, but this is not
+particularly useful, as the range @samp{@{1, ..., 10@}} represents the
+same list of values.  However, replacing the expression @samp{n} with
+@samp{n/2} to get @samp{@{n/2 FOR EACH n IN @{1, ..., 10@}@}} returns
+the values 0, 1, 1, 2, 2, 3, 3, 4, 4, and 5, which would be more
+difficult to express without a list comprehension.  We can even
+utilize only a subset of those values by applying a filter.  For
+example, @samp{@{n/2 FOR EACH n IN @{1, ..., 10@} WHERE n/2 IS ODD@}}
+represents the values 1, 1, 3, 3, and 5.  List comprehensions can be
+multivariate, as in the following example:
+
+@example
+@{diag+ofs
+  FOR EACH diag IN @{0, 11, ..., 99@}
+    FOR EACH ofs IN @{-1, 0, 1@}
+      WHERE diag+ofs IS IN @{0, ..., 99@}@}
+@end example
+
+That single range expression represents all cells on the tridiagonal
+of a @texmath{10{\times}10, 10x10} matrix, with @w{cell 0} in the
+upper left and @w{cell 99} in the lower right.  The first @keyw{FOR
+EACH} generator binds @samp{diag} to each cell on the diagonal: 0, 11,
+22, 33, and so forth.  The second @keyw{FOR EACH} generator binds
+@samp{ofs} to each of -1, 0, and 1.  The @samp{WHERE} predicate, which
+itself uses a range expression, selects only those values of
+@samp{diag} and @samp{ofs} which which @w{0 @texmath{\leq, <=}
+@t{diag+ofs} @texmath{\leq, <=} 99}.  The value @samp{diag+ofs} is
+returned for all values for which the predicate is true.  The
+following figure illustrates the values described by the preceding
+range expression:
+
+@sp 1
+@center @image{tridiagonal}
+@sp 1
+
+Here are a number of additional examples of range expressions and the
+values they represent:
+
+@table @samp
+@item @{2, 2, 2, 2, 2, 2@}
+@result{} 2, 2, 2, 2, 2, 2
+
+@item @{2, 2, ..., 2@}
+@result{} 2
+
+@item @{2, 2, ..., 1000@}
+@result{} 2
+
+@item @{20, 30, 40, ..., 55@}
+@result{} 20, 30, 40, 50
+
+@item @{20, 30, 40, ..., 30@}
+@result{} 20, 30
+
+@item @{20, 30, 40, ..., 20@}
+@result{} 20
+
+@item @{20, 30, 40, ..., 10@}
+@result{} @texmath{\emptyset, [empty]}
+
+@item @{2, ..., 50@}
+@result{} 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50
+
+@item @{2, 4, ..., 50@}
+@result{} 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32,
+34, 36, 38, 40, 42, 44, 46, 48, 50
+
+@item @{2, 4, 4, ..., 50@}
+@result{} @error{Unable to find either an arithmetic or geometric pattern}
+
+@item @{2, 4, 6, ..., 50@}
+@result{} 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32,
+34, 36, 38, 40, 42, 44, 46, 48, 50
+
+@item @{2, 4, 8, ..., 50@}
+@result{} 2, 4, 8, 16, 32
+
+@item @{1, 3, ..., 25@}
+@result{} 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25
+
+@item @{1, 3, 5, 7, 9, 11, 13, ..., 25@}
+@result{} 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25
+
+@item @{6561, 2187, 729, ..., 1@}
+@result{} 6561, 2187, 729, 243, 81, 27, 9, 3, 1
+
+@item @{100, 150, 225, ..., 10000@}
+@result{} 100, 150, 225, 337, 506, 759, 1139, 1708, 2562, 3844, 5766, 8649
+
+@item @{1, 4, 9, ..., 81@}
+@result{} @error{Unable to find either an arithmetic or geometric pattern}
+
+@item @{sqrt(s)**2 FOR EACH s IN @{1, ..., 16@}@}
+@result{} 1, 1, 1, 4, 4, 4, 4, 4, 9, 9, 9, 9, 9, 9, 9, 16
+
+@item @{y*10+x @* @ @ FOR EACH y IN @{0, ..., 6@} @* @ @ @ @ FOR EACH x IN @{0, ..., 6@} @* @ @ @ @ @ @ WHERE (x IS EVEN /\ y IS ODD) \/ (y IS EVEN /\ x IS ODD)@}
+@result{} 1, 3, 5, 10, 12, 14, 16, 21, 23, 25, 30, 32, 34, 36, 41, 43,
+45, 50, 52, 54, 56, 61, 63, 65
+@end table
+
+The preceding examples used exclusively constant expressions.
+However, as indicated by the definition of @nonterm{range} above, any
+arbitrary arithmetic expression (@pxref{Arithmetic expressions}) is
+valid.  Assuming that @samp{x} is currently bound to 123, the
+following expansion holds:
+
+@table @samp
+@item @{x*10, x*9, x*8, ..., x*3@}
+@result{} 1230, 1107, 984, 861, 738, 615, 492
+@end table
 
 
 @node Task descriptions, Communication statements, Expressions, Grammar
@@ -5608,6 +5823,8 @@ following is a formal definition:
 @item @tab @tab @keyw{MESSAGES}
 @item @tab @tab [@keyw{WITH VERIFICATION} | @keyw{WITH DATA TOUCHING} |
 @item @tab @tab @ @keyw{WITHOUT VERIFICATION} | @keyw{WITHOUT DATA TOUCHING}]
+@item @tab @tab [@keyw{USING TAG}
+@item @tab @tab @ @nonterm{expr} | @nonterm{string}]
 @item @tab @tab [@keyw{FROM} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
 @item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
@@ -5632,6 +5849,8 @@ which is referred to here as a @nonterm{recv_message_spec}:
 @item @tab @tab @ @keyw{MESSAGES}]
 @item @tab @tab [@keyw{WITH VERIFICATION} | @keyw{WITH DATA TOUCHING} |
 @item @tab @tab @ @keyw{WITHOUT VERIFICATION} | @keyw{WITHOUT DATA TOUCHING}]
+@item @tab @tab [@keyw{USING TAG}
+@item @tab @tab @ @nonterm{expr} | @nonterm{string}]
 @item @tab @tab [@keyw{INTO} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
 @item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
@@ -5654,6 +5873,8 @@ respectively:
 @item @tab @tab @ @nonterm{message_alignment} @keyw{MISALIGNED}]
 @item @tab @tab @keyw{INTEGERS} | @keyw{DOUBLEWORDS}
 @item @tab @tab [@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]
+@item @tab @tab [@keyw{USING TAG}
+@item @tab @tab @ @nonterm{expr} | @nonterm{string}]
 @item @tab @tab [@keyw{FROM} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
 @item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
@@ -5667,6 +5888,8 @@ respectively:
 @item @tab @tab @ @ @nonterm{message_alignment} @keyw{MISALIGNED}]
 @item @tab @tab @ @keyw{INTEGERS} | @keyw{DOUBLEWORDS}]
 @item @tab @tab [@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]
+@item @tab @tab [@keyw{USING TAG}
+@item @tab @tab @ @nonterm{expr} | @nonterm{string}]
 @item @tab @tab [@keyw{INTO} [@nonterm{expr} @nonterm{data_multiplier} @keyw{INTO}]
 @item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
@@ -5683,6 +5906,7 @@ We now describe in turn each component of a @nonterm{message_spec},
 * Item size::                   How big is each message?
 * Message alignment::           How should messages be aligned in memory?
 * Data touching::               Should message contents be accessed explcitly?
+* Tag matching::                In what order should messages be received?
 * Buffer control::              What buffer should be used for each message?
 * Blocking semantics::          Should the sender/receiver wait before proceeding?
 @end menu
@@ -5887,7 +6111,7 @@ The @keyw{UNALIGNED} keyword explicitly specifies the default
 behavior, with messages aligned on arbitrary boundaries.
 
 
-@node Data touching, Buffer control, Message alignment, Message specifications
+@node Data touching, Tag matching, Message alignment, Message specifications
 @subsubheading Data touching
 @cindex data touching
 @cindex touching data
@@ -5920,7 +6144,96 @@ synonymous.  Both explicitly specify the default behavior of neither
 touching nor verifying message contents.
 
 
-@node Buffer control, Blocking semantics, Data touching, Message specifications
+@node Tag matching, Buffer control, Data touching, Message specifications
+@subsubheading Tag matching
+@cindex message tags
+@cindex tags, message
+@cindex message ordering
+@cindex ordering messages
+
+Messages sent from @w{task @var{A}} to @w{task @var{B}} are normally
+received in order.  However, the @keyw{USING TAG} clause enables a
+program to enforce a particular order on message reception.
+@keyw{USING TAG} takes a tag as an argument.  This tag can be either
+an @nonterm{expr} or a @nonterm{string}.  In the latter case, @ncptl{}
+will automatically hash the string to an @nonterm{expr}.  A message
+sent with a given tag @var{tag} is received only by a @keyw{RECEIVE}
+statement that also specifies tag @var{tag}.  If the @keyw{USING TAG}
+clause is omitted, @var{tag} defaults @w{to @samp{0}}.
+
+As an example of the difference @keyw{USING TAG} can make, consider
+the following code that does not use tags:
+
+@example
+TASK 0 SENDS A MESSAGE TO UNSUSPECTING TASK 1 THEN
+TASK 0 SLEEPS FOR 2 SECONDS THEN
+TASK 0 SENDS A MESSAGE TO UNSUSPECTING TASK 1 THEN
+TASK 1 RECEIVES A MESSAGE FROM TASK 0 THEN
+TASK 1 SLEEPS FOR 2 SECONDS THEN
+TASK 1 RECEIVES A MESSAGE FROM TASK 0
+@end example
+
+@noindent
+In that example, the first send matches the first receive, then both
+tasks simultaneously sleep for two seconds, and finally the second
+send matches the second receive.  The total execution time should
+therefore be just over two seconds.  Now consider the following
+variation that uniquely tags each of the messages:
+
+@example
+TASK 0 SENDS A MESSAGE USING TAG 123 TO UNSUSPECTING TASK 1 THEN
+TASK 0 SLEEPS FOR 2 SECONDS THEN
+TASK 0 SENDS A MESSAGE USING TAG "stuff" TO UNSUSPECTING TASK 1 THEN
+TASK 1 RECEIVES A MESSAGE USING TAG "stuff" FROM TASK 0 THEN
+TASK 1 SLEEPS FOR 2 SECONDS THEN
+TASK 1 RECEIVES A MESSAGE USING TAG 123 FROM TASK 0
+@end example
+
+@noindent
+The first message is sent with tag @samp{123} while the second message
+is sent with tag @samp{"stuff"}.  @w{Task 1} receives the messages in
+the reverse order: first the @samp{"stuff"} message and then the
+@samp{123} message.  Consequently, @w{task 1's} first @keyw{RECEIVE}
+cannot complete until @w{task 0} has sent its first message, slept for
+two seconds, and sent its second message.  @w{Task 1} can then receive
+a message, sleep for two seconds, and receive its other message.  The
+total execution time should therefore be just over four seconds, as
+the new message ordering forces a serialization on the two
+@keyw{SLEEPS}.
+
+The following are a few things to keep in mind when using message tags:
+
+@enumerate
+@item
+Using strings for tag values can benefit program readability and is
+recommended for programs that utilize a small, fixed set of tags,
+while using numerical expressions for tag values supports the
+implementation of a variety of sophisticated communication patterns.
+
+@item
+@nonterm{string} tags are hashed, not coerced, to numerical values.
+Hence, a message sent @samp{USING TAG 42} will not be matched by a
+message received @samp{USING TAG "42"}.
+
+@item
+Different backends place different restrictions on the range of
+accceptable tag values.  For example, the @backend{c_mpi} backend is
+limited by MPI's tag values, which range @w{from 0} to at least
+32,767---but usually more.  (The range @math{[0, 2^{31}-1]} is
+probably typical.)  @ncptl{} will automatically map any @nonterm{expr}
+or @nonterm{string} used as a tag value into whatever range the
+backend supports.  One implication is that different tags in a
+@ncptl{} program can map to the same tag at run time.  For example, if
+a backend limits tag values to the range @math{[0, 32{,}767]}, then
+@samp{USING TAG 131068} is equivalent to @samp{USING TAG 0}---or even
+not using any tag at all.  Also, in that case, two arbitrary strings
+have a 0.003% chance of mapping to the same tag (or 0.00000005% in the
+more typical case for @backend{c_mpi}), which is unlikely but not
+impossible.
+@end enumerate
+
+
+@node Buffer control, Blocking semantics, Tag matching, Message specifications
 @subsubheading Buffer control
 @cindex message buffers
 @cindex buffers, message
@@ -6054,6 +6367,9 @@ unaligned vs.@: aligned vs.@: misaligned message buffers
 
 @item
 no data touching vs.@: data touching vs.@: data verification
+
+@item
+first-in, first-out vs.@: selective message ordering based on message tags
 
 @item
 implicit vs.@: explicit message-buffer selection
@@ -7047,30 +7363,13 @@ loops have the following syntax:
 @item @tab @nonterm{simple_stmt}
 @end multitable
 
-A @nonterm{range} is a comma-separated list of @nonterm{expr}s within
-curly braces.  An ellipsis can be used to indicate that @ncptl{}
-should fill in the missing numbers.  More formally,
-
-@multitable {@nonterm{range}} {::=} {@nonterm{expr} [@samp{,} @nonterm{expr}]*}
-@item @nonterm{range}
-@tab ::=
-@tab @samp{@{}
-@item @tab @tab @nonterm{expr} [@samp{,} @nonterm{expr}]*
-@item @tab @tab [@samp{, ... ,} @nonterm{expr}]
-@item @tab @tab @samp{@}}
-@end multitable
-
-@noindent
-(This is the same @nonterm{range} nonterminal that is used by the
-@keyw{IS IN} relation.  @xref{Relational expressions}.)
-
-For a range loop, @ncptl{} successively binds a
-@nonterm{restricted_ident} (@pxref{Restricted identifiers}) to each
-@nonterm{expr} in each @nonterm{range} then evaluates the given
-@nonterm{simple_stmt}.  Unlike all other uses of a
-@nonterm{restricted_ident}, the variable is not implicitly constrained
-to being a number from 0 to @var{num_tasks}-1 within a @keyw{FOR EACH}
-statement.
+A @nonterm{range} represents a range expression.  Range expressions
+are described in @ref{Range expressions}.  In short, a range
+expression specifies a list of values by explicit enumeration, numeric
+progression, or predicated combinations of other range expressions.
+For a range loop, @ncptl{} successively binds a specified variable to
+each @nonterm{expr} in each @nonterm{range} and evaluates the given
+@nonterm{simple_stmt}.
 
 The following are some examples of the @keyw{FOR EACH} statement from
 simplest to most elaborate.  Each example uses @samp{i} as the loop
@@ -7144,69 +7443,30 @@ FOR EACH i IN @{0@}, @{1, 2, 4, ..., 256@} TASK 0 OUTPUTS i
 @print{} 64
 @print{} 128
 @print{} 256
+
+FOR EACH i IN @{neigh FOR EACH neigh IN @{0,...,100@} WHERE
+MESH_DISTANCE((10,10), 55, neigh) IS IN @{1, 2@}@} TASK 0 OUTPUTS i.
+@print{} 35
+@print{} 44
+@print{} 45
+@print{} 46
+@print{} 53
+@print{} 54
+@print{} 56
+@print{} 57
+@print{} 64
+@print{} 65
+@print{} 66
+@print{} 75
 @end example
 
-When @ncptl{} fills in the numbers summarized by @samp{...} it first
-looks for an arithmetic progression, then a geometric progression.  If
-@ncptl{} finds neither an arithmetic nor a geometric progression, it
-re-evaluates all of the @nonterm{expr}s in floating-point context
-(@pxref{Arithmetic expressions}) and tries once again to find a
-geometric progression.  If a pattern is still not found, a run-time
-error message is generated.  This is why the final example above
-places the @samp{0} in a separate range; @samp{1, 2, 4, ..., 256} is a
-geometric pattern in which each number is twice the previous.
-@samp{0, 1, 2, 4, ..., 256} violates that pattern, because 1 is not
-twice 0.  The number following the ellipsis is not included when
-calculating the pattern.  Hence, the @samp{@{1, 4, 7, ..., 30@}} range
-shown above is acceptable to @ncptl{}@.  If the number following the
-ellipsis is less than (respectively, greater than) the first number in
-an increasing (respectively, decreasing) range, then the loop will
-silently not execute.  Here are some examples to help make those
-points:
+That final example loops over all values that are a Manhattan distance
+of either 1 or 2 from the @w{number 55} in a @texmath{10{\times}10,
+10x10} layout of the numbers 0--99.
 
-@example
-FOR EACH i IN @{20, 30, 40, ..., 55@} TASK 0 OUTPUTS i
-@print{} 20
-@print{} 30
-@print{} 40
-@print{} 50
-
-FOR EACH i IN @{20, 30, 40, ..., 30@} TASK 0 OUTPUTS i
-@print{} 20
-@print{} 30
-
-FOR EACH i IN @{20, 30, 40, ..., 20@} TASK 0 OUTPUTS i
-@print{} 20
-
-FOR EACH i IN @{20, 30, 40, ..., 10@} TASK 0 OUTPUTS i
-@print{} @r{[no output]}
-@end example
-
-The examples so far have all used constant expressions.  However, as
-indicated by the definition of @nonterm{range} above, any arbitrary
-arithmetic expression (@pxref{Arithmetic expressions}) is valid.
-Assuming that @samp{x} is currently bound to 123, the following
-example will produce the indicated output:
-
-@example
-FOR EACH i IN @{x*10, x*9, x*8, ..., x*3@}, @{x+50@}, @{2*x+3, 3*x+2@}
-TASK 0 OUTPUTS i
-@print{} 1230
-@print{} 1107
-@print{} 984
-@print{} 861
-@print{} 738
-@print{} 615
-@print{} 492
-@print{} 369
-@print{} 173
-@print{} 249
-@print{} 371
-@end example
-
-Finally, @keyw{FOR EACH} loops with constant progressions are executed
-exactly once.  Note that if the @nonterm{range} does not contain an
-ellipsis then all values are used, regardless of order or constancy:
+@keyw{FOR EACH} loops with constant progressions are executed exactly
+once.  Note that if the @nonterm{range} does not contain an ellipsis
+then all values are used, regardless of order or constancy:
 
 @example
 FOR EACH i IN @{4, 4, 4, ..., 4@} TASK 0 OUTPUTS i
@@ -8348,10 +8608,10 @@ For each msgsize in @{0@}, @{1, 2, 4, ..., maxbytes@} @{
 @end cartouche
 
 Note that the outer @keyw{FOR} loop specifies two @nonterm{range}s
-(@pxref{Range loops}).  This is because @samp{@{0, 1, 2, @w{4, ...,}
-maxbytes@}} is not a geometric progression.  Hence, that incorrect
-@nonterm{range} is split into the singleton @samp{@{0@}} and the
-geometric progression @samp{@{1, 2, @w{4, ...,} maxbytes@}}.
+(@pxref{Range expressions}).  This is because @samp{@{0, 1, 2, @w{4,
+...,} maxbytes@}} is not a geometric progression.  Hence, that
+incorrect @nonterm{range} is split into the singleton @samp{@{0@}} and
+the geometric progression @samp{@{1, 2, @w{4, ...,} maxbytes@}}.
 
 
 @node Hot potato, Hot spot, Latency, Examples
@@ -10087,6 +10347,15 @@ returned by @ocodecf{ncptl_queue_init}.  (@ocodecf{ncptl_queue_push}
 is actually implemented in terms of @ocodecf{ncptl_queue_allocate}.)
 @end deftypefun
 
+@deftypefun {void} ncptl_queue_push_all (NCPTL_QUEUE *@var{target_queue}, NCPTL_QUEUE *@var{source_queue})
+@olindex ncptl_queue_push_all
+Push (via a memory copy) all of the elements in @var{source_queue}
+onto the end of @var{target_queue}.  A fatal error will occur if the
+two queues were not initialized with the same @var{eltbytes} argument
+to @ocodecf{ncptl_queue_init}.  @ocodecf{ncptl_queue_push_all} does
+not modify @var{source_queue}.
+@end deftypefun
+
 @deftypefun {void *} ncptl_queue_pop (NCPTL_QUEUE *@var{queue})
 @olindex ncptl_queue_pop
 Pop a pointer to the element at the head of queue @var{queue}.  If
@@ -11312,7 +11581,7 @@ components.  This section explains what to do if a compile fails or
 @kcmd{make} is otherwise unable to perform all of its operations.
 
 @menu
-* Failure following "missing" check::
+* Failure following "missing" check::  
 * Too many columns in multitable item::  Building Emacs info files
 * Can't find compiler_version.h::  Running `make install' properly
 * Could not read symbols::      Linking with the correct libraries

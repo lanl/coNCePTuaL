@@ -16,10 +16,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2011, Los Alamos National Security, LLC
+ * Copyright (C) 2012, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2011).  Los Alamos National Security, LLC.  This software
+ * Copyright (2012).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -58,6 +58,7 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  *
  * ----------------------------------------------------------------------
  */
@@ -879,7 +880,7 @@ public class ProgramReader {
             stmt.setSourceAlignmentMode( alignment.mode );
 
             stmt.setSourceVerificationOrTouching( read_touching_type( children[4]) );
-            stmt.setSourceBuffer( read_buffer_number( children[5] ) );
+            stmt.setSourceBuffer( read_buffer_number( children[7] ) );
         }
         else{
             stmt.setTargetUniqueBuffer( read_unique( children[1] ) );
@@ -899,7 +900,7 @@ public class ProgramReader {
 
             stmt.setTargetVerificationOrTouching( read_touching_type( children[4]) );
 
-            stmt.setTargetBuffer( read_recv_buffer_number( children[5] ) );
+            stmt.setTargetBuffer( read_recv_buffer_number( children[7] ) );
         }
         
     }
@@ -1252,7 +1253,7 @@ public class ProgramReader {
                 stmt.setSourceDataTouching( false );
             else
                 stmt.setSourceDataTouching( true );
-            stmt.setSourceBuffer( read_buffer_number( children[5] ) );
+            stmt.setSourceBuffer( read_buffer_number( children[7] ) );
         }
         else{
             stmt.setTargetCount( read_item_count( children[0] ) );
@@ -1277,7 +1278,7 @@ public class ProgramReader {
                 stmt.setTargetDataTouching( true );
 
 
-            stmt.setTargetBuffer( read_buffer_number( children[5] ) );
+            stmt.setTargetBuffer( read_buffer_number( children[7] ) );
         }
             
         
@@ -1329,7 +1330,7 @@ public class ProgramReader {
         stmt.setAlignmentMode( alignment.mode );
         
         stmt.setVerificationOrTouching( read_touching_type( children[4]) );
-        stmt.setBuffer( read_buffer_number( children[5] ) );
+        stmt.setBuffer( read_buffer_number( children[7] ) );
     }
 
     private String read_func_call( AST node ){

@@ -20,7 +20,7 @@
 # #include <unistd.h>
 
 # --- Ensure that future changes to the coNCePTuaL language don't break this program: ---
-Require language version "1.3".
+Require language version "1.4".
 
 # --- For the user's convenience we convert the C version's ---
 # --- hardwired constants to command-line arguments:        ---

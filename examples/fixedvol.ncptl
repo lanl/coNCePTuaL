@@ -1,0 +1,54 @@
+###########################################################
+# Communicate a fixed volume of messages of varying sizes #
+# By Scott Pakin <pakin@lanl.gov>                         #
+###########################################################
+
+Require language version "1.4".
+
+volume is "Message volume in bytes" and comes from "--volume" or "-v" with default 1M.
+minsize is "Minimum message size in bytes" and comes from "--minsize" or "-n" with default 8.
+numtrials is "Number of times to repeat each volume" and comes from "--trials" or "-t" with default 100.
+
+Assert that "the program requires at least two tasks" with num_tasks >= 2.
+
+For each msgsize in {volume, volume/2, volume/4, ..., minsize}
+  let nummsgs be volume/msgsize while {
+    task 0 outputs "Sending " and nummsgs and " message(s) of " and msgsize and " bytes apiece..." then
+    # Synchronous sends/receives, same buffer
+    all tasks synchronize then
+    task 0 resets its counters then
+    for numtrials repetitions plus 3 warmup repetitions
+      task 0 sends nummsgs msgsize-byte messages to task 1 then
+    task 1 sends a 0-byte messages to task 0 then
+    task 0 logs msgsize as "Message size (B)"
+            and elapsed_usecs/1E6 as "Sync. time, one buffer (s)" then
+
+    # Synchronous sends/receives, different buffers
+    all tasks synchronize then
+    task 0 resets its counters then
+    for numtrials repetitions plus 3 warmup repetitions
+      for each mnum in {0, ..., nummsgs-1}
+        task 0 sends a msgsize-byte messages from mnum*msgsize bytes into the default buffer to task 1 then
+    task 1 sends a 0-byte messages to task 0 then
+    task 0 logs elapsed_usecs/1E6 as "Sync. time, many buffers (s)" then
+
+    # Asynchronous sends/receives, unidirectional
+    all tasks synchronize then
+    task 0 resets its counters then
+    for numtrials repetitions plus 3 warmup repetitions {
+      task 0 asynchronously sends nummsgs msgsize-byte messages to task 1 then
+      all tasks await completion
+    } then
+    task 1 sends a 0-byte messages to task 0 then
+    task 0 logs elapsed_usecs/1E6 as "Async. time, uni (s)" then
+
+    # Asynchronous sends/receives, bidirectional
+    all tasks synchronize then
+    task 0 resets its counters then
+    for numtrials repetitions plus 3 warmup repetitions {
+      task 0 asynchronously sends nummsgs msgsize-byte messages to task 1 then
+      task 1 asynchronously sends nummsgs msgsize-byte messages to task 0 then
+      all tasks await completion
+    } then
+    task 0 logs elapsed_usecs/1E6 as "Async. time, bi (s)"
+  }

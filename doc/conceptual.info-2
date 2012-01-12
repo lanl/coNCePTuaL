@@ -8,7 +8,314 @@ END-INFO-DIR-ENTRY
 
    This file describes the coNCePTuaL language and tool suite.
 
-   Copyright (C) 2011, Los Alamos National Security, LLC
+   Copyright (C) 2012, Los Alamos National Security, LLC
+
+
+File: conceptual.info,  Node: Sending,  Next: Receiving,  Prev: Message specifications,  Up: Communication statements
+
+4.4.2 Sending
+-------------
+
+The `SEND' statement is fundamental to CONCEPTUAL.  It is used to send
+a multiple messages from multiple source tasks to multiple target
+tasks.  The syntax is formally specified as follows:
+
+<SEND_STMT>   ::=   <SOURCE_TASK>
+                    [`ASYNCHRONOUSLY'] `SENDS'
+                    <MESSAGE_SPEC>
+                    `TO' [`UNSUSPECTING'] <TARGET_TASKS>
+              |     <SOURCE_TASK>
+                    [`ASYNCHRONOUSLY'] `SENDS'
+                    <MESSAGE_SPEC>
+                    `TO' <TARGET_TASKS>
+                    `WHO RECEIVE IT'
+                    <RECV_MESSAGE_SPEC>
+
+<SOURCE_TASK> is described in *note Source tasks::; <MESSAGE_SPEC> and <RECV_MESSAGE_SPEC>
+are described in *note Message specifications::; and, <TARGET_TASKS> is
+described in *note Target tasks::.
+
+   The `SEND' statement's simplest form, "<SOURCE_TASK> `SENDS' <MESSAGE_SPEC> `TO' <TARGET_TASKS>",
+is fairly straightforward.  The following is a example:
+
+     TASK 0 SENDS A 0 BYTE MESSAGE TO TASK 1
+
+The only subtlety in the preceding statement is that it implicitly
+causes task 1 to perform a corresponding receive.  This receive can be
+suppressed by adding the keyword `UNSUSPECTING' before the <TARGET_TASKS>
+description:
+
+     TASK 0 SENDS A 0 BYTE MESSAGE TO UNSUSPECTING TASK 1
+
+   Here are some further examples of valid <SEND_STMT>s:
+
+   * `ALL TASKS SEND A 64 KILOBYTE MESSAGE TO TASK 0'
+
+   * `TASK num_tasks-1 SENDS 5 53 BYTE PAGE ALIGNED MESSAGES TO ALL
+     OTHER TASKS'
+
+   * `TASKS upper SUCH THAT upper>=num_tasks/2 ASYNCHRONOUSLY SEND A 0
+     BYTE MESSAGE TO TASK upper/2'
+
+   * `TASKS nonzero SUCH THAT nonzero>0 SEND nonzero 1E3 BYTE MESSAGES
+     TO UNSUSPECTING TASK 0'
+
+   There are a number of attributes associated with every message
+transmission:
+
+   * synchronous vs. asynchronous operation
+
+   * unique vs. recycled message buffers
+
+   * unaligned vs. aligned vs. misaligned message buffers
+
+   * no data touching vs. data touching vs. data verification
+
+   * first-in, first-out vs. selective message ordering based on
+     message tags
+
+   * implicit vs. explicit message-buffer selection
+
+   * explicit byte offsets into message buffers
+
+A few of those appear in the preceding examples.
+
+   When `UNSUSPECTING' is omitted, the implicit `RECEIVE' statement
+normally inherits all of the attributes of the corresponding `SEND'.
+However, the second form of a <SEND_STMT>, which contains a `WHO
+RECEIVES IT' (or `WHO RECEIVES THEM') clause, enables the receiver's
+attributes to be overridden on a per-attribute basis.  For instance,
+consider the following `SEND' statement:
+
+     TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 WHO RECEIVES IT
+     ASYNCHRONOUSLY
+
+The alternative sequence of statements that does not use RECEIVES IT
+`WHO RECEIVES IT' is less straightforward to read because it splits a
+single message transmission into two statements:
+
+  1. `TASK 1 ASYNCHRONOUSLY RECEIVES A 1 MEGABYTE MESSAGE FROM TASK 0'
+
+  2. `TASK 0 SENDS A 1 MEGABYTE MESSAGE TO UNSUSPECTING TASK 1'
+
+   Some further examples of `WHO RECEIVES IT' follow:
+
+     TASKS left SUCH THAT left IS EVEN SEND 5 2 KILOBYTE 64 BYTE ALIGNED
+     MESSAGES TO TASKS left+1 WHO RECEIVE THEM AS UNALIGNED MESSAGES WITH
+     DATA TOUCHING
+
+     TASK num_tasks-1 ASYNCHRONOUSLY SENDS A 1E5 BYTE MESSAGE WITH
+     VERIFICATION TO TASK 0 WHO RECEIVES IT SYNCHRONOUSLY
+
+     TASK leaf SUCH THAT KNOMIAL_CHILDREN(leaf,2)=0 SENDS A UNIQUE 1536
+     BYTE MESSAGE WITH DATA TOUCHING TO TASK KNOMIAL_PARENT(leaf,2) WHO
+     RECEIVES IT ASYNCHRONOUSLY AS A NONUNIQUE QUADWORD ALIGNED MESSAGE
+     WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
+
+   One subtlety of the `SEND' statement when used without `UNSUSPECTING'
+involves the orderings of the sends and receives.  The rule is that
+receives are posted before sends.  Furthermore, <RESTRICTED_IDENT>s
+(*note Restricted identifiers::) are evaluated in order from 0
+to NUM_TASKS-1.  The implication is that a statement such as `TASKS ev
+SUCH THAT ev IS EVEN /\ ev<6 SEND A 4 WORD MESSAGE TO TASK ev+2' is
+exactly equivalent to the following ordered sequence of statements
+(assuming NUM_TASKS >= 5):
+
+  1. `TASK 2 RECEIVES A 4 WORD MESSAGE FROM TASK 0'
+
+  2. `TASK 4 RECEIVES A 4 WORD MESSAGE FROM TASK 2'
+
+  3. `TASK 6 RECEIVES A 4 WORD MESSAGE FROM TASK 4'
+
+  4. `TASK 0 SENDS A 4 WORD MESSAGE TO UNSUSPECTING TASK 2'
+
+  5. `TASK 2 SENDS A 4 WORD MESSAGE TO UNSUSPECTING TASK 4'
+
+  6. `TASK 4 SENDS A 4 WORD MESSAGE TO UNSUSPECTING TASK 6'
+
+(The `RECEIVE' statement is described in *note Receiving::.)
+
+   If the above sequence were executed, tasks 2, 4, and 6 would
+immediately block on their receives (steps 1-3).  Task 0 would awaken
+task 2 by sending it a message (step 4).  Then, task 2 would be able to
+continue to step 5 at which point it would send a message to task 4.
+Task 4 would then finally be able to send a message to task 6 (step 6).
+Hence, even though the original CONCEPTUAL statement encapsulates
+multiple communication operations, the component communications proceed
+sequentially because of data dependences and because the operations are
+blocking.
+
+   As another example of send/receive ordering, consider the statement,
+`TASKS x SUCH THAT x IS IN {1,4,5} SEND A 768 BYTE MESSAGE FROM 4
+DOUBLEWORDS INTO THE DEFAULT BUFFER TO TASKS y SUCH THAT y IS IN
+{6,2,3}'.  This statement causes nine messages to be sent and received
+and in the following order: 1 => 2, 1 => 3, 1 => 6, 4 => 2, 4 => 3,
+4 => 6, 5 => 2, 5 => 3, 5 => 6.  The reason that task 6 receives from
+each sender _after_ tasks 2 and 3 relates to the comment above that <RESTRICTED_IDENT>s
+are evaluated in order from 0 to NUM_TASKS-1.  One can therefore think
+of the preceding CONCEPTUAL statement as being implemented with the
+following pseudocode:
+
+     for s := 0 to num_tasks-1 do
+       if s is in {1, 4, 5} then
+         for r := 0 to num_tasks-1 do
+           if r is in {6, 2, 3} then
+             r receives from s
+     for s := 0 to num_tasks-1 do
+       if s is in {1, 4, 5} then
+         for r := 0 to num_tasks-1 do
+           if r is in {6, 2, 3} then
+             s sends to r
+
+
+File: conceptual.info,  Node: Receiving,  Next: Awaiting completion,  Prev: Sending,  Up: Communication statements
+
+4.4.3 Receiving
+---------------
+
+*note Sending::, mentioned the <SEND_STMT>'s `UNSUSPECTING' keyword,
+which specifies that the targets should not implicitly perform a
+receive operation.  Because every send must have a matching receive,
+CONCEPTUAL offers a `RECEIVE' statement that explicitly receives a set
+of messages.  A <RECEIVE_STMT> is much like a <SEND_STMT> (*note
+Sending::) with the <SOURCE_TASK> and <TARGET_TASKS> in the reverse
+order:
+
+<RECEIVE_STMT>   ::=   <TARGET_TASKS>
+                       [`ASYNCHRONOUSLY'] `RECEIVE'
+                       <MESSAGE_SPEC>
+                       `FROM' <SOURCE_TASK>
+
+<TARGET_TASKS> is described in *note Target tasks::; <MESSAGE_SPEC> is
+described in *note Message specifications::; and, <SOURCE_TASK> is
+described in *note Source tasks::.
+
+   Like other statements that contain both a <SOURCE_TASK> and a <TARGET_TASKS>,
+the `RECEIVE' statement propagates all variables declared by the <SOURCE_TASK>
+to the <TARGET_TASKS>, as in
+
+     TASKS src-1 RECEIVE A 1 MEGABYTE MESSAGE FROM ALL TASKS src.
+
+However, the `RECEIVE' statement is unique among CONCEPTUAL statements
+in that it can alternatively propagate all variables declared by the <TARGET_TASKS>
+to the <SOURCE_TASK>, as in
+
+     ALL TASKS dst RECEIVE A 1 MEGABYTE MESSAGE FROM TASKS dst+1.
+
+The `RECEIVE' statement automatically determines the direction in which
+variables should be propagated.  If the direction cannot unambiguously
+be determined, the CONCEPTUAL compiler aborts with an error message.
+For example, the `RECEIVE' statement in the following code is ambiguous
+because the `bbb' in the expression `aaa < bbb' can refer to either the
+one in the `LET' statement or the one in the `TASKS bbb SUCH THAT bbb >
+3' expression:
+
+     LET bbb BE 5 WHILE {
+       TASKS aaa SUCH THAT aaa < bbb RECEIVE A MESSAGE FROM TASKS bbb SUCH
+       THAT bbb > 3 THEN
+       TASKS ccc SUCH THAT ccc > 3 SEND A MESSAGE TO UNSUSPECTING TASKS
+       ddd SUCH THAT ddd < ccc
+     }
+
+   For each message sent via a `SEND'...`TO UNSUSPECTING' statement
+there must be a `RECEIVE' statement that receives a message of the same
+size.  The <TARGET_TASKS>'s <MESSAGE_SPEC> can, however, specify
+different values for message uniqueness, message alignment, and data
+touching.  In addition, the source and target do not need to agree on
+the use of the `ASYNCHRONOUSLY' keyword.  The only restriction is that `WITH
+VERIFICATION' will return spurious results if used by the target but
+not by the source.  Hence, the following <SEND_STMT> and <RECEIVE_STMT>
+correctly match each other:
+
+     TASK 0 SENDS 3 4 KILOBYTE MESSAGES TO UNSUSPECTING TASK 1
+
+     TASK 1 ASYNCHRONOUSLY RECEIVES 3 UNIQUE 4 KILOBYTE 48 BYTE ALIGNED
+     MESSAGES WITH DATA TOUCHING FROM TASK 0.
+
+   In general, it is better to use a single `SEND' statement with a `WHO
+RECEIVES IT' clause (*note Sending::) than a `RECEIVE' plus a matching `SEND'...`TO
+UNSUSPECTING'; the former is less error-prone than the latter.
+However, the latter is useful for programs in which a set of receives
+is posted, then the tasks perform various communication, computation,
+and synchronization operations, and--towards the end of the
+program--the matching sends are posted.  That sort of split-phase
+structure requires separate `SEND' and `RECEIVE' statements.
+
+
+File: conceptual.info,  Node: Awaiting completion,  Next: Multicasting,  Prev: Receiving,  Up: Communication statements
+
+4.4.4 Awaiting completion
+-------------------------
+
+When a message is sent or received asynchronously it must eventually be
+"completed".  In some messaging layers, asynchronous messages are not
+even sent or received until completion time.  CONCEPTUAL provides the
+following statement for completing messages that were send/received
+asynchronously:
+
+<WAIT_STMT>   ::=   <SOURCE_TASK>
+                    `AWAITS COMPLETION'
+
+That is, a <WAIT_STMT> simply specifies the set of tasks that should
+block until all of their pending communications complete.  <SOURCE_TASK>
+is as defined in *note Source tasks::.  Note that a <WAIT_STMT> blocks
+until _all_ pending communications complete.  CONCEPTUAL does not
+provide finer-grained control over completions.  It is safe, however,
+for a task to `AWAIT COMPLETION' even if it has no asynchronous messages
+pending.
+
+
+File: conceptual.info,  Node: Multicasting,  Next: Reducing,  Prev: Awaiting completion,  Up: Communication statements
+
+4.4.5 Multicasting
+------------------
+
+Although a single <SEND_STMT> (*note Sending::) can specify multiple
+messages at once, these messages are sent one at a time.
+"Multicasting" is a form of collective communication in which a set of
+tasks collaborates to deliver a message from a source to multiple
+targets.  With many messaging layers, multicasting a message to N tasks
+is more efficient than sending a sequence of N individual messages.
+CONCEPTUAL supports multicasting as follows:
+
+<MCAST_STMT>    ::=   <SOURCE_TASK>
+                      [`ASYNCHRONOUSLY'] `MULTICASTS'
+                      <MESSAGE_SPEC>
+                      `TO' <TARGET_TASKS>
+
+   Unlike <SEND_STMT>s, <MCAST_STMT>s do not support the `UNSUSPECTING'
+keyword.  This is because `MULTICASTS' is a collective operation: all
+parties are active participants in delivering messages to the <TARGET_TASKS>.
+
+   <SOURCE_TASK> (*note Source tasks::) and <TARGET_TASKS> (*note
+Target tasks::) can be either disjoint or overlapping sets.  That is,
+either of the following is legal:
+
+     TASK 0 MULTICASTS A 16 BYTE MESSAGE TO TASKS recip SUCH THAT recip<4
+     TASK 0 MULTICASTS A 16 BYTE MESSAGE TO TASKS recip SUCH THAT recip>=4
+
+Note that in the first <MCAST_STMT>, task 0 both sends and receives a
+message, while in the second <MCAST_STMT>, task 0 sends but does not
+receive.
+
+   The `MULTICASTS' statement supports not only traditional one-to-many
+multicasting as shown in the preceding example but also many-to-many
+multicasting--and the less interesting but still valid many-to-one and
+one-to-one multicasting.  The constituent pairs of communicating tasks
+are identical to those induced by the `SENDS' statement (*note
+Sending::).  For example, the statement
+
+     TASKS s SUCH THAT s<3 MULTICAST A 1 KILOBYTE MESSAGE TO TASKS s SUCH
+     THAT s>6
+
+performs the collective analogue of
+
+     TASKS s SUCH THAT s<3 SEND A 1 KILOBYTE MESSAGE TO TASKS s SUCH
+     THAT s>6
+
+Specifically, task 0 will send a message to each of tasks 7, 8, 9, ...;
+task 1 will send a message to each of tasks 7, 8, 9, ...; and task 2
+will send a message to each of tasks 7, 8, 9, ...
 
 
 File: conceptual.info,  Node: Reducing,  Next: Synchronizing,  Prev: Multicasting,  Up: Communication statements
@@ -598,23 +905,12 @@ loops have the following syntax:
         `IN' <RANGE> [`,' <RANGE>]*
         <SIMPLE_STMT>
 
-   A <RANGE> is a comma-separated list of <EXPR>s within curly braces.
-An ellipsis can be used to indicate that CONCEPTUAL should fill in the
-missing numbers.  More formally,
-
-<RANGE>   ::=   `{'
-                <EXPR> [`,' <EXPR>]*
-                [`, ... ,' <EXPR>]
-                `}'
-
-(This is the same <RANGE> nonterminal that is used by the `IS IN'
-relation.  *Note Relational expressions::.)
-
-   For a range loop, CONCEPTUAL successively binds a <RESTRICTED_IDENT>
-(*note Restricted identifiers::) to each <EXPR> in each <RANGE> then
-evaluates the given <SIMPLE_STMT>.  Unlike all other uses of a <RESTRICTED_IDENT>,
-the variable is not implicitly constrained to being a number from 0 to
-NUM_TASKS-1 within a `FOR EACH' statement.
+   A <RANGE> represents a range expression.  Range expressions are
+described in *note Range expressions::.  In short, a range expression
+specifies a list of values by explicit enumeration, numeric
+progression, or predicated combinations of other range expressions.
+For a range loop, CONCEPTUAL successively binds a specified variable to
+each <EXPR> in each <RANGE> and evaluates the given <SIMPLE_STMT>.
 
    The following are some examples of the `FOR EACH' statement from
 simplest to most elaborate.  Each example uses `i' as the loop variable
@@ -687,62 +983,28 @@ is shown with a "-|" symbol preceding each line.
      -| 128
      -| 256
 
-   When CONCEPTUAL fills in the numbers summarized by `...' it first
-looks for an arithmetic progression, then a geometric progression.  If
-CONCEPTUAL finds neither an arithmetic nor a geometric progression, it
-re-evaluates all of the <EXPR>s in floating-point context (*note
-Arithmetic expressions::) and tries once again to find a geometric
-progression.  If a pattern is still not found, a run-time error message
-is generated.  This is why the final example above places the `0' in a
-separate range; `1, 2, 4, ..., 256' is a geometric pattern in which
-each number is twice the previous.  `0, 1, 2, 4, ..., 256' violates
-that pattern, because 1 is not twice 0.  The number following the
-ellipsis is not included when calculating the pattern.  Hence, the `{1,
-4, 7, ..., 30}' range shown above is acceptable to CONCEPTUAL.  If the
-number following the ellipsis is less than (respectively, greater than)
-the first number in an increasing (respectively, decreasing) range,
-then the loop will silently not execute.  Here are some examples to
-help make those points:
+     FOR EACH i IN {neigh FOR EACH neigh IN {0,...,100} WHERE
+     MESH_DISTANCE((10,10), 55, neigh) IS IN {1, 2}} TASK 0 OUTPUTS i.
+     -| 35
+     -| 44
+     -| 45
+     -| 46
+     -| 53
+     -| 54
+     -| 56
+     -| 57
+     -| 64
+     -| 65
+     -| 66
+     -| 75
 
-     FOR EACH i IN {20, 30, 40, ..., 55} TASK 0 OUTPUTS i
-     -| 20
-     -| 30
-     -| 40
-     -| 50
+   That final example loops over all values that are a Manhattan
+distance of either 1 or 2 from the number 55 in a 10x10 layout of the
+numbers 0-99.
 
-     FOR EACH i IN {20, 30, 40, ..., 30} TASK 0 OUTPUTS i
-     -| 20
-     -| 30
-
-     FOR EACH i IN {20, 30, 40, ..., 20} TASK 0 OUTPUTS i
-     -| 20
-
-     FOR EACH i IN {20, 30, 40, ..., 10} TASK 0 OUTPUTS i
-     -| [no output]
-
-   The examples so far have all used constant expressions.  However, as
-indicated by the definition of <RANGE> above, any arbitrary arithmetic
-expression (*note Arithmetic expressions::) is valid.  Assuming that
-`x' is currently bound to 123, the following example will produce the
-indicated output:
-
-     FOR EACH i IN {x*10, x*9, x*8, ..., x*3}, {x+50}, {2*x+3, 3*x+2}
-     TASK 0 OUTPUTS i
-     -| 1230
-     -| 1107
-     -| 984
-     -| 861
-     -| 738
-     -| 615
-     -| 492
-     -| 369
-     -| 173
-     -| 249
-     -| 371
-
-   Finally, `FOR EACH' loops with constant progressions are executed
-exactly once.  Note that if the <RANGE> does not contain an ellipsis
-then all values are used, regardless of order or constancy:
+   `FOR EACH' loops with constant progressions are executed exactly
+once.  Note that if the <RANGE> does not contain an ellipsis then all
+values are used, regardless of order or constancy:
 
      FOR EACH i IN {4, 4, 4, ..., 4} TASK 0 OUTPUTS i
      -| 4
@@ -1216,7 +1478,7 @@ them:
      ALL TASKS AWAIT COMPLETION
 
 (*note Buffer control::, explains why the preceding statement requires
-10 buffers.)  One caveat is that in CONCEPTUAL version 1.3, messages
+10 buffers.)  One caveat is that in CONCEPTUAL version 1.4, messages
 sent or received with the `UNIQUE' keyword (*note Unique messages::)
 are not touched.  This limitation may be lifted in a later release of
 CONCEPTUAL.
@@ -1395,7 +1657,7 @@ successfully compiles after a version-mismatch warning, the programmer
 should check the output very carefully to ensure that the program
 behaved as expected.
 
-   The current version of the CONCEPTUAL language is `1.3'.  Note that
+   The current version of the CONCEPTUAL language is `1.4'.  Note that
 the language version does not necessarily correspond to the version of
 the CONCEPTUAL toolset (*note Usage::) as a whole.
 
@@ -1555,7 +1817,7 @@ multiple <COMPLEX_STMT>s:
      # A complete coNCePTuaL program
      # By Scott Pakin <pakin@lanl.gov>
 
-     REQUIRE LANGUAGE VERSION "1.3".
+     REQUIRE LANGUAGE VERSION "1.4".
 
      maxval IS "Maximum value to loop to" AND COMES FROM "--maxval" OR
        "-v" WITH DEFAULT 100.
@@ -1682,13 +1944,8 @@ the rest of the chapter.
               |     `A HISTOGRAM OF' [`THE'] <EXPR>
 
 <AGGR_FUNC>   ::=   [`ARITHMETIC'] `MEAN' | `HARMONIC MEAN' | `GEOMETRIC MEAN' |
-                    `MEDIAN' | `STANDARD DEVIATION' | `VARIANCE' | `SUM' |      `MINIMUM' |
-                    `MAXIMUM' | `FINAL'
-
-<RANGE>   ::=   `{'
-                <EXPR> [`,' <EXPR>]*
-                [`, ... ,' <EXPR>]
-                `}'
+                    `MEDIAN' | `STANDARD DEVIATION' | `VARIANCE' |      `MEDIAN ABSOLUTE
+                    DEVIATION' | `SUM' | `MINIMUM' |      `MAXIMUM' | `FINAL'
 
 <REL_EXPR>   ::=   <REL_DISJ_EXPR>
 
@@ -1711,10 +1968,9 @@ the rest of the chapter.
             |     <EXPR> `IS IN' <RANGE> [`,' <RANGE>]*
             |     <EXPR> `IS NOT IN' <RANGE> [`,' <RANGE>]*
 
-<RANGE>   ::=   `{'
-                <EXPR> [`,' <EXPR>]*
-                [`, ... ,' <EXPR>]
-                `}'
+<RANGE>   ::=   `{' <EXPR> [`,' <EXPR>]* [`, ... ,' <EXPR>] `}'
+          |     `{' <EXPR> [`FOR EACH' <IDENT> `IN' <RANGE> [`,' <RANGE>]* ]+
+                [`WHERE' <REL_EXPR>] `}'
 
 <RESTRICTED_IDENT>   ::=   <IDENT> `SUCH THAT' <REL_EXPR>
 
@@ -1738,6 +1994,8 @@ the rest of the chapter.
                             `MESSAGES'
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
+                            [`USING TAG'
+                            <EXPR> | <STRING>]
                             [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
                             `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -1750,6 +2008,8 @@ the rest of the chapter.
                             `MESSAGES']
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
+                            [`USING TAG'
+                            <EXPR> | <STRING>]
                             [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
                             `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -1760,6 +2020,8 @@ the rest of the chapter.
                               <MESSAGE_ALIGNMENT> `MISALIGNED']
                               `INTEGERS' | `DOUBLEWORDS'
                               [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
+                              [`USING TAG'
+                              <EXPR> | <STRING>]
                               [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
                               `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -1769,6 +2031,8 @@ the rest of the chapter.
                                      <MESSAGE_ALIGNMENT> `MISALIGNED']
                                      `INTEGERS' | `DOUBLEWORDS']
                                      [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
+                                     [`USING TAG'
+                                     <EXPR> | <STRING>]
                                      [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
                                      `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -1880,11 +2144,6 @@ the rest of the chapter.
                 |     <PROCESSOR_STMT>
                 |     <BACKEND_STMT>
 
-<RANGE>   ::=   `{'
-                <EXPR> [`,' <EXPR>]*
-                [`, ... ,' <EXPR>]
-                `}'
-
 <LET_BINDING>   ::=   <IDENT> `BE'       expr
                                      |   <SOURCE_TASK>
                                      |   `A RANDOM TASK' [<RANDOM_TASK_CONSTRAINTS>]
@@ -1979,7 +2238,7 @@ implement in CONCEPTUAL:
 
      # A ping-pong latency test written in coNCePTuaL
 
-     Require language version "1.3".
+     Require language version "1.4".
 
      # Parse the command line.
      reps is "Number of repetitions of each message size" and comes from
@@ -2004,7 +2263,7 @@ implement in CONCEPTUAL:
      }
 
    Note that the outer `FOR' loop specifies two <RANGE>s (*note Range
-loops::).  This is because `{0, 1, 2, 4, ..., maxbytes}' is not a
+expressions::).  This is because `{0, 1, 2, 4, ..., maxbytes}' is not a
 geometric progression.  Hence, that incorrect <RANGE> is split into the
 singleton `{0}' and the geometric progression `{1, 2, 4, ...,
 maxbytes}'.
@@ -2025,7 +2284,7 @@ following CONCEPTUAL code implements a hot-potato test.
 
      # Virtual ring "hot potato" test
 
-     Require language version "1.3".
+     Require language version "1.4".
 
      trials is "Number of trials to perform" and comes from "--trials" or
        "-t" with default 100000.
@@ -2076,7 +2335,7 @@ message size and the number of tasks.
 
      # Hot-spot bandwidth
 
-     Require language version "1.3".
+     Require language version "1.4".
 
      maxbytes is "Maximum message size in bytes" and comes from
        "--maxbytes" or "-x" with default 1024.
@@ -2123,7 +2382,7 @@ and `KNOMIAL_CHILD' functions.
      # Test the performance of multicasting over various k-nomial trees
      # By Scott Pakin <pakin@lanl.gov>
 
-     Require language version "1.3".
+     Require language version "1.4".
 
      # Parse the command line.
      minsize is "Min. message size (bytes)" and comes from "--minbytes" or "-n"
@@ -2197,7 +2456,7 @@ builds only with the `c_mpi' backend.
      #
      # N.B. Requires the c_mpi backend.
 
-     Require language version "1.3".
+     Require language version "1.4".
 
      # Parse the command line.
      numwords is "Message size (words)" and comes from "--msgsize" or "-s" with
@@ -3493,6 +3752,13 @@ version of the library to support more queue-like functionality.
      returned by `ncptl_queue_init()'.  (`ncptl_queue_push()' is
      actually implemented in terms of `ncptl_queue_allocate()'.)
 
+ -- Function: void ncptl_queue_push_all (NCPTL_QUEUE *TARGET_QUEUE,
+          NCPTL_QUEUE *SOURCE_QUEUE)
+     Push (via a memory copy) all of the elements in SOURCE_QUEUE onto
+     the end of TARGET_QUEUE.  A fatal error will occur if the two
+     queues were not initialized with the same ELTBYTES argument to `ncptl_queue_init()'.
+     `ncptl_queue_push_all()' does not modify SOURCE_QUEUE.
+
  -- Function: void * ncptl_queue_pop (NCPTL_QUEUE *QUEUE)
      Pop a pointer to the element at the head of queue QUEUE.  If QUEUE
      is empty, return `NULL'.  The pointer returned by `ncptl_queue_pop()'
@@ -4537,7 +4803,7 @@ of the `missing' script:
      cd . && /bin/sh ./config.status ncptl.h
      config.status: creating ncptl.h
      config.status: ncptl.h is unchanged
-     cd . && /bin/sh /home/me/conceptual-1.3/missing --run autoheader
+     cd . && /bin/sh /home/me/conceptual-1.4/missing --run autoheader
                         [Error message appears here.]
 
    The source of the problem is usually an incongruous timestamp on some
@@ -5097,6 +5363,8 @@ identifiers.
 
    * `ABS'
 
+   * `ABSOLUTE'
+
    * `AGGREGATES'
 
    * `ALIGNED'
@@ -5411,6 +5679,8 @@ identifiers.
 
    * `SYNCHRONOUSLY'
 
+   * `TAG'
+
    * `TASK'
 
    * `TASKS'
@@ -5449,6 +5719,8 @@ identifiers.
 
    * `UNSUSPECTING'
 
+   * `USING'
+
    * `VALUE'
 
    * `VARIANCE'
@@ -5458,6 +5730,8 @@ identifiers.
    * `VERSION'
 
    * `WARMUP'
+
+   * `WHERE'
 
    * `WHILE'
 
@@ -5607,6 +5881,8 @@ traversal.  *Note Backend creation::, for more information.
 
    * `n_for_each'
 
+   * `n_for_each_expr'
+
    * `n_for_time'
 
    * `n_func_call'
@@ -5701,6 +5977,8 @@ traversal.  *Note Backend creation::, for more information.
 
    * `n_sync_stmt'
 
+   * `n_tag'
+
    * `n_task_expr'
 
    * `n_time_unit'
@@ -5724,6 +6002,8 @@ traversal.  *Note Backend creation::, for more information.
    * `n_verification'
 
    * `n_version_decl'
+
+   * `n_where_expr'
 
 
 File: conceptual.info,  Node: C hooks,  Next: Event types,  Prev: Method calls,  Up: Backend Developer's Reference
@@ -5931,6 +6211,51 @@ calls.  *Note Hook methods::, for more information.
 
         - `code_specify_include_files_PRE'
 
+   * `code_synchronize_all'
+        - `code_synchronize_all_BODY'
+
+   * `n_for_count'
+        - `n_for_count_SYNC_ALL'
+
+   * `n_mcast_stmt'
+        - `n_mcast_stmt_DECL'
+
+        - `n_mcast_stmt_INIT'
+
+        - `n_mcast_stmt_MANY_MANY'
+
+        - `n_mcast_stmt_POST'
+
+        - `n_mcast_stmt_PRE'
+
+   * `n_recv_stmt'
+        - `n_recv_stmt_BODY'
+
+   * `n_reduce_stmt'
+        - `n_reduce_stmt_DECL'
+
+        - `n_reduce_stmt_HAVE_PEERS'
+
+        - `n_reduce_stmt_INIT'
+
+        - `n_reduce_stmt_INIT2'
+
+        - `n_reduce_stmt_POST'
+
+        - `n_reduce_stmt_PRE'
+
+   * `n_send_stmt'
+        - `n_send_stmt_BODY'
+
+   * `n_sync_stmt'
+        - `n_sync_stmt_DECL'
+
+        - `n_sync_stmt_INIT'
+
+        - `n_sync_stmt_POST'
+
+        - `n_sync_stmt_PRE'
+
 
 File: conceptual.info,  Node: Event types,  Next: Representing aggregate functions,  Prev: C hooks,  Up: Backend Developer's Reference
 
@@ -6026,6 +6351,9 @@ following values:
 
 `NCPTL_FUNC_MEDIAN'
      Log only the median.
+
+`NCPTL_FUNC_MAD'
+     Log only the median absolute deviation.
 
 `NCPTL_FUNC_STDEV'
      Log only the standard deviation.
@@ -6453,8 +6781,18 @@ hard to understand.
      `libibverbs.a' contains a function called `ibv_query_device()'
      (`yes' or `no')
 
+`ac_cv_lib_lipr_IprStart'
+     `liblipr.a' contains a function called `IprStart()' (`yes' or `no')
+
 `ac_cv_lib_m_fmod'
      `libm.a' contains a function called `fmod()' (`yes' or `no')
+
+`ac_cv_lib_papi_PAPI_get_real_usec'
+     `libpapi.a' contains a function called `PAPI_get_real_usec()'
+     (`yes' or `no')
+
+`ac_cv_lib_perfctr_main'
+     `libperfctr.a' contains a function called `main()' (`yes' or `no')
 
 `ac_cv_lib_popt_poptGetContext'
      `libpopt.a' contains a function called `poptGetContext()' (`yes'
@@ -6475,6 +6813,9 @@ hard to understand.
      the `hostent' `struct' contains a field called `h_name' (`yes' or
      `no')
 
+`ac_cv_path_ASY'
+     the fully qualified filename for `asy'
+
 `ac_cv_path_DOT'
      the fully qualified filename for `dot'
 
@@ -6483,6 +6824,9 @@ hard to understand.
 
 `ac_cv_path_FGREP'
      the fully qualified filename for `fgrep'
+
+`ac_cv_path_GIMP'
+     the fully qualified filename for `gimp'
 
 `ac_cv_path_GPERF'
      the fully qualified filename for `gperf'
@@ -6775,11 +7119,11 @@ File: conceptual.info,  Node: License,  Next: Index,  Prev: Referenced Applicati
 License
 *******
 
-Copyright (C) 2011, Los Alamos National Security, LLC
+Copyright (C) 2012, Los Alamos National Security, LLC
 All rights reserved.
 
 
-   Copyright (2011).  Los Alamos National Security, LLC.  This software
+   Copyright (2012).  Los Alamos National Security, LLC.  This software
 was produced under U.S. Government contract DE-AC52-06NA25396 for Los
 Alamos National Laboratory (LANL), which is operated by Los Alamos
 National Security, LLC (LANS) for the U.S. Department of Energy. The

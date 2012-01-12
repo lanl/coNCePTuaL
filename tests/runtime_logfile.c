@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2011, Los Alamos National Security, LLC
+ * Copyright (C) 2012, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2011).  Los Alamos National Security, LLC.  This software
+ * Copyright (2012).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -48,6 +48,7 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  *
  * ----------------------------------------------------------------------
  */
@@ -65,21 +66,21 @@ int main (int argc, char *argv[])
   int tasknum = 123;
   char *filename = "conftest-log-123.log";
   char *valid_output[] = {
-    "\"Integers\",\"Summary #1\",\"Summary #2\",\"Summary \\\"2a\\\"\",\"Info #1\",\"Info #2\",\"Info #3\",\"Numbers A\",\"Numbers B\",\"Squares\",\"Squares\"\n",
-    "\"(all data)\",\"(median)\",\"(mean)\",\"(std. dev.)\",\"(median)\",\"(minimum)\",\"(maximum)\",\"(all data)\",\"(median)\",\"(hist. values)\",\"(hist. tallies)\"\n",
-    "0,5,5,3.31662479,4.5,1,8,-6,0,0,1\n",
-    "7,,,,,,,-5,,1,2\n",
-    "3,,,,,,,-4,,4,2\n",
-    "10,,,,,,,-3,,9,2\n",
-    "6,,,,,,,-2,,16,2\n",
-    "2,,,,,,,-1,,25,2\n",
-    "9,,,,,,,0,,36,2\n",
-    "5,,,,,,,1,,,\n",
-    "1,,,,,,,2,,,\n",
-    "8,,,,,,,3,,,\n",
-    "4,,,,,,,4,,,\n",
-    ",,,,,,,5,,,\n",
-    ",,,,,,,6,,,\n",
+    "\"Integers\",\"Summary #1\",\"Summary #2\",\"Summary \\\"1a\\\"\",\"Summary \\\"2a\\\"\",\"Info #1\",\"Info #2\",\"Info #3\",\"Numbers A\",\"Numbers B\",\"Squares\",\"Squares\"\n",
+    "\"(all data)\",\"(median)\",\"(mean)\",\"(med. abs. dev.)\",\"(std. dev.)\",\"(median)\",\"(minimum)\",\"(maximum)\",\"(all data)\",\"(median)\",\"(hist. values)\",\"(hist. tallies)\"\n",
+    "0,5,5,3,3.31662479,4.5,1,8,-6,0,0,1\n",
+    "7,,,,,,,,-5,,1,2\n",
+    "3,,,,,,,,-4,,4,2\n",
+    "10,,,,,,,,-3,,9,2\n",
+    "6,,,,,,,,-2,,16,2\n",
+    "2,,,,,,,,-1,,25,2\n",
+    "9,,,,,,,,0,,36,2\n",
+    "5,,,,,,,,1,,,\n",
+    "1,,,,,,,,2,,,\n",
+    "8,,,,,,,,3,,,\n",
+    "4,,,,,,,,4,,,\n",
+    ",,,,,,,,5,,,\n",
+    ",,,,,,,,6,,,\n",
     "\n",
     "\"Powers of two\",\"Average\",\"Average\"\n",
     "\"(all data)\",\"(harm. mean)\",\"(geom. mean)\"\n",
@@ -116,7 +117,8 @@ int main (int argc, char *argv[])
 
     ncptl_log_write (logstate, 2, "Summary #1", NCPTL_FUNC_MEDIAN, somevalue);
     ncptl_log_write (logstate, 3, "Summary #2", NCPTL_FUNC_MEAN, somevalue);
-    ncptl_log_write (logstate, 5, "Summary \"2a\"", NCPTL_FUNC_STDEV, somevalue);
+    ncptl_log_write (logstate, 5, "Summary \"1a\"", NCPTL_FUNC_MAD, somevalue);
+    ncptl_log_write (logstate, 6, "Summary \"2a\"", NCPTL_FUNC_STDEV, somevalue);
     ncptl_log_write (logstate, 0, "Integers", NCPTL_FUNC_NO_AGGREGATE, somevalue);
   }
 
@@ -161,7 +163,7 @@ int main (int argc, char *argv[])
 #endif
 
   /* Start a fourth data set.  Here, we're checking whether
-   * ncptl_log_commit_data() functioned as it was supposed to. */
+   * ncptl_log_commit_data() functions as it's supposed to. */
   for (i=0, j=1; i<10; i++, j<<=1) {
     ncptl_log_write (logstate, 0, "Powers of two", NCPTL_FUNC_NO_AGGREGATE, (double)j);
     ncptl_log_write (logstate, 1, "Average", NCPTL_FUNC_HARMONIC_MEAN, (double)j);
@@ -196,7 +198,7 @@ int main (int argc, char *argv[])
   logstate = ncptl_log_open (template, tasknum);
   logfile_uuid = ncptl_log_generate_uuid();
   ncptl_log_write_prologue (logstate, "runtime_logfile", logfile_uuid,
-			    "N/A", "N/A", tasknum+1, NULL, 0, NULL);
+                            "N/A", "N/A", tasknum+1, NULL, 0, NULL);
   ncptl_free (logfile_uuid);
   ncptl_log_write_epilogue (logstate);
   ncptl_log_close (logstate);

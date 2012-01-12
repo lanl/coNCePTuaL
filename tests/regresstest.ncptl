@@ -5,10 +5,10 @@
 #################################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -47,9 +47,10 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 # ----------------------------------------------------------------------
 
-Require language version "1.3".
+Require language version "1.4".
 
 reps is "Number of times to repeat a loop" and comes from "--reps" or "-r" with default 1.
 
@@ -176,6 +177,21 @@ If 7 is not in {9, ..., 34} then task 0 outputs "Relational Expr.: IS NOT IN... 
 If 6 is even /\ 2<=cbrt(16) then task 0 outputs "Relational Expr.: /\\... " and "PASS" otherwise task 0 outputs "Relational Expr.: /\\... " and "FAIL".
 If 8 is odd \/ 2 divides 256 \/ 5/0=1 then task 0 outputs "Relational Expr.: \\/... " and "PASS" otherwise task 0 outputs "Relational Expr.: \\/... " and "FAIL".
 
+#Test list comprehensions
+Tasks t such that t is in {z-z for each z in {10, ..., 20}} output "List comprehensions(1)... " and "PASS".
+For each v in {r for each y in {1, ..., 8} for each r in {y*10+1, ..., y*10+8}}
+  if v is not in {10, ..., 89} \/ v mod 10 is not in {1, ..., 8} then
+    task 0 outputs "List comprehensions(2)... " and "FAIL".
+Task 0 outputs "List comprehensions(2)... " and "PASS".
+For each v in {y*10+x for each y in {1, ..., 8} for each x in {1, ..., 8}}
+  if v is not in {10, ..., 89} \/ v mod 10 is not in {1, ..., 8} then
+    task 0 outputs "List comprehensions(3)... " and "FAIL".
+Task 0 outputs "List comprehensions(3)... " and "PASS".
+For each zzz in {ooo*2 for each ooo in {0, 3, ..., 100} where ooo is odd}
+  if not zzz/2 is odd then
+    task 0 outputs "List comprehensions(4)... " and "FAIL".
+Task 0 outputs "List comprehensions(4)... " and "PASS".
+
 #test task descriptions
 All tasks output "Task descriptions(1)... " and "PASS".
 Let me be 0 while all tasks me output "Task descriptions(2)... " and "PASS".
@@ -261,6 +277,7 @@ Task 0 sends 10 2 byte message to task 1 then
 task 0 asynchronously sends 10 unique 2 byte -1 byte misaligned messages with verification to unsuspecting task 1 then
 task 1 receives 10 2 byte halfword aligned messages with data touching into buffer num_tasks/2 from task 0 then
 task 0 outputs "Complex stmnts(8)... " and "PASS".
+#9
 Let black_squares be tasks d such that mesh_coordinate((4, 4), d, 0) + mesh_coordinate((4, 4), d, 1) is odd while {
   task group black_squares asynchronously sends a doubleword-sized message to tasks red_square such that abs(mesh_distance((4, 4), black_squares, red_square)) = 1 then
   all tasks await completion then
@@ -268,18 +285,23 @@ Let black_squares be tasks d such that mesh_coordinate((4, 4), d, 0) + mesh_coor
   all tasks await completion
 } then
 task 0 outputs "Complex stmnts(9)... " and "PASS".
+#10
 Let confusing be tasks confusing such that confusing mod 3 = 1
 and confusing be task group confusing while
   task group confusing sends 2 128-byte messages to tasks confusing+1 then
 task 0 outputs "Complex stmnts(10)... " and "PASS".
-#9
+#11
+Let left_half be tasks t such that t < num_tasks/2 while
+  task group left_half multicasts a page-sized message to task group left_half then
+task 0 outputs "Complex stmnts(11)... " and "PASS".
+#12
 For 1 repetition plus 0 warmup repetitions {
   {} then
   { {} } then
   { {} then {} } then
   { {} then {} then {} }
 } then
-task 0 outputs "Complex stmnts(11)... " and "PASS".
+task 0 outputs "Complex stmnts(12)... " and "PASS".
 
 #Logs
 For reps repetitions {

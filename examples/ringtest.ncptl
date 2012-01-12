@@ -3,6 +3,8 @@
 # By Scott Pakin <pakin@lanl.gov>          #
 ############################################
 
+Require language version "1.4".
+
 reps is "Number of repetitions of each ring" and comes from "--reps" or "-r" with default 1000.
 
 Assert that "This program needs at least two tasks" with num_tasks >= 2.

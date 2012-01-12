@@ -8,7 +8,7 @@ END-INFO-DIR-ENTRY
 
    This file describes the coNCePTuaL language and tool suite.
 
-   Copyright (C) 2011, Los Alamos National Security, LLC
+   Copyright (C) 2012, Los Alamos National Security, LLC
 
 
 File: conceptual.info,  Node: Top,  Next: Introduction,  Prev: (dir),  Up: (dir)
@@ -23,7 +23,7 @@ network protocol layers.  A few lines of CONCEPTUAL code can produce
 programs that would take significantly more effort to write in a
 conventional programming language.
 
-   This document describes CONCEPTUAL version 1.3.
+   This document describes CONCEPTUAL version 1.4.
 
 * Menu:
 
@@ -197,49 +197,62 @@ installation.  As of this writing, CONCEPTUAL has passed `make check'
 (*note make::) on the following platforms:
 
 Architecture    OS           Compiler
-IA-32           Linux        `gcc'     (GNU)
-                             `icc'     (Intel)
-                             `opencc'  (Open64)
-                FreeBSD      `gcc'     (GNU)
-                OpenBSD      `gcc'     (GNU)
-                NetBSD       `gcc'     (GNU)
-                Solaris      `gcc'     (GNU)
-                             `cc'      (Sun)
-                Syllable     `gcc'     (GNU)
+IA-32           Linux        `gcc'       (GNU)
+                             `icc'       (Intel)
+                             `opencc'    (Open64)
+                FreeBSD      `gcc'       (GNU)
+                OpenBSD      `gcc'       (GNU)
+                NetBSD       `gcc'       (GNU)
+                Solaris      `gcc'       (GNU)
+                             `cc'        (Sun)
+                Syllable     `gcc'       (GNU)
                 Windows      `gcc'  (GNU)
                 (via         
                 Cygwin)      
 
-x86-64          Linux        `gcc'     (GNU)
-                             `pgcc'    (PGI)
-                             `pathcc'  (PathScale)
-                Catamount    `gcc'     (GNU)
-                             `pgcc'    (PGI)
 
-IA-64           Linux        `gcc'     (GNU)
-                             `ecc'     (Intel)
+x86-64          Linux        `gcc'       (GNU)
+                             `pgcc'      (PGI)
+                             `pathcc'    (PathScale)
+                             `llvm-gcc'  (LLVM)
+                             `clang'     (LLVM)
+                Catamount    `gcc'       (GNU)
+                             `pgcc'      (PGI)
 
-PowerPC         Linux        `gcc'     (GNU)
-                             `xlc'     (IBM)
-                AIX          `gcc'     (GNU)
-                             `xlc'     (IBM)
-                MacOS X      `gcc'     (GNU)
-                BLRTS        `xlc'     (IBM)
 
-Cell (Power)    Linux        `gcc'     (GNU)
-Cray X1         UNICOS/mp    `cc'      (Cray)
+IA-64           Linux        `gcc'       (GNU)
+                             `ecc'       (Intel)
 
-UltraSPARC      Solaris      `gcc'     (GNU)
-                             `cc'      (Sun)
 
-MIPS            IRIX         `gcc'     (GNU)
-                             `cc'      (MIPSpro)
+PowerPC         Linux        `gcc'       (GNU)
+                             `xlc'       (IBM)
+                AIX          `gcc'       (GNU)
+                             `xlc'       (IBM)
+                MacOS X      `gcc'       (GNU)
+                BLRTS        `xlc'       (IBM)
 
-Alpha           Linux        `gcc'     (GNU)
-                             `ccc'     (HP)
-                Tru64        `gcc'     (GNU)
-                             `cc'      (HP)
-ARM             Linux        `gcc'     (GNU)
+
+Cell (Power)    Linux        `gcc'       (GNU)
+
+
+Cray X1         UNICOS/mp    `cc'        (Cray)
+
+
+UltraSPARC      Solaris      `gcc'       (GNU)
+                             `cc'        (Sun)
+
+
+MIPS            IRIX         `gcc'       (GNU)
+                             `cc'        (MIPSpro)
+
+
+Alpha           Linux        `gcc'       (GNU)
+                             `ccc'       (HP)
+                Tru64        `gcc'       (GNU)
+                             `cc'        (HP)
+
+
+ARM             Linux        `gcc'       (GNU)
 
 
    In its simplest form, CONCEPTUAL installation works by executing the
@@ -288,10 +301,10 @@ all of the options.  The following are some of the more useful ones:
 `--prefix=DIRECTORY'
      `make install' normally installs CONCEPTUAL into the `/usr/local'
      directory.  The `--prefix' option instructs `configure' to write a `Makefile'
-     with a different installation directory.  For example, `--prefix=/local/encap/conceptual-1.3'
+     with a different installation directory.  For example, `--prefix=/local/encap/conceptual-1.4'
      will cause CONCEPTUAL's files to be installed in
-     `/local/encap/conceptual-1.3/bin',
-     `/local/encap/conceptual-1.3/include', etc.
+     `/local/encap/conceptual-1.4/bin',
+     `/local/encap/conceptual-1.4/include', etc.
 
 `--with-ignored-libs=LIB1,LIB2,...'
      In some circumstances it may be necessary to prevent CONCEPTUAL
@@ -522,13 +535,13 @@ of other actions, as well:
 `make modulefile'
      The Environment Modules package facilitates configuring the
      operating-system shell for a given application.  The modulefile
-     `make modulefile' command creates a `conceptual_1.3' modulefile
+     `make modulefile' command creates a `conceptual_1.4' modulefile
      that checks for conflicts with previously loaded CONCEPTUAL
      modulefiles then sets the `PATH', `MANPATH', and `LD_LIBRARY_PATH'
      environment variables to values appropriate values as determined
      by `configure' (*note configure::).
 
-     Normally, `conceptual_1.3' should be installed in the system's
+     Normally, `conceptual_1.4' should be installed in the system's
      module path (as described by the `MODULEPATH' environment
      variable).  However, users without administrator access can still
      use the CONCEPTUAL modulefile as a convenient mechanism for
@@ -536,13 +549,13 @@ of other actions, as well:
      CONCEPTUAL:
 
           make modulefile
-          module load ./conceptual_1.3
+          module load ./conceptual_1.4
 
      See the `module' man page for more information about modules.
 
 `make dist'
      Package together all of the files needed to rebuild CONCEPTUAL.
-     The resulting file is called `conceptual-1.3.tar.gz' (for this
+     The resulting file is called `conceptual-1.4.tar.gz' (for this
      version of CONCEPTUAL).
 
 `make all'
@@ -559,7 +572,7 @@ of other actions, as well:
      documentation for `M-x find-tag' for more information.
 
 `make gui'
-     Compile the CONCEPTUAL GUI, producing `ncptlGUI-1.3.jar'.  Note
+     Compile the CONCEPTUAL GUI, producing `ncptlGUI-1.4.jar'.  Note
      that compilation requires both a Java compiler (e.g., `javac') and
      the Jython Python-to-Java compiler (`jythonc').  Unfortunately, at
      the time of this writing (January 2009), `jythonc''s future is
@@ -774,7 +787,6 @@ languages" section of the SLOCCount manual:
 
             "ncptl" => "ncptl",    # coNCePTuaL
 
-
 
 File: conceptual.info,  Node: pkg-config,  Prev: SLOCCount,  Up: make install
 
@@ -847,7 +859,7 @@ portable and should run identically on every platform for which a JVM
 exists.  The following is a typical command for launching the CONCEPTUAL
 GUI from the command line:
 
-     java -jar ncptlGUI-1.3.jar
+     java -jar ncptlGUI-1.4.jar
 
    The CONCEPTUAL GUI is split into two main panels. The _program
 panel_ displays the components that make up the program and how they
@@ -1213,7 +1225,7 @@ File: conceptual.info,  Node: Supplied backends,  Next: Running coNCePTuaL progr
 3.3 Supplied backends
 =====================
 
-The CONCEPTUAL 1.3 distribution includes the following compiler
+The CONCEPTUAL 1.4 distribution includes the following compiler
 backends:
 
 `c_seq'
@@ -1601,7 +1613,7 @@ following additional command-line options:
 
       1.  # Determine computational "noise"
       2.
-      3.  Require language version "1.3".
+      3.  Require language version "1.4".
       4.
       5.  accesses is "Number of data accesses to perform" and comes from
       6.    "--accesses" or "-a" with default 500000.
@@ -2571,7 +2583,7 @@ variety of output formats and using a variety of graph-layout
 algorithms.  CONCEPTUAL's `dot_ast' backend outputs in dot format the
 abstract-syntax tree corresponding to a given CONCEPTUAL program.  As
 an example, `dot_ast' renders the one-line CONCEPTUAL program `TASK 0
-SLEEPS FOR 10 SECONDS.' as follows:
+SLEEPS FOR 10 SECONDS' as follows:
 
 
                              +---------+
@@ -2724,6 +2736,53 @@ command line:
      [color="green"]'' colors all edges green.  `--extra-dot' can be
      specified repeatedly on the command line; `dot_ast' concatenates
      all of the extra dot code with intervening semicolons.
+
+`--compress'
+     Normally, every node of the AST is drawn.  The `--compress' option
+     makes the resulting dot graph more readable by eliding chains of
+     single-child nodes.  For example, `--compress' reduces the
+     previous graph of `TASK 0 SLEEPS FOR 10 SECONDS' to the following:
+
+
+                                  +---------+
+                                  | program |
+                                  +---------+     1)  TASK 0 SLEEPS FOR 10 SECONDS
+                                  | line 1  |
+                                  +---------+
+                                       |
+                                       V
+                                   (4 nodes)
+                                       |
+                                       V
+                                 +------------+
+                                 | sleeps_for |
+                                 +------------+
+                                 |   line 1   |
+                                 +------------+
+                                /      |       \
+                               /       V        \
+               +--------------+    +--------+    +-----------+-----------+
+               | source_task  |    |  expr  |    | time_unit | 'seconds' |
+               +--------------+    +--------+    +-----------+-----------+
+               |   line 1     |    | line 1 |    |        line 1         |
+               +--------------+    +--------+    +-----------------------+
+                       |               |
+                       V               V
+         +-----------+--------+    +-------------+
+         | task_expr | 'expr' |    | ifelse_expr |
+         +-----------+--------+    +-------------+
+         |       line 1       |    |   line 1    |
+         +--------------------+    +-------------+
+                   |                       |
+                   V                       V
+               (8 nodes)               (6 nodes)
+                   |                       |
+                   V                       V
+            +---------+----+       +---------+-----+
+            | integer | 0L |       | integer | 10L |
+            +---------+----+       +---------+-----+
+            |   line 1     |       |     line 1    |
+            +--------------+       +---------------+
 
 `--no-lines'
      By default, each AST node indicates the lines in the program's
@@ -5177,8 +5236,8 @@ newline characters.
    Use `\"' for a double-quote character, `\\' for a backslash, and
 `\n' for a newline character.  All other escape sequences produce a
 warning message and are discarded.  As examples of valid
-escape-sequence usage, the string `"March 2011"' represents the text
-"March 2011" and `"I store \"stuff\" in C:\\MyStuff."' represents the
+escape-sequence usage, the string `"January 2012"' represents the text
+"January 2012" and `"I store \"stuff\" in C:\\MyStuff."' represents the
 text "I store "stuff" in C:\MyStuff."
 
    Integers consist of an optional `+' or `-'(1) followed by one or
@@ -5234,6 +5293,7 @@ value taken on by an arithmetic expression during the run of a program.
                                 to all instances
 * Aggregate functions::         List of functions allowed in the above
 * Relational expressions::      Relating one expression to another
+* Range expressions::           Expression lists
 
 
 File: conceptual.info,  Node: Arithmetic expressions,  Next: Built-in functions,  Prev: Expressions,  Up: Expressions
@@ -6067,8 +6127,8 @@ The following functions, referred to collectively as <AGGR_FUNC>s, may
 be used in an aggregate expression (*note Aggregate expressions::):
 
 <AGGR_FUNC>   ::=   [`ARITHMETIC'] `MEAN' | `HARMONIC MEAN' | `GEOMETRIC MEAN' |
-                    `MEDIAN' | `STANDARD DEVIATION' | `VARIANCE' | `SUM' |      `MINIMUM' |
-                    `MAXIMUM' | `FINAL'
+                    `MEDIAN' | `STANDARD DEVIATION' | `VARIANCE' |      `MEDIAN ABSOLUTE
+                    DEVIATION' | `SUM' | `MINIMUM' |      `MAXIMUM' | `FINAL'
 
    `MEAN' and `ARITHMETIC MEAN' are equivalent.  `MEDIAN' is the value
 such that there are as many larger as smaller values.  If there are an
@@ -6077,7 +6137,7 @@ medians.  `FINAL' returns only the final value measured.  The
 interpretation of the remaining functions should be unambiguous.
 
 
-File: conceptual.info,  Node: Relational expressions,  Prev: Aggregate functions,  Up: Expressions
+File: conceptual.info,  Node: Relational expressions,  Next: Range expressions,  Prev: Aggregate functions,  Up: Expressions
 
 4.2.5 Relational expressions
 ----------------------------
@@ -6117,25 +6177,15 @@ i.e., that e2 = 0 (mod e1).  Hence, `2 DIVIDES 1234' (equivalent to
 
         <EXPR> `IS IN' <RANGE> [`,' <RANGE>]*
 
-in which a <RANGE> is a comma-separated list of <EXPR>s within curly
-braces.  An ellipsis can be used to indicate that CONCEPTUAL should
-fill in the missing numbers.  More formally,
-
-<RANGE>   ::=   `{'
-                <EXPR> [`,' <EXPR>]*
-                [`, ... ,' <EXPR>]
-                `}'
-
-   Ranges are described in detail in *note Range loops::, in the
-context of `FOR EACH' loops, but the same principles apply to `IS IN'
-tests as well.  In short, a <RANGE> represents a finite set of <EXPR>s,
-either listed explicitly or described in terms of an arithmetic or
-geometric progression.  As an example, the relational expression `x `IS
-IN' {1, ..., 5}' is TRUE if and only if x is one of 1, 2, 3, 4, or 5.
-As a more complex example, `p*2 `IS IN'
-{0}, {1, 2, 4, ..., num_tasks*2}' is TRUE if and only if twice p is
-either zero or a power of two less than or equal to twice the number of
-tasks being used.
+   A <RANGE> represents a range expression.  Range expressions are
+described in *note Range expressions::.  In short, a range expression
+specifies a list of values by explicit enumeration, numeric
+progression, or predicated combinations of other range expressions.  As
+an example, the relational expression `x `IS IN' {1, ..., 5}' is TRUE
+if and only if x is one of 1, 2, 3, 4, or 5.  As a more complex
+example, `p*2 `IS IN' {0}, {1, 2, 4, ..., num_tasks*2}' is TRUE if and
+only if twice p is either zero or a power of two less than or equal to
+twice the number of tasks being used.
 
    The complementary operation to `IS IN' is the binary relation `IS
 NOT IN'.  Hence, `4 IS NOT IN {3, ..., 5}' is FALSE while  `6 IS NOT IN
@@ -6187,10 +6237,198 @@ which CONCEPTUAL parses relational expressions:
             |     <EXPR> `IS IN' <RANGE> [`,' <RANGE>]*
             |     <EXPR> `IS NOT IN' <RANGE> [`,' <RANGE>]*
 
-<RANGE>   ::=   `{'
-                <EXPR> [`,' <EXPR>]*
-                [`, ... ,' <EXPR>]
-                `}'
+
+File: conceptual.info,  Node: Range expressions,  Prev: Relational expressions,  Up: Expressions
+
+4.2.6 Range expressions
+-----------------------
+
+Ranges are a powerful way of describing an ordered list of tasks.
+Ranges come in three forms:
+
+  1. Enumerated lists
+
+  2. Arithmetic and geometric sequences
+
+  3. List comprehensions
+
+These are described with the following syntax:
+
+<RANGE>   ::=   `{' <EXPR> [`,' <EXPR>]* [`, ... ,' <EXPR>] `}'
+          |     `{' <EXPR> [`FOR EACH' <IDENT> `IN' <RANGE> [`,' <RANGE>]* ]+
+                [`WHERE' <REL_EXPR>] `}'
+
+   Enumerated lists are the simplest type of range.  They represent a
+list of explicitly specified values.  For example, the range `{2**3,
+2+4, 14/2, 8-3, 1+1+1, 0, 5*2-1}' represents each of the seven numbers
+8, 6, 7, 5, 3, 0, and 9 in turn.  Duplicate values are allowed in
+enumerated lists so `{9, 3, 9, 5, 5, 5, 0, 1, 1, 3}' represents ten
+numbers even though not all of them are unique.
+
+   Arithmetic and geometric progressions are specified by including the
+first few values of the progression, followed by an ellipsis, followed
+by the final value of the progression.  A single initial value implies
+an arithmetic progression with increment of +/- 1, depending on whether
+the final value is greater or less than the initial value.  Two initial
+values imply an arithmetic progression with an increment of
+SECOND-FIRST.  If three or more initial values are provided, CONCEPTUAL
+first looks for an arithmetic progression, then a geometric
+progression.  If CONCEPTUAL finds neither an arithmetic nor a geometric
+progression, it re-evaluates all of the <EXPR>s in floating-point
+context (*note Arithmetic expressions::) and tries once again to find a
+geometric progression.  If a pattern is still not found, a run-time
+error message is generated.  As some examples of arithmetic and
+geometric range expressions, the range `{10, ..., 1E6}' represents the
+values 10, 11, 12, 13, 14, 15, and so forth by ones up to 1,000,000;
+the range `{10, 12, ..., 1E6}' represents the values 10, 12, 14, 16,
+and so forth by twos up to 1,000,000; and the range `{10, 100, 1000,
+..., 1E6}' represents the values 10, 100, 1000, 10000, 100000, and
+1000000.
+
+   Arithmetic and geometric progressions do not necessarily include the
+final value.  For example, the range `{1, 4, ..., 15}' represents the
+values 1, 4, 7, 10, and 13 but not 15, even though 15 is specified as
+the final value of the range.  Similarly, `{15, 12, ..., 1}' represents
+the values 15, 12, 9, 6, and 3 but not 1, even though 1 is specified as
+the final value of the range.  Progressions stop at or before the final
+value, never after.  If the number following the ellipsis is less than
+(respectively, greater than) the first number in an increasing
+(respectively, decreasing) range (as in `{15, 25, ..., 5}'), then the
+range represents an empty list of values.
+
+   List comprehensions provide a way to combine and filter ranges to
+describe complex sequences of values with comparatively little code.(1)
+A simple example is `{n FOR EACH n IN {1, ..., 10}}', but this is not
+particularly useful, as the range `{1, ..., 10}' represents the same
+list of values.  However, replacing the expression `n' with `n/2' to
+get `{n/2 FOR EACH n IN {1, ..., 10}}' returns the values 0, 1, 1, 2,
+2, 3, 3, 4, 4, and 5, which would be more difficult to express without
+a list comprehension.  We can even utilize only a subset of those
+values by applying a filter.  For example, `{n/2 FOR EACH n IN {1, ...,
+10} WHERE n/2 IS ODD}' represents the values 1, 1, 3, 3, and 5.  List
+comprehensions can be multivariate, as in the following example:
+
+     {diag+ofs
+       FOR EACH diag IN {0, 11, ..., 99}
+         FOR EACH ofs IN {-1, 0, 1}
+           WHERE diag+ofs IS IN {0, ..., 99}}
+
+   That single range expression represents all cells on the tridiagonal
+of a 10x10 matrix, with cell 0 in the upper left and cell 99 in the
+lower right.  The first EACH `FOR EACH' generator binds `diag' to each
+cell on the diagonal: 0, 11, 22, 33, and so forth.  The second `FOR
+EACH' generator binds `ofs' to each of -1, 0, and 1.  The `WHERE'
+predicate, which itself uses a range expression, selects only those
+values of `diag' and `ofs' which which 0 <= diag+ofs <= 99.  The value
+`diag+ofs' is returned for all values for which the predicate is true.
+The following figure illustrates the values described by the preceding
+range expression:
+
+
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |  0 |  1 |    |    |    |    |    |    |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 | 10 | 11 | 12 |    |    |    |    |    |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    | 21 | 22 | 23 |    |    |    |    |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    | 32 | 33 | 34 |    |    |    |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    |    | 43 | 44 | 45 |    |    |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    |    |    | 54 | 55 | 56 |    |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    |    |    |    | 65 | 66 | 67 |    |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    |    |    |    |    | 76 | 77 | 78 |    |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    |    |    |    |    |    | 87 | 88 | 89 |
+	 +----+----+----+----+----+----+----+----+----+----+
+	 |    |    |    |    |    |    |    |    | 98 | 99 |
+	 +----+----+----+----+----+----+----+----+----+----+
+
+Here are a number of additional examples of range expressions and the
+values they represent:
+
+`{2, 2, 2, 2, 2, 2}'
+     => 2, 2, 2, 2, 2, 2
+
+`{2, 2, ..., 2}'
+     => 2
+
+`{2, 2, ..., 1000}'
+     => 2
+
+`{20, 30, 40, ..., 55}'
+     => 20, 30, 40, 50
+
+`{20, 30, 40, ..., 30}'
+     => 20, 30
+
+`{20, 30, 40, ..., 20}'
+     => 20
+
+`{20, 30, 40, ..., 10}'
+     => [empty]
+
+`{2, ..., 50}'
+     => 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+     36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50
+
+`{2, 4, ..., 50}'
+     => 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34,
+     36, 38, 40, 42, 44, 46, 48, 50
+
+`{2, 4, 4, ..., 50}'
+     => Unable to find either an arithmetic or geometric patternerror-->
+
+`{2, 4, 6, ..., 50}'
+     => 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34,
+     36, 38, 40, 42, 44, 46, 48, 50
+
+`{2, 4, 8, ..., 50}'
+     => 2, 4, 8, 16, 32
+
+`{1, 3, ..., 25}'
+     => 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25
+
+`{1, 3, 5, 7, 9, 11, 13, ..., 25}'
+     => 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25
+
+`{6561, 2187, 729, ..., 1}'
+     => 6561, 2187, 729, 243, 81, 27, 9, 3, 1
+
+`{100, 150, 225, ..., 10000}'
+     => 100, 150, 225, 337, 506, 759, 1139, 1708, 2562, 3844, 5766, 8649
+
+`{1, 4, 9, ..., 81}'
+     => Unable to find either an arithmetic or geometric patternerror-->
+
+`{sqrt(s)**2 FOR EACH s IN {1, ..., 16}}'
+     => 1, 1, 1, 4, 4, 4, 4, 4, 9, 9, 9, 9, 9, 9, 9, 16
+
+`{y*10+x
+     FOR EACH y IN {0, ..., 6}
+     FOR EACH x IN {0, ..., 6}
+     WHERE (x IS EVEN /\ y IS ODD) \/ (y IS EVEN /\ x IS ODD)}'
+     => 1, 3, 5, 10, 12, 14, 16, 21, 23, 25, 30, 32, 34, 36, 41, 43,
+     45, 50, 52, 54, 56, 61, 63, 65
+
+   The preceding examples used exclusively constant expressions.
+However, as indicated by the definition of <RANGE> above, any arbitrary
+arithmetic expression (*note Arithmetic expressions::) is valid.
+Assuming that `x' is currently bound to 123, the following expansion
+holds:
+
+`{x*10, x*9, x*8, ..., x*3}'
+     => 1230, 1107, 984, 861, 738, 615, 492
+
+   ---------- Footnotes ----------
+
+   (1) Readers unfamilier with the concept of a list comprehension may
+want to consult the Wikipedia article on list comprehensions
+(http://en.wikipedia.org/wiki/List_comprehension) for more information.
 
 
 File: conceptual.info,  Node: Task descriptions,  Next: Communication statements,  Prev: Expressions,  Up: Grammar
@@ -6386,6 +6624,8 @@ is a formal definition:
                             `MESSAGES'
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
+                            [`USING TAG'
+                            <EXPR> | <STRING>]
                             [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
                             `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -6405,6 +6645,8 @@ to here as a <RECV_MESSAGE_SPEC>:
                             `MESSAGES']
                             [`WITH VERIFICATION' | `WITH DATA TOUCHING' |
                             `WITHOUT VERIFICATION' | `WITHOUT DATA TOUCHING']
+                            [`USING TAG'
+                            <EXPR> | <STRING>]
                             [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
                             `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -6422,6 +6664,8 @@ variations of <MESSAGE_SPEC> and <RECV_MESSAGE_SPEC>, respectively:
                               <MESSAGE_ALIGNMENT> `MISALIGNED']
                               `INTEGERS' | `DOUBLEWORDS'
                               [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
+                              [`USING TAG'
+                              <EXPR> | <STRING>]
                               [`FROM' [<EXPR> <DATA_MULTIPLIER> `INTO']
                               `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -6431,6 +6675,8 @@ variations of <MESSAGE_SPEC> and <RECV_MESSAGE_SPEC>, respectively:
                                      <MESSAGE_ALIGNMENT> `MISALIGNED']
                                      `INTEGERS' | `DOUBLEWORDS']
                                      [`WITH DATA TOUCHING' | `WITHOUT DATA TOUCHING']
+                                     [`USING TAG'
+                                     <EXPR> | <STRING>]
                                      [`INTO' [<EXPR> <DATA_MULTIPLIER> `INTO']
                                      `BUFFER' <EXPR> | `THE DEFAULT BUFFER']
 
@@ -6445,6 +6691,7 @@ and <REDUCE_TARGET_MESSAGE_SPEC>.
 * Item size::                   How big is each message?
 * Message alignment::           How should messages be aligned in memory?
 * Data touching::               Should message contents be accessed explcitly?
+* Tag matching::                In what order should messages be received?
 * Buffer control::              What buffer should be used for each message?
 * Blocking semantics::          Should the sender/receiver wait before proceeding?
 
@@ -6600,7 +6847,7 @@ with a 4096-byte page size, `10000 BYTE MISALIGNED' is the same as
 with messages aligned on arbitrary boundaries.
 
 
-File: conceptual.info,  Node: Data touching,  Next: Buffer control,  Prev: Message alignment,  Up: Message specifications
+File: conceptual.info,  Node: Data touching,  Next: Tag matching,  Prev: Message alignment,  Up: Message specifications
 
 Data touching
 .............
@@ -6632,7 +6879,82 @@ Both explicitly specify the default behavior of neither touching nor
 verifying message contents.
 
 
-File: conceptual.info,  Node: Buffer control,  Next: Blocking semantics,  Prev: Data touching,  Up: Message specifications
+File: conceptual.info,  Node: Tag matching,  Next: Buffer control,  Prev: Data touching,  Up: Message specifications
+
+Tag matching
+............
+
+Messages sent from task A to task B are normally received in order.
+However, the `USING TAG' clause enables a program to enforce a
+particular order on message reception.  `USING TAG' takes a tag as an
+argument.  This tag can be either an <EXPR> or a <STRING>.  In the
+latter case, CONCEPTUAL will automatically hash the string to an <EXPR>.
+A message sent with a given tag TAG is received only by a `RECEIVE'
+statement that also specifies tag TAG.  If the `USING TAG' clause is
+omitted, TAG defaults to `0'.
+
+   As an example of the difference `USING TAG' can make, consider the
+following code that does not use tags:
+
+     TASK 0 SENDS A MESSAGE TO UNSUSPECTING TASK 1 THEN
+     TASK 0 SLEEPS FOR 2 SECONDS THEN
+     TASK 0 SENDS A MESSAGE TO UNSUSPECTING TASK 1 THEN
+     TASK 1 RECEIVES A MESSAGE FROM TASK 0 THEN
+     TASK 1 SLEEPS FOR 2 SECONDS THEN
+     TASK 1 RECEIVES A MESSAGE FROM TASK 0
+
+In that example, the first send matches the first receive, then both
+tasks simultaneously sleep for two seconds, and finally the second send
+matches the second receive.  The total execution time should therefore
+be just over two seconds.  Now consider the following variation that
+uniquely tags each of the messages:
+
+     TASK 0 SENDS A MESSAGE USING TAG 123 TO UNSUSPECTING TASK 1 THEN
+     TASK 0 SLEEPS FOR 2 SECONDS THEN
+     TASK 0 SENDS A MESSAGE USING TAG "stuff" TO UNSUSPECTING TASK 1 THEN
+     TASK 1 RECEIVES A MESSAGE USING TAG "stuff" FROM TASK 0 THEN
+     TASK 1 SLEEPS FOR 2 SECONDS THEN
+     TASK 1 RECEIVES A MESSAGE USING TAG 123 FROM TASK 0
+
+The first message is sent with tag `123' while the second message is
+sent with tag `"stuff"'.  Task 1 receives the messages in the reverse
+order: first the `"stuff"' message and then the `123' message.
+Consequently, task 1's first `RECEIVE' cannot complete until task 0 has
+sent its first message, slept for two seconds, and sent its second
+message.  Task 1 can then receive a message, sleep for two seconds, and
+receive its other message.  The total execution time should therefore
+be just over four seconds, as the new message ordering forces a
+serialization on the two `SLEEPS'.
+
+   The following are a few things to keep in mind when using message
+tags:
+
+  1. Using strings for tag values can benefit program readability and is
+     recommended for programs that utilize a small, fixed set of tags,
+     while using numerical expressions for tag values supports the
+     implementation of a variety of sophisticated communication
+     patterns.
+
+  2. <STRING> tags are hashed, not coerced, to numerical values.
+     Hence, a message sent `USING TAG 42' will not be matched by a
+     message received `USING TAG "42"'.
+
+  3. Different backends place different restrictions on the range of
+     accceptable tag values.  For example, the `c_mpi' backend is
+     limited by MPI's tag values, which range from 0 to at least
+     32,767--but usually more.  (The range [0, 2^31-1] is probably
+     typical.)  CONCEPTUAL will automatically map any <EXPR> or <STRING>
+     used as a tag value into whatever range the backend supports.  One
+     implication is that different tags in a CONCEPTUAL program can map
+     to the same tag at run time.  For example, if a backend limits tag
+     values to the range [0, 32,767], then `USING TAG 131068' is
+     equivalent to `USING TAG 0'--or even not using any tag at all.
+     Also, in that case, two arbitrary strings have a 0.003% chance of
+     mapping to the same tag (or 0.00000005% in the more typical case
+     for `c_mpi'), which is unlikely but not impossible.
+
+
+File: conceptual.info,  Node: Buffer control,  Next: Blocking semantics,  Prev: Tag matching,  Up: Message specifications
 
 Buffer control
 ..............
@@ -6678,308 +7000,4 @@ asynchronously.  That is, the program merely posts the message (i.e.,
 declares that it should eventually be sent and/or received) and
 immediately continues executing.  Asynchronous messages must be
 "completed" as described in *note Awaiting completion::.
-
-
-File: conceptual.info,  Node: Sending,  Next: Receiving,  Prev: Message specifications,  Up: Communication statements
-
-4.4.2 Sending
--------------
-
-The `SEND' statement is fundamental to CONCEPTUAL.  It is used to send
-a multiple messages from multiple source tasks to multiple target
-tasks.  The syntax is formally specified as follows:
-
-<SEND_STMT>   ::=   <SOURCE_TASK>
-                    [`ASYNCHRONOUSLY'] `SENDS'
-                    <MESSAGE_SPEC>
-                    `TO' [`UNSUSPECTING'] <TARGET_TASKS>
-              |     <SOURCE_TASK>
-                    [`ASYNCHRONOUSLY'] `SENDS'
-                    <MESSAGE_SPEC>
-                    `TO' <TARGET_TASKS>
-                    `WHO RECEIVE IT'
-                    <RECV_MESSAGE_SPEC>
-
-<SOURCE_TASK> is described in *note Source tasks::; <MESSAGE_SPEC> and <RECV_MESSAGE_SPEC>
-are described in *note Message specifications::; and, <TARGET_TASKS> is
-described in *note Target tasks::.
-
-   The `SEND' statement's simplest form, "<SOURCE_TASK> `SENDS' <MESSAGE_SPEC> `TO' <TARGET_TASKS>",
-is fairly straightforward.  The following is a example:
-
-     TASK 0 SENDS A 0 BYTE MESSAGE TO TASK 1
-
-The only subtlety in the preceding statement is that it implicitly
-causes task 1 to perform a corresponding receive.  This receive can be
-suppressed by adding the keyword `UNSUSPECTING' before the <TARGET_TASKS>
-description:
-
-     TASK 0 SENDS A 0 BYTE MESSAGE TO UNSUSPECTING TASK 1
-
-   Here are some further examples of valid <SEND_STMT>s:
-
-   * `ALL TASKS SEND A 64 KILOBYTE MESSAGE TO TASK 0'
-
-   * `TASK num_tasks-1 SENDS 5 53 BYTE PAGE ALIGNED MESSAGES TO ALL
-     OTHER TASKS'
-
-   * `TASKS upper SUCH THAT upper>=num_tasks/2 ASYNCHRONOUSLY SEND A 0
-     BYTE MESSAGE TO TASK upper/2'
-
-   * `TASKS nonzero SUCH THAT nonzero>0 SEND nonzero 1E3 BYTE MESSAGES
-     TO UNSUSPECTING TASK 0'
-
-   There are a number of attributes associated with every message
-transmission:
-
-   * synchronous vs. asynchronous operation
-
-   * unique vs. recycled message buffers
-
-   * unaligned vs. aligned vs. misaligned message buffers
-
-   * no data touching vs. data touching vs. data verification
-
-   * implicit vs. explicit message-buffer selection
-
-   * explicit byte offsets into message buffers
-
-A few of those appear in the preceding examples.
-
-   When `UNSUSPECTING' is omitted, the implicit `RECEIVE' statement
-normally inherits all of the attributes of the corresponding `SEND'.
-However, the second form of a <SEND_STMT>, which contains a `WHO
-RECEIVES IT' (or `WHO RECEIVES THEM') clause, enables the receiver's
-attributes to be overridden on a per-attribute basis.  For instance,
-consider the following `SEND' statement:
-
-     TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 WHO RECEIVES IT
-     ASYNCHRONOUSLY
-
-The alternative sequence of statements that does not use RECEIVES IT
-`WHO RECEIVES IT' is less straightforward to read because it splits a
-single message transmission into two statements:
-
-  1. `TASK 1 ASYNCHRONOUSLY RECEIVES A 1 MEGABYTE MESSAGE FROM TASK 0'
-
-  2. `TASK 0 SENDS A 1 MEGABYTE MESSAGE TO UNSUSPECTING TASK 1'
-
-   Some further examples of `WHO RECEIVES IT' follow:
-
-     TASKS left SUCH THAT left IS EVEN SEND 5 2 KILOBYTE 64 BYTE ALIGNED
-     MESSAGES TO TASKS left+1 WHO RECEIVE THEM AS UNALIGNED MESSAGES WITH
-     DATA TOUCHING
-
-     TASK num_tasks-1 ASYNCHRONOUSLY SENDS A 1E5 BYTE MESSAGE WITH
-     VERIFICATION TO TASK 0 WHO RECEIVES IT SYNCHRONOUSLY
-
-     TASK leaf SUCH THAT KNOMIAL_CHILDREN(leaf,2)=0 SENDS A UNIQUE 1536
-     BYTE MESSAGE WITH DATA TOUCHING TO TASK KNOMIAL_PARENT(leaf,2) WHO
-     RECEIVES IT ASYNCHRONOUSLY AS A NONUNIQUE QUADWORD ALIGNED MESSAGE
-     WITHOUT DATA TOUCHING INTO BUFFER KNOMIAL_PARENT(leaf,2)
-
-   One subtlety of the `SEND' statement when used without `UNSUSPECTING'
-involves the orderings of the sends and receives.  The rule is that
-receives are posted before sends.  Furthermore, <RESTRICTED_IDENT>s
-(*note Restricted identifiers::) are evaluated in order from 0
-to NUM_TASKS-1.  The implication is that a statement such as `TASKS ev
-SUCH THAT ev IS EVEN /\ ev<6 SEND A 4 WORD MESSAGE TO TASK ev+2' is
-exactly equivalent to the following ordered sequence of statements
-(assuming NUM_TASKS >= 5):
-
-  1. `TASK 2 RECEIVES A 4 WORD MESSAGE FROM TASK 0'
-
-  2. `TASK 4 RECEIVES A 4 WORD MESSAGE FROM TASK 2'
-
-  3. `TASK 6 RECEIVES A 4 WORD MESSAGE FROM TASK 4'
-
-  4. `TASK 0 SENDS A 4 WORD MESSAGE TO UNSUSPECTING TASK 2'
-
-  5. `TASK 2 SENDS A 4 WORD MESSAGE TO UNSUSPECTING TASK 4'
-
-  6. `TASK 4 SENDS A 4 WORD MESSAGE TO UNSUSPECTING TASK 6'
-
-(The `RECEIVE' statement is described in *note Receiving::.)
-
-   If the above sequence were executed, tasks 2, 4, and 6 would
-immediately block on their receives (steps 1-3).  Task 0 would awaken
-task 2 by sending it a message (step 4).  Then, task 2 would be able to
-continue to step 5 at which point it would send a message to task 4.
-Task 4 would then finally be able to send a message to task 6 (step 6).
-Hence, even though the original CONCEPTUAL statement encapsulates
-multiple communication operations, the component communications proceed
-sequentially because of data dependences and because the operations are
-blocking.
-
-   As another example of send/receive ordering, consider the statement,
-`TASKS x SUCH THAT x IS IN {1,4,5} SEND A 768 BYTE MESSAGE FROM 4
-DOUBLEWORDS INTO THE DEFAULT BUFFER TO TASKS y SUCH THAT y IS IN
-{6,2,3}'.  This statement causes nine messages to be sent and received
-and in the following order: 1 => 2, 1 => 3, 1 => 6, 4 => 2, 4 => 3,
-4 => 6, 5 => 2, 5 => 3, 5 => 6.  The reason that task 6 receives from
-each sender _after_ tasks 2 and 3 relates to the comment above that <RESTRICTED_IDENT>s
-are evaluated in order from 0 to NUM_TASKS-1.  One can therefore think
-of the preceding CONCEPTUAL statement as being implemented with the
-following pseudocode:
-
-     for s := 0 to num_tasks-1 do
-       if s is in {1, 4, 5} then
-         for r := 0 to num_tasks-1 do
-           if r is in {6, 2, 3} then
-             r receives from s
-     for s := 0 to num_tasks-1 do
-       if s is in {1, 4, 5} then
-         for r := 0 to num_tasks-1 do
-           if r is in {6, 2, 3} then
-             s sends to r
-
-
-File: conceptual.info,  Node: Receiving,  Next: Awaiting completion,  Prev: Sending,  Up: Communication statements
-
-4.4.3 Receiving
----------------
-
-*note Sending::, mentioned the <SEND_STMT>'s `UNSUSPECTING' keyword,
-which specifies that the targets should not implicitly perform a
-receive operation.  Because every send must have a matching receive,
-CONCEPTUAL offers a `RECEIVE' statement that explicitly receives a set
-of messages.  A <RECEIVE_STMT> is much like a <SEND_STMT> (*note
-Sending::) with the <SOURCE_TASK> and <TARGET_TASKS> in the reverse
-order:
-
-<RECEIVE_STMT>   ::=   <TARGET_TASKS>
-                       [`ASYNCHRONOUSLY'] `RECEIVE'
-                       <MESSAGE_SPEC>
-                       `FROM' <SOURCE_TASK>
-
-<TARGET_TASKS> is described in *note Target tasks::; <MESSAGE_SPEC> is
-described in *note Message specifications::; and, <SOURCE_TASK> is
-described in *note Source tasks::.
-
-   Like other statements that contain both a <SOURCE_TASK> and a <TARGET_TASKS>,
-the `RECEIVE' statement propagates all variables declared by the <SOURCE_TASK>
-to the <TARGET_TASKS>, as in
-
-     TASKS src-1 RECEIVE A 1 MEGABYTE MESSAGE FROM ALL TASKS src.
-
-However, the `RECEIVE' statement is unique among CONCEPTUAL statements
-in that it can alternatively propagate all variables declared by the <TARGET_TASKS>
-to the <SOURCE_TASK>, as in
-
-     ALL TASKS dst RECEIVE A 1 MEGABYTE MESSAGE FROM TASKS dst+1.
-
-The `RECEIVE' statement automatically determines the direction in which
-variables should be propagated.  If the direction cannot unambiguously
-be determined, the CONCEPTUAL compiler aborts with an error message.
-For example, the `RECEIVE' statement in the following code is ambiguous
-because the `bbb' in the expression `aaa < bbb' can refer to either the
-one in the `LET' statement or the one in the `TASKS bbb SUCH THAT bbb >
-3' expression:
-
-     LET bbb BE 5 WHILE {
-       TASKS aaa SUCH THAT aaa < bbb RECEIVE A MESSAGE FROM TASKS bbb SUCH
-       THAT bbb > 3 THEN
-       TASKS ccc SUCH THAT ccc > 3 SEND A MESSAGE TO UNSUSPECTING TASKS
-       ddd SUCH THAT ddd < ccc
-     }
-
-   For each message sent via a `SEND'...`TO UNSUSPECTING' statement
-there must be a `RECEIVE' statement that receives a message of the same
-size.  The <TARGET_TASKS>'s <MESSAGE_SPEC> can, however, specify
-different values for message uniqueness, message alignment, and data
-touching.  In addition, the source and target do not need to agree on
-the use of the `ASYNCHRONOUSLY' keyword.  The only restriction is that `WITH
-VERIFICATION' will return spurious results if used by the target but
-not by the source.  Hence, the following <SEND_STMT> and <RECEIVE_STMT>
-correctly match each other:
-
-     TASK 0 SENDS 3 4 KILOBYTE MESSAGES TO UNSUSPECTING TASK 1
-
-     TASK 1 ASYNCHRONOUSLY RECEIVES 3 UNIQUE 4 KILOBYTE 48 BYTE ALIGNED
-     MESSAGES WITH DATA TOUCHING FROM TASK 0.
-
-   In general, it is better to use a single `SEND' statement with a `WHO
-RECEIVES IT' clause (*note Sending::) than a `RECEIVE' plus a matching `SEND'...`TO
-UNSUSPECTING'; the former is less error-prone than the latter.
-However, the latter is useful for programs in which a set of receives
-is posted, then the tasks perform various communication, computation,
-and synchronization operations, and--towards the end of the
-program--the matching sends are posted.  That sort of split-phase
-structure requires separate `SEND' and `RECEIVE' statements.
-
-
-File: conceptual.info,  Node: Awaiting completion,  Next: Multicasting,  Prev: Receiving,  Up: Communication statements
-
-4.4.4 Awaiting completion
--------------------------
-
-When a message is sent or received asynchronously it must eventually be
-"completed".  In some messaging layers, asynchronous messages are not
-even sent or received until completion time.  CONCEPTUAL provides the
-following statement for completing messages that were send/received
-asynchronously:
-
-<WAIT_STMT>   ::=   <SOURCE_TASK>
-                    `AWAITS COMPLETION'
-
-That is, a <WAIT_STMT> simply specifies the set of tasks that should
-block until all of their pending communications complete.  <SOURCE_TASK>
-is as defined in *note Source tasks::.  Note that a <WAIT_STMT> blocks
-until _all_ pending communications complete.  CONCEPTUAL does not
-provide finer-grained control over completions.  It is safe, however,
-for a task to `AWAIT COMPLETION' even if it has no asynchronous messages
-pending.
-
-
-File: conceptual.info,  Node: Multicasting,  Next: Reducing,  Prev: Awaiting completion,  Up: Communication statements
-
-4.4.5 Multicasting
-------------------
-
-Although a single <SEND_STMT> (*note Sending::) can specify multiple
-messages at once, these messages are sent one at a time.
-"Multicasting" is a form of collective communication in which a set of
-tasks collaborates to deliver a message from a source to multiple
-targets.  With many messaging layers, multicasting a message to N tasks
-is more efficient than sending a sequence of N individual messages.
-CONCEPTUAL supports multicasting as follows:
-
-<MCAST_STMT>    ::=   <SOURCE_TASK>
-                      [`ASYNCHRONOUSLY'] `MULTICASTS'
-                      <MESSAGE_SPEC>
-                      `TO' <TARGET_TASKS>
-
-   Unlike <SEND_STMT>s, <MCAST_STMT>s do not support the `UNSUSPECTING'
-keyword.  This is because `MULTICASTS' is a collective operation: all
-parties are active participants in delivering messages to the <TARGET_TASKS>.
-
-   <SOURCE_TASK> (*note Source tasks::) and <TARGET_TASKS> (*note
-Target tasks::) can be either disjoint or overlapping sets.  That is,
-either of the following is legal:
-
-     TASK 0 MULTICASTS A 16 BYTE MESSAGE TO TASKS recip SUCH THAT recip<4
-     TASK 0 MULTICASTS A 16 BYTE MESSAGE TO TASKS recip SUCH THAT recip>=4
-
-Note that in the first <MCAST_STMT>, task 0 both sends and receives a
-message, while in the second <MCAST_STMT>, task 0 sends but does not
-receive.
-
-   The `MULTICASTS' statement supports not only traditional one-to-many
-multicasting as shown in the preceding example but also many-to-many
-multicasting--and the less interesting but still valid many-to-one and
-one-to-one multicasting.  The constituent pairs of communicating tasks
-are identical to those induced by the `SENDS' statement (*note
-Sending::).  For example, the statement
-
-     TASKS s SUCH THAT s<3 MULTICAST A 1 KILOBYTE MESSAGE TO TASKS s SUCH
-     THAT s>6
-
-performs the collective analogue of
-
-     TASKS s SUCH THAT s<3 SEND A 1 KILOBYTE MESSAGE TO TASKS s SUCH
-     THAT s>6
-
-Specifically, task 0 will send a message to each of tasks 7, 8, 9, ...;
-task 1 will send a message to each of tasks 7, 8, 9, ...; and task 2
-will send a message to each of tasks 7, 8, 9, ...
 

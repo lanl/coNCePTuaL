@@ -6,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -48,11 +48,12 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 # ----------------------------------------------------------------------
 
 # Initialize Autoconf.
-AC_INIT([coNCePTuaL], [1.3], [pakin@lanl.gov], [conceptual])
+AC_INIT([coNCePTuaL], [1.4], [pakin@lanl.gov], [conceptual])
 
 # The following files are deleted by "make distclean" but checked
 # early in configure for their existence.  Hence, we create them right
@@ -61,7 +62,7 @@ touch substitutions.dat.in
 touch ncptl.pc.in
 # Finish initializing Autoconf.
 AC_PREREQ([2.65])
-AC_REVISION($Revision: 3.222 $)
+AC_REVISION($Revision: 3.228 $)
 AC_CONFIG_SRCDIR([yacc.py])
 AC_COPYRIGHT([PUT_LICENSE_][TEXT_HERE])
 AC_CONFIG_MACRO_DIR([m4])
@@ -130,10 +131,13 @@ while true ; do
     AM_CONDITIONAL([JAR_SUPPORTS_E], [false])
     AM_CONDITIONAL([HAVE_GPERF], [false])
     AM_CONDITIONAL([HAVE_DOT], [false])
+    AM_CONDITIONAL([HAVE_ASY], [false])
+    AM_CONDITIONAL([HAVE_GIMP], [false])
     AM_CONDITIONAL([HAVE_TEX], [false])
     AM_CONDITIONAL([HAVE_MSGDIGEST], [false])
     AM_CONDITIONAL([BUILD_RUN_TIME_LIBRARY], [false])
     AM_CONDITIONAL([BUILD_PYMODULE], [false])
+    AM_PATH_PYTHON([2.2])
     break
   fi
 
@@ -146,9 +150,9 @@ if test `./libtool --features | grep -c 'enable shared'` -ge 1 ; then
 else
   ncptl_run_time_library_is_dynamic=no
 fi
-AC_SUBST([LIBTOOL_CURRENT],  [6])  dnl  Most recent library interface supported
+AC_SUBST([LIBTOOL_CURRENT],  [7])  dnl  Most recent library interface supported
 AC_SUBST([LIBTOOL_REVISION], [0])  dnl  Interface implementation number
-AC_SUBST([LIBTOOL_AGE],      [0])  dnl  Number of older interfaces supported
+AC_SUBST([LIBTOOL_AGE],      [1])  dnl  Number of older interfaces supported
 
 # Specify the RPM release number.
 AC_SUBST([RELEASE], [1])
@@ -521,6 +525,16 @@ AC_PATH_PROG([DOT], [dot], [no])
 AM_CONDITIONAL([HAVE_DOT], [test "$ac_cv_path_DOT" != no])
 if test "$ac_cv_path_DOT" = no ; then
   DOT=dot
+fi
+AC_PATH_PROG([ASY], [asy], [no])
+AM_CONDITIONAL([HAVE_ASY], [test "$ac_cv_path_ASY" != no])
+if test "$ac_cv_path_ASY" = no ; then
+  ASY=asy
+fi
+AC_PATH_PROG([GIMP], [gimp], [no])
+AM_CONDITIONAL([HAVE_GIMP], [test "$ac_cv_path_GIMP" != no])
+if test "$ac_cv_path_GIMP" = no ; then
+  GIMP=gimp
 fi
 AC_PATH_PROG([HTMLTIDY], [tidy], [echo])
 if test "$ac_cv_path_HTMLTIDY" != echo ; then
@@ -1625,8 +1639,9 @@ EOF
 # The following definitions could be produced automatically with GNU
 # Make substitution rules.  However, in hopes of building with other
 # Make utilities, we have configure do all of the substitution work
-# itself.  sample-AST and backend-deps have to be handled specially
-# because they aren't generated from LaTeX sources.
+# itself.  sample-AST, compressed-AST, tridiagonal, backend-deps, gui,
+# and walrus have to be handled specially because they aren't
+# generated from LaTeX sources.
 for imagebase in mesh1D mesh2D mesh3D tree2 tree3 2nomial 3nomial latex_vis ; do
   TEXTIMAGES="$TEXTIMAGES ${imagebase}.txt"
   TEXIMAGES="$TEXIMAGES ${imagebase}.tex"
@@ -1638,7 +1653,7 @@ for imagebase in mesh1D mesh2D mesh3D tree2 tree3 2nomial 3nomial latex_vis ; do
   JPEGIMAGES="$JPEGIMAGES ${imagebase}.jpg"
   PNGIMAGES="$PNGIMAGES ${imagebase}.png"
 done
-for imagebase in sample-AST backend-deps gui walrus ; do
+for imagebase in sample-AST compressed-AST tridiagonal backend-deps gui walrus ; do
   TEXTIMAGES="$TEXTIMAGES ${imagebase}.txt"
   EPSIMAGES="$EPSIMAGES ${imagebase}.eps"
   PDFIMAGES="$PDFIMAGES ${imagebase}.pdf"
@@ -1646,9 +1661,12 @@ for imagebase in sample-AST backend-deps gui walrus ; do
   PNGIMAGES="$PNGIMAGES ${imagebase}.png"
 done
 BUILTIMAGES="$PDFIMAGES $EPSIMAGES $JPEGIMAGES $PNGIMAGES"
-BUILTIMAGES=`echo $BUILTIMAGES | sed -e 's,sample-AST.eps,,' -e 's,gui\.\(eps\|png\),,g'`
+BUILTIMAGES=`echo $BUILTIMAGES | sed -e 's,\(sample\|compressed\)-AST.eps,,g' -e 's,gui\.\(eps\|png\),,g'`
 if test "$ac_cv_path_DOT" = no ; then
-  BUILTIMAGES=`echo $BUILTIMAGES | sed s,backend-deps.eps,,`
+  BUILTIMAGES=`echo $BUILTIMAGES | sed -e 's,backend-deps\.eps,,'`
+fi
+if test "$ac_cv_path_ASY" = no ; then
+  BUILTIMAGES=`echo $BUILTIMAGES | sed -e 's,tridiagonal\.eps,,'`
 fi
 AC_SUBST([TEXIMAGES])
 AC_SUBST([TEXTIMAGES])

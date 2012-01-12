@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2011, Los Alamos National Security, LLC
+# Copyright (C) 2012, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2011).  Los Alamos National Security, LLC.  This software
+# Copyright (2012).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -50,6 +50,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
 #
 ########################################################################
 
@@ -98,6 +99,9 @@ class NCPTL_Semantic:
         _Mark_Defs_Used(ast)
         _Check_Def_Without_Use(ast)
         _Check_Let_Bound_Variables(ast)
+
+        # Facilitate code generation for list comprehensions.
+        _Propagate_List_Comp_Exprs(ast)
 
         # Ensure that command-line options are properly specified.
         _Check_Command_Line_Options(ast)
@@ -281,6 +285,7 @@ class _Identify_Definitions(_AST_Traversal):
     defines_first = {"restricted_ident": 1,
                      "let_binding":      1,
                      "for_each":         1,
+                     "for_each_expr":    1,
                      "param_decl":       1}
 
     def pre_task_expr(self, node):
@@ -315,6 +320,7 @@ class _Propagate_Scopes_Down_And_Across(_AST_Traversal):
     defines_first = {"restricted_ident": 1,
                      "let_binding":      1,
                      "for_each":         1,
+                     "for_each_expr":    1,
                      "param_decl":       1}
 
     def pre_program(self, node):
@@ -399,6 +405,12 @@ class _Propagate_Scopes_Down_And_Across(_AST_Traversal):
         "Provide all of our children except the first with an empty scope."
         for kid in node.kids[1:]:
             kid.sem["varscope"] = {}
+
+    def pre_range_list(self, node):
+        "Give list comprehensions their own scope."
+        kid = node.kids[0]
+        if kid.attr == "list_comp":
+            kid.sem["varscope"] = copy.copy(node.sem["varscope"])
 
     def pre_any(self, node):
         "Store a reference to our scope in all of our children who lack one."
@@ -1053,6 +1065,32 @@ class _Check_My_Task(_AST_Traversal):
             errmsg.warning('"%s" can lead to unintuitive behavior and should not generally be used' % node.printable,
                            lineno0=node.lineno0, lineno1=node.lineno1)
             node.sem["semobj"].already_complained_flag = 1
+
+###########################################################################
+
+class _Propagate_List_Comp_Exprs(_AST_Traversal):
+    """Point the most deeply nested list comprehension node to
+    the expression it should operate upon."""
+
+    def __init__(self, ast):
+        "Maintain a stack of list-comprehension expressions."
+        self.expr_stack = []
+        _AST_Traversal.__init__(self, ast)
+
+    def pre_range(self, node):
+        if node.attr == "list_comp":
+            self.expr_stack.append(node.kids[0])
+
+    def post_range(self, node):
+        if node.attr == "list_comp":
+            self.expr_stack.pop()
+
+    def pre_for_each_expr(self, node):
+        if len(node.kids) == 2:
+            node.sem["lc_expr_node"] = self.expr_stack[-1]
+
+    def pre_where_expr(self, node):
+        node.sem["lc_expr_node"] = self.expr_stack[-1]
 
 ###########################################################################
 

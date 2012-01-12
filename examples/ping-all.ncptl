@@ -1,0 +1,60 @@
+# Measure the latency and bandwidth between rank 0 and
+# each other rank in the program
+#
+# By Scott Pakin <pakin@lanl.gov>
+
+Require language version "1.4".
+
+small_reps is "Number of small messages per trial" and comes from "--small-reps" or "-s" with default 10000.
+large_reps is "Number of large messages per trial" and comes from "--large-reps" or "-l" with default 10.
+large_size is "Size in bytes of a large message" and comes from "--maxsize" or "-m" with default 1M.
+
+Task 0 outputs "Small (0-byte) messages" then
+task 0 outputs "--------------------------------------" then
+for each target in {1, ..., num_tasks-1} {
+  task 0 outputs "  0 <--> " and target then
+  for small_reps repetitions plus 3 warmup repetitions {
+    task 0 resets its counters then
+    task 0 sends a 0-byte message to task target then
+    task target sends a 0-byte message to task 0 then
+    task 0 logs the target as "Target rank"
+            and the mean of elapsed_usecs/total_msgs as "Latency (us)"
+            and the standard deviation of elapsed_usecs/total_msgs as "Latency (us)"
+  } then
+  all tasks compute aggregates
+} then
+task 0 outputs "".
+
+Task 0 outputs "Large (" and large_size and "-byte) messages" then
+task 0 outputs "--------------------------------------" then
+for each target in {1, ..., num_tasks-1} {
+  task 0 outputs "  0 <--> " and target then
+  for large_reps repetitions plus 1 warmup repetition {
+    task 0 resets its counters then
+    task 0 sends a large_size byte message to task target then
+    task target sends a large_size byte message to task 0 then
+    task 0 logs the target as "Target rank"
+            and the mean of elapsed_usecs/total_msgs as "Latency (us)"
+            and the standard deviation of elapsed_usecs/total_msgs as "Latency (us)"
+            and the harmonic mean of (total_bytes*1E6)/(elapsed_usecs*1M) as "Bandwidth (MiB/s)"
+  } then
+  all tasks compute aggregates
+} then
+task 0 outputs "".
+
+Task 0 outputs "Small (0-byte) messages, all-to-all" then
+task 0 outputs "--------------------------------------" then
+for each shift in {1, ..., num_tasks-1} {
+  task 0 outputs "  Hop count = " and shift then
+  all tasks synchronize then
+  for small_reps repetitions plus 3 warmup repetitions {
+    all task reset their counters then
+    tasks self such that self < self xor shift send a 0-byte message to task self xor shift then
+    tasks self such that self > self xor shift send a 0-byte message to task self xor shift then
+    tasks self such that self < self xor shift /\ self xor shift < num_tasks
+      log the self xor shift as "Target rank"
+      and the mean of elapsed_usecs/total_msgs as "Latency (us)"
+      and the standard deviation of elapsed_usecs/total_msgs as "Latency (us)"
+  } then
+  all tasks compute aggregates
+}

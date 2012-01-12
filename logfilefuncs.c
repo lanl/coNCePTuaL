@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2011, Los Alamos National Security, LLC
+ * Copyright (C) 2012, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2011).  Los Alamos National Security, LLC.  This software
+ * Copyright (2012).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -49,6 +49,7 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  *
  * ----------------------------------------------------------------------
  */
@@ -360,6 +361,25 @@ static double find_median (NCPTL_LOG_FILE_STATE *logstate, double *data,
 }
 
 
+/* Return the median absolute deviation of a column of LOGFILEDATA. */
+static double find_mad (NCPTL_LOG_FILE_STATE *logstate, double *data,
+			ncptl_int datalen)
+{
+  double median;     /* Median of the given data */
+  double *abs_devs;  /* Absolute deviations of the given data from the median */
+  double mad;        /* Median of the above */
+  ncptl_int i;
+
+  median = find_median (logstate, data, datalen);
+  abs_devs = ncptl_malloc (datalen*sizeof(double), sizeof(double));
+  for (i=0; i<datalen; i++)
+    abs_devs[i] = fabs(data[i] - median);
+  mad = find_median (logstate, abs_devs, datalen);
+  ncptl_free(abs_devs);
+  return mad;
+}
+
+
 /* Return the sum of a list of values. */
 static double find_sum (double *data, ncptl_int datalen)
 {
@@ -375,7 +395,7 @@ static double find_sum (double *data, ncptl_int datalen)
 /* Return the arithmetic mean of a list of values. */
 static double find_mean (double *data, ncptl_int datalen)
 {
-  return find_sum(data, datalen) / datalen;
+  return find_sum (data, datalen) / datalen;
 }
 
 
@@ -1458,6 +1478,7 @@ static void log_write_prologue_hardware_openib (NCPTL_LOG_FILE_STATE *logstate)
     log_key_value (logstate, "InfiniBand HCA count", "%d", numhcas);
 
   /* Log information about the first port on the first HCA. */
+  memset(&first_port_attr, 0, sizeof(struct ibv_port_attr));  /* Silence whiny C compilers. */
   for (port=1; port<=hca_attr.phys_port_cnt; port++) {
     struct ibv_port_attr port_attr;    /* Port attributes */
 
@@ -2809,6 +2830,10 @@ void ncptl_log_compute_aggregates (NCPTL_LOG_FILE_STATE *logstate)
             aggregate = find_median (logstate, rawdata, rawdatalen);
             break;
 
+          case NCPTL_FUNC_MAD:
+            aggregate = find_mad (logstate, rawdata, rawdatalen);
+            break;
+
           case NCPTL_FUNC_STDEV:
             aggregate = find_std_dev (rawdata, rawdatalen);
             break;
@@ -2949,6 +2974,10 @@ void ncptl_log_commit_data (NCPTL_LOG_FILE_STATE *logstate)
 
       case NCPTL_FUNC_MEDIAN:
         log_printf (logstate, "(median)");
+        break;
+
+      case NCPTL_FUNC_MAD:
+        log_printf (logstate, "(med. abs. dev.)");
         break;
 
       case NCPTL_FUNC_STDEV:
