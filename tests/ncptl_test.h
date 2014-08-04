@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -71,23 +71,13 @@
 #endif
 
 
-/* If the DEBUG environment variable is defined then debug_printf is
- * just like printf().  Otherwise, it does nothing. */
-static int debug_printf (const char *format, ...)
-{
-  va_list args;             /* Variable-length list of arguments */
-  static int debug_defined = -1;   /* 0=no DEBUG; 1=DEBUG; -1=don't yet know */
-  int result = 0;           /* Number of characters output */
-
-  if (debug_defined == -1)
-    debug_defined = getenv("DEBUG") != NULL;
-  if (debug_defined == 1) {
-    va_start (args, format);
-    result = vprintf (format, args);
-    va_end (args);
-  }
-  return result;
-}
+/* Define debug_printf() as a simple printf().  Previous versions of
+ * this file had debug_printf() either call printf() or do nothing,
+ * based on the contents of the DEBUG environment variable.  However,
+ * now that Automake's test framework obliviously redirects standard
+ * output to a file there's no longer a need to suppress status
+ * messages to reduce clutter. */
+#define debug_printf printf
 
 
 /* Define macros to return success, failure, or inapplicability. */

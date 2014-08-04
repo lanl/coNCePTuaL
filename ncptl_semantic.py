@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Semantic-analysis module for the coNCePTuaL language
@@ -8,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -83,9 +81,10 @@ class NCPTL_Semantic:
         # Initialize the AST.
         _Initialize_AST(ast, self)
 
-        # Provide proper line numbers for all nodes.
+        # Provide proper line numbers and printable text for all nodes.
         _Propagate_Line_Numbers_Up(ast)
         _Propagate_Line_Numbers_Down(ast)
+        _Propagate_Printables_Up(ast)
 
         # Delete all empty subtrees.
         _Propagate_Emptiness_Up(ast)
@@ -120,6 +119,13 @@ class NCPTL_Semantic:
 
         # Identify which nodes have constant values across evaluations.
         _Identify_Constant_Nodes(ast)
+
+        # Mark nodes that contain PROCESSOR_OF or TASK_OF beneath them.
+        _Find_ProcMap_Usage(ast)
+
+        # Hide from code generators the fact that aggregate functions
+        # can be combined into a list.
+        _Split_Aggregate_Func_Lists(ast)
 
         # Return the modified AST.
         return ast
@@ -223,6 +229,34 @@ class _Propagate_Line_Numbers_Down(_AST_Traversal):
             errmsg = node.sem["semobj"].errmsg
             errmsg.error_fatal('A node of type "%s" spans invalid line numbers %d to %d' %
                                   (node.type, lineno0, lineno1))
+
+class _Propagate_Printables_Up(_AST_Traversal):
+    "Copy printable representations from children to parents."
+
+    def post_eq_expr(self, node):
+        "Merge our left and right children."
+        if node.printable != "":
+            return
+        if node.kids[0].printable == "":
+            # Handle expressions like "{t+1 for each t in {2, ..., 7}}".
+            node.printable = node.kids[1].printable
+
+    def post_restricted_ident(self, node):
+        "Merge our left and right children."
+        if node.printable != "":
+            return
+        if node.kids[0].printable == "":
+            # Handle expressions like "{t+1 for each t in {2, ..., 7}}".
+            node.printable = "tasks " + node.kids[1].printable
+
+    def post_any(self, node):
+        "Copy our child's printable field."
+        if node.printable != "":
+            return
+        if node.kids == []:
+            return
+        if len(node.kids) == 1:
+            node.printable = node.kids[0].printable
 
 ###########################################################################
 
@@ -857,7 +891,8 @@ class _Check_Random_Variables(_AST_Traversal):
 
     def pre_func_call(self, node):
         "Remember which nodes refer to random variables."
-        if node.attr[:7] == "RANDOM_":
+        # FILE_DATA is not referentially transparent so we treat it as random.
+        if node.attr[:7] == "RANDOM_" or node.attr == "FILE_DATA":
             node.sem["random_func_nodes"] = [node]
 
     def post_task_expr(self, node):
@@ -1163,3 +1198,44 @@ class _Identify_Constant_Nodes(_AST_Traversal):
                     all_const = 0
                     break
             node.sem["is_constant"] = all_const
+
+###########################################################################
+
+class _Find_ProcMap_Usage(_AST_Traversal):
+    "Mark nodes that contain a PROCESSOR_OF or TASK_OF call somewhere beneath them."
+
+    def pre_func_call(self, node):
+        "PROCESSOR_OF and TASK_OF need a processor map."
+        funcname = node.attr
+        if funcname[-3:] == "_OF":
+            node.sem["needs_procmap"] = 1
+
+    def post_any(self, node):
+        "Propagate needs_procmap upwards."
+        for kid in node.kids:
+            if kid.sem.has_key("needs_procmap"):
+                node.sem["needs_procmap"] = 1
+                break
+
+###########################################################################
+
+class _Split_Aggregate_Func_Lists(_AST_Traversal):
+    "Split lists of aggregate functions into separate function invocations."
+
+    def post_log_expr_list(self, node):
+        "Split aggregate lists and increase the log expr list length accordingly."
+        newkids = []
+        for expr_elt in node.kids:
+            agg_expr, comment = expr_elt.kids[:2]
+            if agg_expr.kids[0].type == "aggregate_func_list":
+                # List -- split into individual entries.
+                agg_func_list = agg_expr.kids[0]
+                for afunc in agg_func_list.kids:
+                    new_expr_elt = copy.deepcopy(expr_elt)
+                    new_expr_elt.kids[0].kids[0] = afunc
+                    newkids.append(new_expr_elt)
+            else:
+                # Atom -- store unmodified.
+                newkids.append(expr_elt)
+        node.kids = newkids
+        node.attr = long(len(newkids))

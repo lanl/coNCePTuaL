@@ -1,7 +1,7 @@
 #coNCePTuaL version of HYCOM communication pattern
 #by Paul Beinfest 6-16-05
 
-Require language version "1.4".
+Require language version "1.5".
 
 msgsize is "Size of message to transmit in bytes" and comes from
         "--msgsize" or "-m" with default 2K.

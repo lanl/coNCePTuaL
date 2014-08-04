@@ -41,23 +41,38 @@
 @syncodeindex vr al
 @c %**end of header
 
-@ifinfo
-This file describes the coNCePTuaL language and tool suite.
+@c Define a macro for typesetting the coNCePTuaL logo.
+@iftex
+@macro ncptl
+@sc{coNCePTuaL}
+@end macro
+@end iftex
+@ifnottex
+@macro ncptl
+coNCePTuaL
+@end macro
+@end ifnottex
 
-Copyright (C) 2012, Los Alamos National Security, LLC
+@copying
+@vskip 0pt plus 1filll
+This document describes @ncptl{} @w{version @value{VERSION}.}
+
+@sp 1
+
+Copyright @copyright{} 2014, Los Alamos National Security, LLC
+@end copying
+
+@ifinfo
+@insertcopying
 @end ifinfo
 
 @c ===========================================================================
 
-@c Define a macro for typesetting the coNCePTuaL logo.
-@macro ncptl
-@sc{coNCePTuaL}
-@end macro
-
-@c Older versions of Texinfo didn't provide a @LaTeX macro or a @comma
-@c macro but newer ones do.  For TeX output, we simply require a newer
-@c texinfo.tex.  Because makeinfo doesn't care about macro redefinitions,
-@c we just go ahead and redefine @LaTeX and @comma for non-TeX output.
+@c Older versions of Texinfo didn't provide a @LaTeX, @comma,
+@c or @hashchar macro but newer ones do.  For TeX output, we simply
+@c require a newer texinfo.tex.  Because makeinfo doesn't care about
+@c macro redefinitions, we just go ahead and redefine @LaTeX, @comma,
+@c and @hashchar for non-TeX output.
 @iftex
 @macro latex
 @cindex LaTeX
@@ -75,19 +90,50 @@ LaTeX
 ,
 @end macro
 @end ifnottex
+@macro hashchar
+#@c
+@end macro
 
 @c Define macros for typesetting command-line options.
 @macro copt {option}
+@c
 @opindex --\option\
 @w{@kbd{-@w{}-\option\}}
 @end macro
+@c
+@macro coptIT {option}
+@w{@kbd{-@w{}-\option\}}
+@opindex --\option\
+@c
+@end macro
+@c
+@macro coptITabbr {option, abbr}
+@w{@kbd{-@w{}-\option\}} (abbreviation: @w{@kbd{-\abbr\}})
+@opindex --\option\
+@opindex -\abbr\
+@c
+@end macro
+@c
 @macro coptargs {option, args}
 @opindex --\option\
 @w{@kbd{-@w{}-\option\=\args\}}
 @end macro
+@c
+@macro coptargsIT {option, args}
+@w{@kbd{-@w{}-\option\=\args\}}
+@opindex --\option\
+@c
+@end macro
+@c
 @macro copts {option}
 @opindex -\option\
 @w{@kbd{-\option\}}
+@end macro
+@c
+@macro coptsIT {option}
+@w{@kbd{-\option\}}
+@opindex -\option\
+@c
 @end macro
 
 @c Define macros for typesetting environment variables.
@@ -97,27 +143,80 @@ LaTeX
 @cindex variables, environment
 @w{@kbd{\evar\}}
 @end macro
+@c
+@macro envvarIT {evar}
+@w{@kbd{\evar\}}
+@evindex \evar\
+@cindex environment variables
+@cindex variables, environment
+@c
+@end macro
+@c
+@macro envvarargsIT {evar, args}
+@w{@kbd{\evar\=\args\}}
+@evindex \evar\
+@cindex environment variables
+@cindex variables, environment
+@c
+@end macro
 
 @c Define a macro for indicating a nonterminal in the grammar.
+@iftex
 @macro nonterm {ntname}
+@c
 @ntindex \ntname\
-@w{@r{@texmath{@langle, <}@var{\ntname\}@texmath{@rangle, >}}}
+@c @langle@var{\ntname\}@rangle
+<@var{\ntname\}>
 @end macro
+@end iftex
+@ifnottex
+@macro nonterm {ntname}
+@c
+@ntindex \ntname\
+<@var{\ntname\}>
+@end macro
+@end ifnottex
+
+@c Do the same as the above but without indexing (for use in
+@c multitable headers).
+@iftex
+@macro nontermNI {ntname}
+@c @langle@var{\ntname\}@rangle
+<@var{\ntname\}>
+@end macro
+@end iftex
+@ifnottex
+@macro nontermNI {ntname}
+<@var{\ntname\}>
+@end macro
+@end ifnottex
 
 @c Define macros for indicating keyboard commands.
 @macro kcmd {command}
 @kyindex \command\
 @w{@kbd{\command\}}
 @end macro
+@c
 @macro kcmdargs {command, args}
 @kyindex \command\
 @w{@kbd{\command\ \args\}}
+@end macro
+@c
+@macro kcmdIT {command}
+@w{@kbd{\command\}}
+@kyindex \command\
+@c
 @end macro
 
 @c Define a macro for indicating a filespec.
 @macro filespec {fspec}
 @fiindex \fspec\
 @w{@file{\fspec\}}
+@end macro
+@macro filespecIT {fspec}
+@w{@file{\fspec\}}
+@fiindex \fspec\
+@c
 @end macro
 
 @c Define a macro for indicating a backend module or backend filespec.
@@ -126,6 +225,14 @@ LaTeX
 @fiindex \bkend\@ (@file{codegen_\bkend\.py})
 @code{\bkend\}
 @end macro
+@c
+@macro backendIT {bkend}
+@code{\bkend\}
+@fiindex codegen_@w{\bkend\}.py
+@fiindex \bkend\@ (@file{codegen_\bkend\.py})
+@c
+@end macro
+@c
 @macro backendpy {bkend}
 @fiindex codegen_@w{\bkend\}.py
 @fiindex \bkend\@ (@file{codegen_\bkend\.py})
@@ -145,23 +252,31 @@ LaTeX
 @olindex \token\
 @w{@code{\token\}}
 @end macro
+@c
+@macro ocodeIT {token}
+@w{@code{\token\}}
+@olindex \token\
+@c
+@end macro
+@c
 @macro ocodecf {token}
 @olindex \token\
 @w{@code{\token\()}}
 @end macro
 
 @c Define a macro for nicely typesetting mathematical expressions.
-@macro texmath {texcode, othercode}
 @iftex
+@macro texmath {texcode, othercode}
 @tex
 $\texcode\$%
 @end tex
-@end iftex
-@c
-@ifnottex
-@math{\othercode\}@c
-@end ifnottex
 @end macro
+@end iftex
+@ifnottex
+@macro texmath {texcode, othercode}
+@math{\othercode\}
+@end macro
+@end ifnottex
 
 @c Define a macro for typesetting and indexing an arbitrary concept.
 @macro cncp {concept}
@@ -185,6 +300,13 @@ $\texcode\$%
 @cindex GUI buttons
 @cindex buttons, GUI
 @emph{\mname\}
+@end macro
+@macro gbuttonIT {mname}
+@emph{\mname\}
+@mnindex \mname\ (GUI button)
+@cindex GUI buttons
+@cindex buttons, GUI
+@c
 @end macro
 
 @c Define a macro for typesetting the separator between a GUI menu and
@@ -216,7 +338,12 @@ $\texcode\$%
 AST
 @end macro
 @c
-@macro configure {args}
+@macro configure {}
+@kyindex configure
+@kbd{./configure}
+@end macro
+@c
+@macro configureA {args}
 @kyindex configure
 @kbd{./configure \args\}
 @end macro
@@ -254,10 +381,18 @@ MPI
 PLY
 @end macro
 @c
+@iftex
 @macro ncptlGUI
 @cindex @sc{coNCePTuaL} GUI
 @sc{coNCePTuaL} GUI
 @end macro
+@end iftex
+@ifnottex
+@macro ncptlGUI
+@cindex coNCePTuaL GUI
+coNCePTuaL GUI
+@end macro
+@end ifnottex
 
 @c Define a macro for indenting a paragraph within a list or table.
 @iftex
@@ -357,12 +492,7 @@ PLY
 
 @page
 @vskip 0pt plus 1filll
-@hfil
-Copyright @copyright{} 2012, Los Alamos National Security, LLC
-@hfil
-@vskip 0pt plus 1filll
-This document describes @ncptl{} @w{version @value{VERSION}.}
-
+@insertcopying
 @end titlepage
 
 @c ===========================================================================
@@ -380,7 +510,7 @@ network protocol layers.  A few lines of @ncptl{} code can produce
 programs that would take significantly more effort to write in a
 conventional programming language.
 
-This document describes @ncptl{} @w{version @value{VERSION}.}
+@insertcopying
 
 @ifhtml
 @html
@@ -444,8 +574,8 @@ umpteen versions of performance tests is that it leads to a variety in
 the way results are reported; colloquially, apples are often compared
 to oranges.  Consider a bandwidth test.  Does a bandwidth test run for
 a fixed number of iterations or a fixed length of time?  Is bandwidth
-measured as ping-pong bandwidth @w{(i.e., 2 @texmath{\times, *}}
-message @w{length @texmath{\div, /}} round-trip time) or
+measured as ping-pong bandwidth (i.e.,@tie{}2@tie{}@texmath{\times, *}
+message length@tie{}@texmath{\div, /} round-trip time) or
 unidirectional throughput @w{(@math{N} messages} in one direction
 followed by a single acknowledgement message)?  Is the acknowledgement
 message of minimal length or as long as the entire message?  Does its
@@ -539,12 +669,12 @@ command-line options (e.g., @copts{C} or @copt{help})
 environment variables (e.g., @envvar{PATH})
 
 @c @nonterm
-@item @w{@texmath{@langle, <}@var{abcdef}@texmath{@rangle, >}}
-nonterminals in the @ncptl{} grammar (e.g., @nonterm{ident})
+@item @nontermNI{abcdef}
+nonterminals in the @ncptl{} grammar (e.g.,@tie{}@nonterm{ident})
 
 @c @kcmd
 @item @w{@kbd{abcdef}}
-commands to enter on the keyboard (e.g., @kcmd{make install})
+commands to enter on the keyboard (e.g.,@tie{}@kcmd{make install})
 
 @c @filespec
 @item @w{@file{abcdef}}
@@ -581,16 +711,19 @@ and to facilitate installation.  As of this writing, @ncptl{} has
 passed @kcmd{make check} (@pxref{make}) on the following platforms:
 
 @c Put all compiler names in an equal-widthed box.
-@macro compbox {text}
 @iftex
 @tex
-@hbox to 5em{@filespec{\text\}}
+@gdef@hboxv#1{@hbox to 5em{#1}}
 @end tex
+@macro compbox {text}
+@hboxv{@filespec{\text\}}
+@end macro
 @end iftex
 @ifnottex
+@macro compbox {text}
 @filespec{\text\}
-@end ifnottex
 @end macro
+@end ifnottex
 
 @multitable {@b{Architecture}M} {UNICOS/mpM} {@file{MMMMMMM} (PathScale)M}
 @item @b{Architecture} @tab @b{OS} @tab @b{Compiler}
@@ -715,23 +848,23 @@ system's capabilities (compiler features, library and header-file
 availability, function and datatype availability, linker flags for
 various options, etc.) and custom-generates a @filespec{Makefile} and
 miscellaneous other files.  @filespec{configure} accepts a variety of
-command-line options.  @configure{@copt{help}} lists all of the
+command-line options.  @configureA{@copt{help}} lists all of the
 options.  The following are some of the more useful ones:
 
 @table @asis
-@item @copt{disable-shared}
+@item @coptIT{disable-shared}
 @ncptl{} normally installs both static and dynamic libraries.  While
 dynamic libraries have a number of advantages they do need to be
 installed on all nodes that run the compiled @ncptl{} programs.  If
-global installation is not convenient/feasible, @copt{disable-shared}
-can be used to force static linking of executables.  Note, however,
-that @filespec{libncptlmodule.so}, the @cncp{Python} interface to the
-@ncptl{} run-time library, needs to be built as a shared object so
-that it can be loaded dynamically into a running @cncp{Python} interpreter.
-@copt{disable-shared} inhibits the compilation and installation of
-@filespec{libncptlmodule.so}.
+global installation is not convenient/feasible,
+@copt{disable-shared} can be used to force static linking of
+executables.  Note, however, that @filespec{libncptlmodule.so}, the
+@cncp{Python} interface to the @ncptl{} run-time library, needs to be
+built as a shared object so that it can be loaded dynamically into a
+running @cncp{Python} interpreter.  @copt{disable-shared} inhibits the
+compilation and installation of @filespec{libncptlmodule.so}.
 
-@item @kbd{@copt{prefix}=@var{directory}}
+@item @coptargsIT{prefix, @var{directory}}
 @kyindex make install
 @kcmd{make install} normally installs @ncptl{} into the
 @file{/usr/local} directory.  The @copt{prefix} option instructs
@@ -742,7 +875,7 @@ installation directory.  For example,
 @file{/local/encap/conceptual-@value{VERSION}/bin},
 @file{/local/encap/conceptual-@value{VERSION}/include}, etc.
 
-@item @kbd{@copt{with-ignored-libs}=@var{lib1},@var{lib2},@enddots{}}
+@item @coptargsIT{with-ignored-libs, @var{lib1}@comma{}@var{lib2}@comma{}@enddots{}}
 In some circumstances it may be necessary to prevent @ncptl{} from
 using certain libraries even when @configure{} detects them and
 believes them to be usable.  The @copt{with-ignored-libs}
@@ -752,7 +885,7 @@ used; omit directory names, the @samp{lib} prefix (on Unix-like
 systems), and the file suffix.  For example, to disable the use of
 @file{/usr/local/lib/libpapi.a} you should specify @coptargs{with-ignored-libs, papi}.
 
-@item @copt{without-fork}
+@item @coptIT{without-fork}
 @configure{} detects automatically if your system provides a working
 @ocodecf{fork} function.  However, it cannot detect if @ocodecf{fork}
 correctly spawns a child process but corrupts the parent's memory map
@@ -761,7 +894,7 @@ software stacks.  The @copt{without-fork} option inhibits the use of
 @ocodecf{fork} and well as functions that implicitly invoke
 @ocodecf{fork} such as @ocodecf{system} and @ocodecf{popen}.
 
-@item @copt{with-gettimeofday}
+@item @coptIT{with-gettimeofday}
 The @ncptl{} run-time library is able to use any of a variety of
 platform-specific microsecond timers to take timing measurements.
 (@xref{Time-related functions}, for a complete list.)  The
@@ -773,7 +906,7 @@ particular platform misleads one of @ncptl{}'s other timers.  The
 timer}) can help determine whether @copt{with-gettimeofday} is
 necessary.
 
-@item @copt{with-mpi-wtime}
+@item @coptIT{with-mpi-wtime}
 On some systems the most accurate timer available is provided by the
 @ocodecf{MPI_Wtime} function in the @MPI{} library.  The
 @copt{with-mpi-wtime} option forces the run-time library to measure
@@ -807,28 +940,28 @@ In short, you should specify @copt{with-mpi-wtime} only if you have
 good reason to believe that @ocodecf{MPI_Wtime} is likely to produce
 the most accurate timing measurements on your system.
 
-@item @kbd{@envvar{CC}=@var{C compiler}}
+@item @envvarargsIT{CC, @var{C compiler}}
 @filespec{configure} automatically searches for a C compiler to use.
 To override its selection, assign a value to @envvar{CC} on the
-command line.  For example, @configure{CC=ecc} will cause @ncptl{} to
+command line.  For example, @configureA{CC=ecc} will cause @ncptl{} to
 be built with @filespec{ecc}.
 
-@item @kbd{@envvar{CFLAGS}=@var{C compiler flags}}
-@itemx @kbd{@envvar{LDFLAGS}=@var{linker flags}}
-@itemx @kbd{@envvar{CPPFLAGS}=@var{C preprocessor flags}}
-@itemx @kbd{@envvar{LIBS}=@var{extra libraries}}
+@item @envvarargsIT{CFLAGS, @var{C compiler flags}}
+@itemx @envvarargsIT{LDFLAGS, @var{linker flags}}
+@itemx @envvarargsIT{CPPFLAGS, @var{C preprocessor flags}}
+@itemx @envvarargsIT{LIBS, @var{extra libraries}}
 @cindex C preprocessor
 Like @envvar{CC}, these variables override the values determined
 automatically by @filespec{configure}.  As an illustration,
-@configure{@w{CPPFLAGS="-DSPECIAL} @w{-I/home/pakin/include/special}
+@configureA{@w{CPPFLAGS="-DSPECIAL} @w{-I/home/pakin/include/special}
 @w{-I."}  @w{CFLAGS="-O3} -g -Wall -W" @w{LDFLAGS=--static}
 @w{LIBS="-lz} /usr/lib/libstuff.a"} assigns values to all four
 variables.
 
-@item @kbd{@envvar{MPICC}=@var{C compiler}}
-@itemx @kbd{@envvar{MPICPPFLAGS}=@var{C preprocessor flags}}
-@itemx @kbd{@envvar{MPILDFLAGS}=@var{extra linker flags}}
-@itemx @kbd{@envvar{MPILIBS}=@var{extra libraries}}
+@item @envvarargsIT{MPICC, @var{C compiler}}
+@itemx @envvarargsIT{MPICPPFLAGS, @var{C preprocessor flags}}
+@itemx @envvarargsIT{MPILDFLAGS, @var{extra linker flags}}
+@itemx @envvarargsIT{MPILIBS, @var{extra libraries}}
 @cindex C preprocessor
 These variables are analagous to @envvar{CC}, @envvar{CPPFLAGS},
 @envvar{LDFLAGS}, and @envvar{LIBS}, respectively.  The difference is
@@ -836,12 +969,12 @@ that they are not used to build the @ncptl{} run-time library but
 rather to build user programs targeted to the C+@MPI{} compiler backend.
 For example, if your @MPI{} installation lacks an @filespec{mpicc}
 script, you may need to specify extra header files and libraries
-explicitly: @configure{@w{MPICPPFLAGS="-I/usr/lib/mpi/include"}
+explicitly: @configureA{@w{MPICPPFLAGS="-I/usr/lib/mpi/include"}
 @w{MPILIBS="-lmpich"}}.
 @end table
 
 As a rather complex illustration of how some of the preceding options
-(as well as a few mentioned by @configure{@copt{help}}) might be
+(as well as a few mentioned by @configureA{@copt{help}}) might be
 combined, the following is how @ncptl{} was once configured to
 cross-compile from a @Linux{}/PowerPC build machine to a prototype of the
 BlueGene/L supercomputer (containing, at the time, 2048 embedded
@@ -850,7 +983,7 @@ IBM's @filespec{xlc} compiler was accessed via a wrapper script called
 @file{mpcc}.
 
 @quotation
-@configure{CFLAGS="-g -O -qmaxmem=64000" CC=/bgl/local/bin/mpcc
+@configureA{CFLAGS="-g -O -qmaxmem=64000" CC=/bgl/local/bin/mpcc
 CPP="gcc -E" @w{--host=powerpc-ibm-linux-gnu}
 @w{--build=powerpc-unknown-linux-gnu} @w{--with-alignment=8}
 @w{--with-gettimeofday} @w{--prefix=/bgl/bgguest/LANL/ncptl}
@@ -882,9 +1015,8 @@ Running @kcmd{make} by itself will compile the @ncptl{} run-time
 library.  However, the @filespec{Makefile} generated by @filespec{configure}
 can perform a variety of other actions, as well:
 
-@table @kcmd
-@item make check
-
+@table @asis
+@item @kcmdIT{make check}
 Perform a series of regression tests on the @ncptl{} run-time library.
 This is a good thing to do after a @kcmd{make} to ensure that the
 run-time library built properly on your system.  When
@@ -907,42 +1039,35 @@ tested.
 
 @iindent
 If any tests behave unexpectedly it may be possible to gain more
-information about the source of the problem by re-running @kcmd{make
-check} with the @envvar{DEBUG} environment variable set to a non-empty
-value:
+information about the source of the problem by examining the
+corresponding @file{.log} file left behind in the @filespec{tests}
+directory.
 
-@kyindex make check
-@cartouche
-@example
-env DEBUG=1 make check
-@end example
-@end cartouche
-
-@noindent
-Tests can also be re-run individually:
+@iindent
+Tests can also be run individually:
 
 @kyindex runtime_random
 @cartouche
 @example
 cd tests
-env DEBUG=1 runtime_random
+./runtime_random
 @end example
 @end cartouche
 
 
-@item make clean
-@itemx make distclean
-@itemx make maintainer-clean
-
+@item  @kcmdIT{make clean}
+@itemx @kcmdIT{make distclean}
+@itemx @kcmdIT{make maintainer-clean}
 @kcmd{make clean} deletes all files generated by a preceding
 @kcmd{make} command.  @kcmd{make distclean} deletes all files
-generated by a preceding @w{@configure{}} command.  @kcmd{make
-maintainer-clean} delete all generated files.  Run @kcmd{make
-maintainer-clean} only if you have fairly recent versions of the
-@GNU{} Autotools @w{(@cncp{Autoconf} 2.53,} @w{@cncp{Automake} 1.6,}
-and @w{@cncp{Libtool} 1.4)} because those are needed to regenerate
-some of the generated files.  The sequence of operations to regenerate
-all of the configuration files needed by @ncptl{} is shown below.
+generated by a preceding @w{@configure{}} command.
+@kcmd{make maintainer-clean} delete all generated files.  Run
+@kcmd{make maintainer-clean} only if you have not-too-ancient versions
+of the @GNU{} Autotools @w{(@cncp{Autoconf} 2.53,} @w{@cncp{Automake}
+1.6,} and @w{@cncp{Libtool} 1.4)} because those are needed to
+regenerate some of the generated files.  The sequence of operations to
+regenerate all of the configuration files needed by @ncptl{} is shown
+below.
 
 @cartouche
 @kyindex libtoolize
@@ -959,30 +1084,26 @@ autoconf
 @end example
 @end cartouche
 
-@item make install
-
+@item @kcmdIT{make install}
 Install @ncptl{}, including the compiler, run-time library, header
 files, and tools.  @kcmd{make install} is described in detail
 in @ref{make install}.
 
-@item make uninstall
-
+@item @kcmdIT{make uninstall}
 Remove all of the files that @kcmd{make install} installed.  Most of
 the top-level directories are retained, however, as @filespec{make}
 cannot guarantee that these are not needed by other applications.
 
-@item make info
-@itemx make pdf
-@itemx make docbook
-
+@item  @kcmdIT{make info}
+@itemx @kcmdIT{make pdf}
+@itemx @kcmdIT{make docbook}
 Produce the @ncptl{} user's guide (this document) in, respectively,
 @cncp{Emacs} info format, PDF format, or DocBook format.  The
 resulting documentation (@filespec{conceptual.info*},
 @filespec{conceptual.pdf}, or @filespec{conceptual.xml}) is created in
 the @file{doc} subdirectory.
 
-@item make ncptl-logextract.html
-
+@item @kcmdIT{make ncptl-logextract.html}
 @ncptl{} comes with a postprocessor called @filespec{ncptl-logextract}
 that facilitates extracting information from @ncptl{}-produced log
 files.  The complete @filespec{ncptl-logextract} documentation is
@@ -999,15 +1120,13 @@ contract the list of subobtions.  This interactive behavior makes it
 easy for a user to get more information on some options without being
 distracted by the documentation for the others.
 
-@item make empty.log
-
+@item @kcmdIT{make empty.log}
 Create an empty log file called @filespec{empty.log} that contains a
 complete prologue and epilogue but no data.  This is convenient for
 validating that the @ncptl{} run-time library was built using your
 preferred build options.
 
-@item make stylesheets
-
+@item @kcmdIT{make stylesheets}
 @cindex syntax highlighting
 @cindex stylesheets
 @cindex coloring source listings
@@ -1036,15 +1155,15 @@ currently lacks provisions for installing these files so whichever
 stylesheets are desired will need to be installed manually.
 Stylesheet installation is detailed in @ref{Installing stylesheets}.
 
-@item make modulefile
-
+@item @kcmdIT{make modulefile}
 The @cncp{Environment Modules} package facilitates configuring the
-operating-system shell for a given application.  The @kcmd{make
-modulefile} command creates a @filespec{conceptual_@value{VERSION}}
-modulefile that checks for conflicts with previously loaded @ncptl{}
-modulefiles then sets the @envvar{PATH}, @envvar{MANPATH}, and
-@envvar{LD_LIBRARY_PATH} environment variables to values appropriate
-values as determined by @filespec{configure} (@pxref{configure}).
+operating-system shell for a given application.  The
+@kcmd{make modulefile} command creates a
+@filespec{conceptual_@value{VERSION}} modulefile that checks for
+conflicts with previously loaded @ncptl{} modulefiles then sets the
+@envvar{PATH}, @envvar{MANPATH}, and @envvar{LD_LIBRARY_PATH}
+environment variables to values appropriate values as determined by
+@filespec{configure} (@pxref{configure}).
 
 @iindent
 Normally, @filespec{conceptual_@value{VERSION}} should be installed in
@@ -1064,20 +1183,17 @@ module load ./conceptual_@value{VERSION}
 @noindent
 See the @filespec{module} man page for more information about modules.
 
-@item make dist
-
+@item @kcmdIT{make dist}
 Package together all of the files needed to rebuild @ncptl{}@.  The
 resulting file is called @filespec{conceptual-@value{VERSION}.tar.gz} (for
 this version of @ncptl{}).
 
-@item make all
-
+@item @kcmdIT{make all}
 Although @kbd{all} is the default target it can also be specified
 explicitly.  Doing so is convenient when performing multiple actions
 at once, e.g., @kcmdargs{make, clean all}.
 
-@item make tags
-
+@item @kcmdIT{make tags}
 Produce/update a @filespec{TAGS} file that the @cncp{Emacs} text
 editor can use to find function declarations, macro definitions,
 variable definitions, @code{typedef}s, etc.@: in the @ncptl{} run-time
@@ -1086,8 +1202,7 @@ to interface with the @ncptl{} run-time library.  Read the
 @cncp{Emacs} documentation for @w{@kbd{M-x find-tag}} for more
 information.
 
-@item make gui
-
+@item @kcmdIT{make gui}
 Compile the @ncptlGUI{}, producing
 @filespec{ncptlGUI-@value{VERSION}.jar}.  Note that compilation
 requires both a @cncp{Java} compiler @w{(e.g., @kcmd{javac})} and the
@@ -1097,7 +1212,6 @@ Unfortunately, at the time of this writing (January 2009),
 (@w{cf. @uref{http://www.jython.org/Project/jythonc.html}}).  Hence,
 @kcmd{make gui} has been tested only with @kcmd{jythonc} @w{version
 2.2.@var{x}}, not any later versions.
-
 @end table
 
 @menu
@@ -1200,8 +1314,8 @@ of stylesheets for presenting @ncptl{} code in a more pleasant format
 than ordinary, monochromatic text.  Stylesheets must currently be
 installed manually as per the following instructions:
 
-@table @filespec
-@item ncptl.sty
+@table @asis
+@item @filespecIT{ncptl.sty}
 
 @filespec{ncptl.sty} is typically installed in
 @file{@var{texmf}/tex/latex/misc}, where @var{texmf} is likely to be
@@ -1216,15 +1330,15 @@ the @filespec{listings} package that defines a new language called
 @samp{ncptl}.  See the @filespec{listings} documentation for
 instructions on typesetting source code.
 
-@item ncptl.ssh
+@item @filespecIT{ncptl.ssh}
 
 Running @kcmdargs{a2ps, --list=defaults} outputs (among other things)
 the @cncp{a2ps} library path.  @filespec{ncptl.ssh} should be
 installed in one of the @filespec{sheets} directories listed there,
 typically @file{/usr/share/a2ps/sheets}.
 
-@item ncptl-mode.el
-@itemx ncptl-mode.elc
+@item  @filespecIT{ncptl-mode.el}
+@itemx @filespecIT{ncptl-mode.elc}
 
 @filespec{ncptl-mode.el} and @filespec{ncptl-mode.elc} belong in a
 local Elisp directory that is part of the @cncp{Emacs}
@@ -1247,7 +1361,7 @@ Syntax highlighting should be enabled by default.  If it isn't, the
 @cncp{Emacs} command @kcmd{M-x font-lock-mode} should enable it for
 the current buffer.
 
-@item ncptl.vim
+@item @filespecIT{ncptl.vim}
 
 @cncp{Vim}'s syntax-file directory may be named after the @cncp{Vim}
 version, e.g., @file{/usr/share/vim/vim61/syntax} for @w{Vim 6.1}.
@@ -1263,7 +1377,7 @@ au BufNewFile,BufRead *.ncptl           setf ncptl
 @end example
 @end cartouche
 
-@item ncptl.lang
+@item @filespecIT{ncptl.lang}
 
 @cncp{Source-highlight} stores all of its helper files in a single
 directory, typically @file{/usr/share/source-highlight}.  Put
@@ -1277,7 +1391,7 @@ ncptl = ncptl.lang
 @end example
 @end cartouche
 
-@item ncptl.php
+@item @filespecIT{ncptl.php}
 
 @cncp{GeSHi} stores all of its language files in a @file{geshi}
 subdirectory.  Simply put @filespec{ncptl.php} there, and it should be
@@ -1593,51 +1707,51 @@ option is set by default when this command is selected.
 
 The following buttons appear on the command bar:
 
-@table @gbutton
-@item Add Row
+@table @asis
+@item @gbuttonIT{Add Row}
 Insert a new, empty task row at the cursor position.
 
-@item Delete
+@item @gbuttonIT{Delete}
 Delete the selected components.
 
-@item Loop
+@item @gbuttonIT{Loop}
 Add a loop around the selected components.
 
-@item Measure
+@item @gbuttonIT{Measure}
 Add a measurement block around the selected components.
 
-@item Compute
+@item @gbuttonIT{Compute}
 Make the selected tasks ``compute'' or sleep for a length of time.
 
-@item Communicate
+@item @gbuttonIT{Communicate}
 Add point-to-point communication between selected tasks (different
 task rows).  This can also be achieved by dragging an arrow from a
 source task to a target task.
 
-@item Wait
+@item @gbuttonIT{Wait}
 Make the selected tasks (same task row) or all tasks in the row above
 the cursor wait for all outstanding messages sent or received
 asynchronously to complete.
 
-@item Extend
+@item @gbuttonIT{Extend}
 Extend a communication or computation pattern across an entire task
 row.
 
-@item Synchronize
+@item @gbuttonIT{Synchronize}
 Synchronize the selected tasks (same task row) or all tasks in the
 task row above the cursor.
 
-@item Reduce
+@item @gbuttonIT{Reduce}
 Reduce data from the selected tasks in one task row to the selected
 tasks in the next task row.  With no selection, reduce data from all
 tasks above the cursor to @w{task 0} below the cursor.
 
-@item Multicast
+@item @gbuttonIT{Multicast}
 Multicast data from the selected tasks in one task row to the selected
 tasks in the next task row.  With no selection, multicast data from
 @w{task 0} above the cursor to all tasks below the cursor.
 
-@item Normalize
+@item @gbuttonIT{Normalize}
 Put the program into standard form as it will appear when translated
 into @ncptl{} code.  After normalization, components are drawn as
 early in time as possible without changing the program's semantics.
@@ -1671,7 +1785,7 @@ The usage string is followed by a list of installed backends.
 The following list describes each compiler option in turn:
 
 @table @asis
-@item @copt{backend} (abbreviation: @copts{b})
+@item @coptITabbr{backend, b}
 Specify the module that @ncptl{} should use as the compiler backend.
 @kcmd{ncptl} must be told which backend to use with either
 @kbd{@copt{backend}=@var{backend}} or by setting the environment
@@ -1697,29 +1811,29 @@ If no backend is specified, @kcmd{ncptl} runs the given @ncptl{}
 program through the lexer, parser, and semantic analyzer but does not
 generate an output file.
 
-@item @copt{quiet} (abbreviation: @copts{q})
+@item @coptITabbr{quiet, q}
 The @copt{quiet} option tells @filespec{ncptl} and the chosen backend
 to output minimal status information.
 
-@item @copt{no-link} (abbreviation: @copts{c})
+@item @coptITabbr{no-link, c}
 By default, @filespec{ncptl} instructs the backend to compile and link
 the user's @ncptl{} program into an executable file.  @copt{no-link}
 tells the backend to skip the linking step and produce only an object
 file.
 
-@item @copt{no-compile} (abbreviation: @copts{E})
+@item @coptITabbr{no-compile, E}
 By default, @filespec{ncptl} instructs the backend to compile and link
 the user's @ncptl{} program into an executable file.
 @copt{no-compile} tells the backend to skip both the compilation and
 the linking step and to produce only a source file in the target
 language.
 
-@item @copt{keep-ints} (abbreviation: @copts{K})
+@item @coptITabbr{keep-ints, K}
 @ncptl{} backends normally delete any files created as part of the
 compiling or linking process.  @copt{keep-ints} tells @filespec{ncptl}
 and the chosen backend to preserve their intermediate files.
 
-@item @copt{lenient} (abbreviation: @copts{L})
+@item @coptITabbr{lenient, L}
 The @copt{lenient} option tells the compiler to permit certain
 constructs that would otherwise result in a compilation error.  First,
 using the same command-line option (either the long or short variant)
@@ -1736,7 +1850,7 @@ command-line option for each missing variable.  This is convenient
 when entering brief programs on the command line with @copt{program}
 (described below) as it can save a significant amount of typing.
 
-@item @copt{filter} (abbreviation: @copts{f})
+@item @coptITabbr{filter, f}
 The @copt{filter} option applies a @filespec{sed}-style substitution
 expression to the backend-translated code @w{(e.g., a} @file{.c} file
 output by the @backend{c_udgram} backend or a @file{.tex} file output
@@ -1759,20 +1873,20 @@ search-and-replace instead of replacing only the first occurrence of
 instructs @filespec{sed} to make at most one substitution @emph{per
 line}.
 
-@item @copt{output} (abbreviation: @copts{o})
+@item @coptITabbr{output, o}
 @filespec{ncptl} normally writes its output to a file with the same
 base name as the input file (or @filespec{a.out} if the program was
 specified on the command line using @copt{program}).  @copt{output}
 lets the user specify a file to which to write the generated code.
 
-@item @copt{program} (abbreviation: @copts{p})
+@item @coptITabbr{program, p}
 Because @ncptl{} programs can be quite short @copt{program} enables a
 program to be specified in its entirety on the command line.  The
 alternative to using @copt{program} is to specify the name of a file
 containing a @ncptl{} program.  By convention, @ncptl{} programs have
 a @file{.ncptl} file extension.
 
-@item @copt{help-backend} (abbreviation: @copts{H})
+@item @coptITabbr{help-backend, H}
 Describe additional options that are meaningful only to the specified
 backend.  The @copt{backend} option must be used in conjunction with
 @copt{help-backend}.
@@ -1810,53 +1924,56 @@ provided merely for convenience.}
 The @w{@ncptl{} @value{VERSION}} distribution includes the following
 compiler backends:
 
-@table @backend
-@item c_seq
+@table @asis
+@item @backendIT{c_seq}
 Generate @w{ANSI C} code with no communication support.
 
-@item c_mpi
+@item @backendIT{c_mpi}
 Generate @w{ANSI C} code with calls to the @MPI{} library for
 communication.
 
-@item c_udgram
+@item @backendIT{c_udgram}
 Generate @w{ANSI C} code that communicates using Unix-domain (i.e.,
 local to a single machine) datagram sockets.
 
-@item c_trace
+@item @backendIT{c_trace}
 Instrument a C-based backend either to include a call to
 @ocodecf{fprintf} before every program event or to utilize the
 @filespec{curses} library to display graphically the execution of a
 selected task.
 
-@item c_profile
+@item @backendIT{c_profile}
 Instrument a C-based backend either to write event timings and tallies
 to each log file or to the standard error device if the @ncptl{}
 program doesn't use a log file.
 
-@item interpret
+@item @backendIT{interpret}
 Interpret a @ncptl{} program, simulating any number of processors and
 checking for common problems such as deadlocks and mismatched sends
 and receives.
 
-@item stats
+@item @backendIT{stats}
 Output statistics of a program's execution---message tallies, byte
 counts, communication peers, network bisection crossings, event
 tallies, etc.
 
-@item picl
+@item @backendIT{picl}
 Output in the @cncp{PICL} trace format a logical-time trace of a
 @ncptl{} program's communication pattern.
 
-@item paraver
+@item @backendIT{paraver}
 Output in the @cncp{Paraver} trace format a logical-time trace of a
 @ncptl{} program's communication pattern.
 
-@item latex_vis
+@item @backendIT{latex_vis}
 Use @latex{} to produce an Encapsulated @cncp{PostScript}
 visualization of a program's communication pattern.
 
-@item dot_ast
+@item @backendIT{dot_ast}
 Output a program's parse tree in the @cncp{Graphviz} @cncp{dot} format.
+
+@item @backendIT{libsea_ast}
+Output a program's parse tree in the @cncp{LibSea} graph file format.
 @end table
 
 @ncptl{} employs a highly modular software structure for its backends.
@@ -1971,7 +2088,7 @@ command-line option, @backend{c_mpi} processes the following
 backend-specific command-line options:
 
 @table @asis
-@item @copt{ssend}
+@item @coptIT{ssend}
 In the generated code, @ocodecf{MPI_Isend} and @ocodecf{MPI_Irecv} are
 used for asynchronous communication and @ocodecf{MPI_Send} and
 @ocodecf{MPI_Recv} are normally used for synchronous communication.
@@ -1982,7 +2099,7 @@ synchronizing send function.  A program's log files indicate whether
 the program was built to use @ocodecf{MPI_Send} or
 @ocodecf{MPI_Ssend}.
 
-@item @kbd{@copt{reduce}=@var{MPI_Op}}
+@item @coptargsIT{reduce, @var{MPI_Op}}
 The default reduction operation is @ocode{MPI_SUM} but a different
 operation can be specified using the @backend{c_mpi}-specific
 @copt{reduce} compiler option.  A program's log files indicate the
@@ -2139,7 +2256,7 @@ command-line option, @backend{c_trace} processes the following
 backend-specific command-line options:
 
 @table @asis
-@item @kbd{@copt{trace}=@var{backend}}
+@item @coptargsIT{trace, @var{backend}}
 Specify a backend that will produce C code for @backend{c_trace} to
 trace.  The @copt{trace} option is required to use @backend{c_trace};
 @backend{c_trace} will issue an error message if @copt{trace} is not
@@ -2148,7 +2265,7 @@ specified.  The restrictions on @var{backend} are that it must produce
 (@pxref{Backend creation}).  Improper backends cause @backend{c_trace}
 to abort abnormally.
 
-@item @copt{curses}
+@item @coptIT{curses}
 Instead of injecting @ocodecf{fprintf} statements into the generated
 @w{C code}, inject calls to the @filespec{curses} (or
 @filespec{ncurses}) library to show graphically the line of code
@@ -2317,19 +2434,19 @@ compiled with the @copt{curses} option to @backend{c_trace}
 (@pxref{c_trace tracing with curses}):
 
 @table @kbd
-@item @copt{trace}=@var{file}
+@item @coptIT{trace}=@var{file}
 Specify a file containing redirected trace data.  @var{file} defaults
 to the standard input device.
 
-@item @copt{delay}=@var{number}
+@item @coptIT{delay}=@var{number}
 Specify the delay in milliseconds after each screen update
 (@samp{0}=no delay).
 
-@item @copt{monitor}=@var{processor}
+@item @coptIT{monitor}=@var{processor}
 Specify the processor number to monitor.  @var{processor} defaults to
 @samp{0}.
 
-@item @copt{breakpoint}=@var{line}
+@item @coptIT{breakpoint}=@var{line}
 @cindex single-stepping
 @cindex breakpoints
 Specify a line of source code at which to enter single-stepping mode
@@ -2999,8 +3116,8 @@ the following two command-line options:
                                 Dimemas simulator [default: 0]
   -E, --conc-events=<number>    0=exclude names of coNCePTuaL event types;
                                 1=include them [default: 0]
-  -O, --comp-time=<number>      Time spent in each non-communication event (ns)
-                                [default: 0]
+  -O, --comp-time=<number>      Time spent in each non-communication event
+                                (ns) [default: 0]
   -P, --event-time=<number>     Paraver event time (ns) [default: 1000]
   -R, --conc-source=<number>    0=exclude references to coNCePTuaL source
                                 lines; 1=include them [default: 1]
@@ -3331,7 +3448,7 @@ The @backend{dot_ast} backend accepts the following options from the
 @filespec{ncptl} command line:
 
 @table @asis
-@item @kbd{@copt{format}=@var{dot_format}}
+@item @coptargsIT{format, @var{dot_format}}
 The programs in the @cncp{Graphviz} suite can output graphs in a
 variety of formats such as @cncp{PostScript}, SVG, and PNG.  By
 default, the @backend{dot_ast} backend outputs @cncp{PostScript}.  The
@@ -3345,7 +3462,7 @@ following formats: @code{canon}, @code{cmap}, @code{dot}, @code{fig},
 @code{vtx}, @code{wbmp}, and @code{xdot}.  See the @cncp{Graphviz}
 documentation for more information about these formats.
 
-@item @kbd{@copt{node-code}=@var{characters}}
+@item @coptargsIT{node-code, @var{characters}}
 To facilitate associating nodes in the @AST{} with fragments of the
 @ncptl{} program being graphed, the @backend{dot_ast} backend provides
 a @copt{node-code} option that labels each node with the fragment of
@@ -3356,7 +3473,7 @@ prevent excessively large nodes from disturbing the graph layout.  The
 @nonterm{program} node (@pxref{Complete programs}), for example,
 includes the complete program source code if not truncated.
 
-@item @kbd{@copt{extra-dot}=@var{dot_code}}
+@item @coptargsIT{extra-dot, @var{dot_code}}
 The @backend{dot_ast} backend's @copt{extra-dot} option enables the
 user to inject arbitrary @cncp{dot} code into the generated file.  For
 example, specifying @kbd{--extra-dot="node
@@ -3368,7 +3485,7 @@ specified repeatedly on the command line; @backend{dot_ast}
 concatenates all of the extra @cncp{dot} code with intervening
 semicolons.
 
-@item @copt{compress}
+@item @coptIT{compress}
 Normally, every node of the @AST{} is drawn.  The @copt{compress}
 option makes the resulting @cncp{dot} graph more readable by eliding
 chains of single-child nodes.  For example, @copt{compress} reduces
@@ -3379,17 +3496,17 @@ following:
 @center @image{compressed-AST}
 @sp 1
 
-@item @copt{no-lines}
+@item @coptIT{no-lines}
 By default, each @AST{} node indicates the lines in the program's
 source code to which it corresponds.  The @copt{no-lines} option
 suppresses the outputting of source-code line numbers.
 
-@item @copt{no-attrs}
+@item @coptIT{no-attrs}
 Every node in the @AST{} has a type.  Some nodes additionally have an
 attribute.  @backend{dot_ast} normally outputs attributes but
 @copt{no-attrs} prevents @backend{dot_ast} from doing so.
 
-@item @copt{no-source}
+@item @coptIT{no-source}
 The complete source code corresponding to the @AST{} is included in
 the generated @cncp{dot} graph unless @copt{no-source}
 is specified on the command line.
@@ -3458,7 +3575,7 @@ The @backend{libsea_ast} backend accepts the following option from the
 @filespec{ncptl} command line:
 
 @table @asis
-@item @kbd{@copt{node-code}=@var{characters}}
+@item @coptargsIT{node-code, @var{characters}}
 Every node in the generated @cncp{LibSea} graph lists the fragment of
 @ncptl{} code to which it corresponds.  For large @ncptl{} programs,
 these strings can get large.  The @nonterm{program} node
@@ -3528,8 +3645,8 @@ Although a @ncptl{} program can specify its own command-line options
 addition to @copt{help} these include @copt{comment}, @copt{logfile},
 @copt{no-trap}, and @copt{seed}.
 
-@table @copt
-@item comment
+@table @asis
+@item @coptIT{comment}
 @copt{comment} makes it possible to add arbitrary commentary to a log
 file.  This is useful for incorporating information that @ncptl{}
 would be unable to (or simply does not currently) determine on its
@@ -3612,7 +3729,7 @@ backquoted command are needed to prevent the shell from splitting
 arguments at word boundaries.  As a consequence, @coptargs{comment,
 `who`} logs only the first word output by the @kbd{who} command.
 
-@item logfile
+@item @coptIT{logfile}
 @copt{logfile} specifies a template for naming log files.  Each task
 maintains a log file based on the template name but with @samp{%p}
 replaced with the processor number, @samp{%r} replaced with the run
@@ -3634,7 +3751,7 @@ left with zeroes to the given width.  For example, specifying
 files named @file{mydata-000.log}, @file{mydata-001.log},
 @file{mydata-002.log}, @file{mydata-003.log}, and so forth.
 
-@item no-trap
+@item @coptIT{no-trap}
 @copt{no-trap} specifies a list of signals or ranges of signals that
 should not be trapped.  For example, @kbd{@w{--no-trap=}10-12,17}
 prevents signals 10, 11, 12, and 17 from being trapped.@footnote{On
@@ -3651,7 +3768,7 @@ enables such signals to pass through @ncptl{} untouched.  (Some
 signals, however, are needed by @ncptl{} or by a particular backend
 and are always trapped.)
 
-@item seed
+@item @coptIT{seed}
 @copt{seed} (which selects a different default value on each run) is
 used in any program that utilizes the @keyw{RANDOM TASK} construct
 (@pxref{Binding variables}) or that sends message
@@ -4135,7 +4252,7 @@ either the item to the left or the item to the right but not both
 * Task descriptions::           Selecting groups of tasks at once
 * Communication statements::    Sending and receiving messages
 * I/O statements::              Relaying status and logging results
-* Counter and timer statements::  
+* Counter and timer statements::  Measuring how long an operation takes
 * Complex statements::          Combining statements into larger entities
 * Other statements::            Statements for neither communication nor I/O
 * Header declarations::         Language versioning and command-line parsing
@@ -4213,9 +4330,10 @@ newline characters."
 @result{} This string contains some@*newline characters.
 
 Use @samp{\"} for a double-quote character, @samp{\\} for a backslash,
-and @samp{\n} for a newline character.  All other escape sequences
-produce a warning message and are discarded.  As examples of valid
-escape-sequence usage, the string @code{"@value{UPDATED-MONTH}"}
+@samp{\t} for a tab character, @samp{\r} for a carriage-return
+character, and @samp{\n} for a newline character.  All other escape
+sequences produce a warning message and are discarded.  As examples of
+valid escape-sequence usage, the string @code{"@value{UPDATED-MONTH}"}
 represents the text ``@value{UPDATED-MONTH}'' and @code{"I store
 \"stuff\" in C:\\MyStuff."} represents the text ``I store "stuff" in
 C:\MyStuff.''
@@ -4246,13 +4364,21 @@ multiplies the integer by 1,099,511,627,776
 @end table
 
 @cindex multipliers
-@noindent
-In addition, a multiplier can be @samp{E} (exponent) followed by a
-positive integer.  An @samp{E} multiplier multiplies the base integer
-by 10 raised to the power of the alternate integer.
+A multiplier can also be @samp{E} (exponent) followed by a positive
+integer.  An @samp{E} multiplier multiplies the base integer by 10
+raised to the power of the positive integer following @w{the
+@samp{E}.}
 
-Some examples of valid integers include @samp{2010}, @samp{-42},
-@samp{64K} @w{(@math{=} 65,536),} and @samp{8E3} @w{(@math{=} 8,000).}
+@cindex ordinal numbers
+Integers can also be written as ordinals, with an @samp{ST},
+@samp{ND}, @samp{RD}, or @samp{TH} suffix.  These suffixes are ignored
+by the lexer but can make the @keyw{PERCENTILE} aggregate function
+(@pxref{Aggregate functions}) look more English-like (as in, @samp{THE
+95TH PERCENTILE}).
+
+Some examples of valid integers include @samp{2014}, @samp{-42},
+@samp{64K} @w{(@math{=} 65,536),} @samp{8E3} @w{(@math{=} 8,000)}, and
+@samp{38TH}.
 
 
 @node Expressions, Task descriptions, Primitives, Grammar
@@ -4287,7 +4413,7 @@ expression during the run of a program.
 is the language's order of operations from highest to lowest
 precedence:
 
-@multitable {multiplicative} {@samp{+}, @samp{-}, @keyw{NOT}, @samp{@nonterm{function}(@nonterm{expr}, @dots{})}, @samp{REAL(@nonterm{expr})}}
+@multitable {multiplicative} {@samp{+}, @samp{-}, @code{NOT}, @samp{@nontermNI{function}(@nontermNI{expr}, @dots{})}, @samp{REAL(@nontermNI{expr})}}
 @kwindex REAL
 @item unary
 @tab @samp{+}, @samp{-}, @keyw{NOT}, @samp{@nonterm{function}(@nonterm{expr}, @dots{})}, @samp{REAL(@nonterm{expr})}
@@ -4444,19 +4570,19 @@ For example, in integer context, @samp{9/2 + 1/2} is @samp{4} while
 For completeness, the following productions formalize the process by
 which @ncptl{} parses arithmetic expressions:
 
-@multitable {@nonterm{expr}} {::=} {@nonterm{cond_expr}}
+@multitable {@nontermNI{expr}} {::=} {@nontermNI{cond_expr}}
 @item @nonterm{expr}
 @tab ::=
 @tab @nonterm{cond_expr}
 @end multitable
 
-@multitable {@nonterm{cond_expr}} {::=} {@nonterm{add_expr} @keyw{IF} @nonterm{rel_expr} @keyw{OTHERWISE} @nonterm{add_expr}}
+@multitable {@nontermNI{cond_expr}} {::=} {@nontermNI{add_expr} @code{IF} @nontermNI{rel_expr} @code{OTHERWISE} @nontermNI{add_expr}}
 @item @nonterm{cond_expr}
 @tab ::=
 @tab @nonterm{add_expr} @keyw{IF} @nonterm{rel_expr} @keyw{OTHERWISE} @nonterm{add_expr}
 @end multitable
 
-@multitable {@nonterm{add_expr}} {::=} {@nonterm{add_expr} @keyw{XOR} @nonterm{mult_expr}}
+@multitable {@nontermNI{add_expr}} {::=} {@nontermNI{add_expr} @code{XOR} @nontermNI{mult_expr}}
 @item @nonterm{add_expr}
 @tab ::=
 @tab @nonterm{mult_expr}
@@ -4474,7 +4600,7 @@ which @ncptl{} parses arithmetic expressions:
 @tab @nonterm{add_expr} @keyw{XOR} @nonterm{mult_expr}
 @end multitable
 
-@multitable {@nonterm{mult_expr}} {::=} {@nonterm{mult_expr} @keyw{MOD} @nonterm{unary_expr}}
+@multitable {@nontermNI{mult_expr}} {::=} {@nontermNI{mult_expr} @code{MOD} @nontermNI{unary_expr}}
 @item @nonterm{mult_expr}
 @tab ::=
 @tab @nonterm{unary_expr}
@@ -4498,13 +4624,13 @@ which @ncptl{} parses arithmetic expressions:
 @tab @nonterm{mult_expr} @samp{&} @nonterm{unary_expr}
 @end multitable
 
-@multitable {@nonterm{power_expr}} {::=} {@nonterm{primary_expr} [@samp{**} @nonterm{unary_expr}]}
+@multitable {@nontermNI{power_expr}} {::=} {@nontermNI{primary_expr} [@samp{**} @nontermNI{unary_expr}]}
 @item @nonterm{power_expr}
 @tab ::=
 @tab @nonterm{primary_expr} [@samp{**} @nonterm{unary_expr}]
 @end multitable
 
-@multitable {@nonterm{unary_expr}} {::=} {@nonterm{unary_operator} @nonterm{unary_expr}}
+@multitable {@nontermNI{unary_expr}} {::=} {@nontermNI{unary_operator} @nontermNI{unary_expr}}
 @item @nonterm{unary_expr}
 @tab ::=
 @tab @nonterm{power_expr}
@@ -4513,13 +4639,13 @@ which @ncptl{} parses arithmetic expressions:
 @tab @nonterm{unary_operator} @nonterm{unary_expr}
 @end multitable
 
-@multitable {@nonterm{unary_operator}} {::=} {@samp{+} | @samp{-} | @keyw{NOT}}
+@multitable {@nontermNI{unary_operator}} {::=} {@samp{+} | @samp{-} | @code{NOT}}
 @item @nonterm{unary_operator}
 @tab ::=
 @tab @samp{+} | @samp{-} | @keyw{NOT}
 @end multitable
 
-@multitable {@nonterm{primary_expr}} {::=} {@nonterm{func_name} @samp{(} @nonterm{enumerated_exprs} @samp{)}}
+@multitable {@nontermNI{primary_expr}} {::=} {@nontermNI{func_name} @samp{(} @nontermNI{enumerated_exprs} @samp{)}}
 @item @nonterm{primary_expr}
 @tab ::=
 @tab @samp{(} @nonterm{expr} @samp{)}
@@ -4537,7 +4663,7 @@ which @ncptl{} parses arithmetic expressions:
 @tab @keyw{REAL} @samp{(} @nonterm{expr} @samp{)}
 @end multitable
 
-@multitable {@nonterm{enumerated_exprs}} {::=} {@nonterm{expr} [@samp{,} @nonterm{expr}]*}
+@multitable {@nontermNI{enumerated_exprs}} {::=} {@nontermNI{expr} [@samp{,} @nontermNI{expr}]*}
 @item @nonterm{enumerated_exprs}
 @tab ::=
 @tab @nonterm{expr} [@samp{,} @nonterm{expr}]*
@@ -4559,7 +4685,7 @@ across various topologies, specifically @var{n}-ary trees, meshes,
 tori, and @var{k}-nomial trees.  @ncptl{} currently supports the
 following functions:
 
-@multitable {@nonterm{func_name}} {::=} {@keyw{ABS} | @keyw{BITS} | @keyw{CBRT} | @keyw{FACTOR10} | @keyw{LOG10} | @keyw{MAX} | @keyw{MIN} | @keyw{ROOT} | @keyw{SQRT}}
+@multitable {@nontermNI{func_name}} {::=} {@code{ABS} | @code{BITS} | @code{CBRT} | @code{FACTOR10} | @code{LOG10} | @code{MAX} | @code{MIN} | @code{ROOT} | @code{SQRT}}
 @item @nonterm{func_name}
 @tab ::=
 @tab @keyw{ABS} | @keyw{BITS} | @keyw{CBRT} | @keyw{FACTOR10} | @keyw{LOG10} |
@@ -4582,11 +4708,17 @@ following functions:
 @item
 @tab |
 @tab @keyw{RANDOM_POISSON} | @keyw{RANDOM_PARETO}
+@item
+@tab |
+@tab @keyw{PROCESSOR_OF} | @keyw{TASK_OF}
+@item
+@tab |
+@tab @keyw{FILE_DATA} | @keyw{STATIC_FILE_DATA}
 @end multitable
 
-All of the above take as an argument one or more numeric values (which
-may be the result of an arithmetic expression).  The following
-sections describe each function in turn.
+With a few exceptions, all of the above take as an argument one or
+more numeric values (which may be the result of an arithmetic
+expression).  The following sections describe each function in turn.
 
 @menu
 * Integer functions::           Map one integer to another
@@ -4595,6 +4727,8 @@ sections describe each function in turn.
 * k-nomial tree functions::     Find parents and children in k-nomial trees
 * Mesh/torus functions::        Find neighbors in 1-D, 2-D, and 3-D meshes/tori
 * Random-number functions::     Generate unsynchronized pseudorandom numbers
+* Processor/task mapping functions::  Map between physical and virtual task IDs
+* File-reading functions::      Extract numbers from file data
 @end menu
 
 
@@ -5108,7 +5242,7 @@ As before, wraparound links affect some of the return values:
 @end itemize
 
 
-@node Random-number functions,  , Mesh/torus functions, Built-in functions
+@node Random-number functions, Processor/task mapping functions, Mesh/torus functions, Built-in functions
 @subsubheading Random-number functions
 @cindex random numbers
 @cindex functions, random-number
@@ -5153,6 +5287,154 @@ from a bounded Pareto distribution with shape @var{shape} and bounded
 by the range [@var{lower_bound}, @var{upper_bound}].
 @end defun
 
+@node Processor/task mapping functions, File-reading functions, Random-number functions, Built-in functions
+@subsubheading Processor/task mapping functions
+@cindex task-mapping functions
+@cindex functions, task-mapping
+
+@ncptl{} supports a level of indirection in task numbering.  The
+language defines a ``processor'' as a value that does not change for
+the task's entire lifetime and a ``task'' as a value that can be
+remapped at will.  By default, task numbers match processor numbers,
+but if task numbers are remapped (using the @keyw{IS ASSIGNED TO}
+construct described in @ref{Reordering task IDs}), the following
+functions can be used to query the current mapping:
+
+@keyw{TASK_OF} returns the task number associated with a given
+processor number.
+
+@keyw{PROCESSOR_OF} returns the processor number associated with a
+given task number.
+
+These functions are especially useful when a task @keyw{IS ASSIGNED TO
+A RANDOM PROCESSOR}, because there is no other mechanism for
+determining the resulting task mapping.
+
+@node File-reading functions,  , Processor/task mapping functions, Built-in functions
+@subsubheading File-reading functions
+@cindex file-reading functions
+@cindex functions, file-reading
+
+@keyw{FILE_DATA} interacts with the surrounding system by parsing a
+named file as a table and returning the contents of a specified row
+and column.
+
+@defun FILE_DATA (@samp{(} @var{filename} [, @var{column} [, @var{row} [, @var{column-seps} [, @var{row-seps}]]]] @samp{)})
+Read the contents of file @var{filename} and parse the data read into
+rows and columns.  Rows are separated by one or more characters
+appearing in the string @var{row-seps} (default: @samp{\n}, i.e., a
+newline character).  Columns are separated by one or more characters
+appearing in the string @var{col-seps} (default: @w{@samp{ \t}}, i.e.,
+a space and a tab).  Once the data are parsed in this manner, the cell
+at column @var{column} (default: @samp{1}) and row @var{row} (default:
+@samp{1}) is converted to a number and returned.
+
+@iindent
+Columns and rows are each numbered starting from 1.  Negative numbers
+represent offsets from the @emph{last} column or row.  Zero values
+cause the program to abort with an error message.
+@end defun
+
+Consider a data file, @filespec{example.dat}, with the following
+contents:
+
+@cartouche
+@example
+Eir    231  58 490 703  19 644 967
+Gunnr  901 875 141 372 374 618  77
+Herja   17 979 363 930 977
+Hrist  100 132 981 246  93 614
+Svipul 688 536 965 746 209
+@end example
+@end cartouche
+
+@noindent
+Then, the following uses of @keyw{FILE_DATA} return the results shown:
+
+@itemize @bullet
+@item @samp{FILE_DATA("example.dat")} @result{} @samp{0} @*
+(The default cell is @w{(1, 1)}, which contains @samp{Eir}, and this
+is converted to 0.)
+
+@item @samp{FILE_DATA("example.dat", 3)} @result{} @samp{58}
+
+@item @samp{FILE_DATA("example.dat", 3, 2)} @result{} @samp{875}
+
+@item @samp{FILE_DATA("example.dat", 3, -4)} @result{} @samp{875}
+
+@item @samp{FILE_DATA("example.dat", 3, -6)} @result{} @error{}
+Too few rows
+
+@item @samp{FILE_DATA("example.dat", -3, -2)} @result{} @samp{246} @*
+(The function first finds the row, then the column within the row.)
+
+@item @samp{FILE_DATA("example.dat", 0)} @result{} @error{} Column number is zero
+@end itemize
+
+The use of @keyw{FILE_DATA} is discouraged in @ncptl{} programs
+because of its reliance on external files, whose contents are not
+automatically preserved in any @ncptl{} log files (@pxref{Interpreting
+coNCePTuaL log files}) and which may exhibit system-specific behavior
+(e.g., if the file is in fact a named pipe or a file-like interface to
+a kernel data structure).  However, @keyw{FILE_DATA} can be useful in
+certain circumstances for logging changes in system state of which
+@ncptl{} would otherwise be unaware.  For example, one might log
+values from various pseudo-files appearing in @Linux{}'s
+@filespec{/proc} filesystem or from system log files (e.g., those
+within @Linux{}'s @filespec{/var/log} directory).
+
+Because @ncptl{} cannot determine @w{a priori} if multiple reads of
+the same row and column from the same file will produce the same value
+it pessimistically assumes that each read produces a different value.
+(Consider even the simple case of @keyw{FILE_DATA} reading the last
+row of a system log file to which another process is asynchronously
+appending.)  Consequently, @keyw{FILE_DATA} cannot be used in any
+context that requires multiple tasks to agree on a value, such as
+within message specifications (@pxref{Message specifications}) or let
+bindings (@pxref{Binding variables}).  For cases where the programmer
+can assert that reads from a particular row and column will always
+return the same value (on penalty of undefined behavior, including
+hangs and crashes), @ncptl{} provides the following function:
+
+@defun STATIC_FILE_DATA (@samp{(} @var{filename} [, @var{column} [, @var{row} [, @var{column-seps} [, @var{row-seps}]]]] @samp{)})
+Perform exactly the same operation as @keyw{FILE_DATA} but with the
+programmer's guarantee that the file contents will not change from
+invocation to invocation.  @keyw{STATIC_FILE_DATA} can therefore be
+used in places where @keyw{FILE_DATA} is disallowed.
+@end defun
+
+Given the @file{example.dat} file shown previously, the following let
+binding is legitimate:
+
+@example
+LET msg_size BE STATIC_FILE_DATA("example.dat", 2, iter) AND rank_ofs
+BE STATIC_FILE_DATA("example.dat", 3, iter) MOD num_tasks WHILE @dots{}
+@end example
+
+@noindent
+However, the following, which uses @keyw{FILE_DATA} instead of
+@keyw{STATIC_FILE_DATA}, is not:
+
+@example
+LET msg_size BE FILE_DATA("example.dat", 2, iter) AND rank_ofs BE
+FILE_DATA("example.dat", 3, iter) MOD num_tasks WHILE @dots{}
+@end example
+
+@keyw{STATIC_FILE_DATA} can be used as above to implement complex,
+irregular communication patterns that vary across runs of the program.
+That is, each iteration, a different value read from the file can be
+used to specify the message size and the distance between senders and
+receivers.
+
+The use of @keyw{STATIC_FILE_DATA} is even more discouraged than the
+use of @keyw{FILE_DATA} because an incorrect claim that a file's
+contents are unvarying could lead to abnormal program behavior---and
+not necessarily easily detectable.  It is best to avoid both
+@keyw{FILE_DATA} and @keyw{STATIC_FILE_DATA} if possible.  If not, use
+@keyw{FILE_DATA} unless @w{(a) the} compiler rejects the program on
+the grounds that @keyw{FILE_DATA} is being used in an invalid location
+and @w{(b) the} data being read is known to be invariant throughout
+the lifetime of the program.
 
 @node Aggregate expressions, Aggregate functions, Built-in functions, Expressions
 @subsection Aggregate expressions
@@ -5165,7 +5447,7 @@ expression with a given function applied to the aggregate of all
 (dynamic) instances of that expression.  @nonterm{aggr_expr}s take one
 of four forms:
 
-@multitable {@nonterm{aggr_expr}} {::=} {@keyw{THE} [@nonterm{aggr_func} [@keyw{OF} [@keyw{THE}]]] @nonterm{expr}}
+@multitable {@nontermNI{aggr_expr}} {::=} {@code{THE} @nontermNI{aggr_func} [@code{AND} @code{THE} @nontermNI{aggr_func}]* [@code{OF} [@code{THE}]] @nontermNI{expr}}
 @item @nonterm{aggr_expr}
 @tab ::=
 @tab [@keyw{EACH}] @nonterm{expr}
@@ -5174,7 +5456,8 @@ of four forms:
 @tab @keyw{THE} @nonterm{expr}
 @item
 @tab |
-@tab @keyw{THE} @nonterm{aggr_func} [@keyw{OF} [@keyw{THE}]] @nonterm{expr}
+@tab @keyw{THE} @nonterm{aggr_func} [@keyw{AND} @keyw{THE} @nonterm{aggr_func}]*
+     [@keyw{OF} [@keyw{THE}]] @nonterm{expr}
 @item
 @tab |
 @tab @keyw{A HISTOGRAM OF} [@keyw{THE}] @nonterm{expr}
@@ -5190,12 +5473,11 @@ instance of @nonterm{expr} is utilized.  The second form asserts that
 @nonterm{expr} is a constant (i.e., all values are identical) and
 utilizes that constant.@footnote{The program aborts with a run-time
 error if @nonterm{expr} is not a constant.}  The third form applies
-@nonterm{aggr_func} to the set of all values of @nonterm{expr} and
-utilizes the result of that function.  The fourth form produces a
+each @nonterm{aggr_func} to the set of all values of @nonterm{expr}
+and utilizes the result of that function.  The fourth form produces a
 histogram of all values of @nonterm{expr}, i.e., a list of
 @{@var{unique value}, @var{tally}@} pairs, sorted by @var{unique
 value}.
-
 
 @node Aggregate functions, Relational expressions, Aggregate expressions, Expressions
 @subsection Aggregate functions
@@ -5206,20 +5488,29 @@ The following functions, referred to collectively as
 @nonterm{aggr_func}s, may be used in an aggregate expression
 (@pxref{Aggregate expressions}):
 
-@multitable {@nonterm{aggr_func}} {::=} {[@keyw{ARITHMETIC}] @keyw{MEAN} | @keyw{HARMONIC MEAN} | @keyw{GEOMETRIC MEAN} | @keyw{MEDIAN} |}
+@multitable {@nontermNI{aggr_func}} {::=} {[@code{ARITHMETIC}] @code{MEAN} | @code{HARMONIC MEAN} | @code{GEOMETRIC MEAN} | @code{MEDIAN} |}
 @item @nonterm{aggr_func}
 @tab ::=
 @tab [@keyw{ARITHMETIC}] @keyw{MEAN} | @keyw{HARMONIC MEAN} | @keyw{GEOMETRIC MEAN} |
-     @keyw{MEDIAN} | @keyw{STANDARD DEVIATION} | @keyw{VARIANCE} | 
+     @keyw{MEDIAN} | @keyw{STANDARD DEVIATION} | @keyw{VARIANCE} |
      @keyw{MEDIAN ABSOLUTE DEVIATION} | @keyw{SUM} | @keyw{MINIMUM} |
-     @keyw{MAXIMUM} | @keyw{FINAL}
+     @keyw{MAXIMUM} | @keyw{FINAL} | @nonterm{expr} @keyw{PERCENTILE}
 @end multitable
 
 @keyw{MEAN} and @keyw{ARITHMETIC MEAN} are equivalent.  @keyw{MEDIAN}
 is the value such that there are as many larger as smaller values.  If
 there are an even number of values, @keyw{MEDIAN} is the arithmetic
 mean of the two medians.  @keyw{FINAL} returns only the final value
-measured.  The interpretation of the remaining functions should be
+measured.  @keyw{PERCENTILE} returns a given percentile,
+@nonterm{expr}, of the values.  @nonterm{expr} must lie in the range
+[0, 100].  Percentile values are computed as @texmath{x_{\lfloor
+h\rfloor} + (h-\lfloor h\rfloor)(x_{\lfloor h\rfloor+1} - x_{\lfloor
+h\rfloor}), x_g + (h - g)(x_g - x_h)}, where @math{x} is the data in
+sorted order and @math{h} is @texmath{(|x| - 1) \cdot p/100 + 1, (|x|
+- 1) * p/100 + 1} when computing the value at the @math{p}th
+percentile.  (See @uref{http://en.wikipedia.org/wiki/Quantile,
+Wikipedia's entry on @emph{quantile}} for more information.)  The
+interpretation of the remaining aggregate functions should be
 unambiguous.
 
 
@@ -5237,7 +5528,7 @@ expression for a property.  A relational expression can be either
 is the language's order of operations from highest to lowest
 precedence:
 
-@multitable {conjunctive} {@samp{=}, @samp{<}, @samp{>}, @samp{<=}, @samp{>=}, @samp{<>}, @keyw{DIVIDES}, @keyw{IS IN}, @keyw{IS NOT IN}}
+@multitable {conjunctive} {@samp{=}, @samp{<}, @samp{>}, @samp{<=}, @samp{>=}, @samp{<>}, @code{DIVIDES}, @code{IS IN}, @code{IS NOT IN}}
 @item unary/ @* binary/
 @tab @keyw{IS EVEN}, @keyw{IS ODD} @*
      @samp{=}, @samp{<}, @samp{>}, @samp{<=}, @samp{>=}, @samp{<>}, @keyw{DIVIDES}, @keyw{IS IN}, @keyw{IS NOT IN}
@@ -5277,7 +5568,7 @@ DIVIDES 4321} (equivalent to @w{@samp{4321 MOD 2 = 0}}) is @sc{false}.
 
 The binary relation @keyw{IS IN} has the form
 
-@multitable {MMMMM} {@nonterm{expr} @keyw{IS IN} @nonterm{range} [@code{,} @nonterm{range}]*}
+@multitable {MMMMM} {@nontermNI{expr} @code{IS IN} @nontermNI{range} [@code{,} @nontermNI{range}]*}
 @item @tab @nonterm{expr} @keyw{IS IN} @nonterm{range} [@code{,} @nonterm{range}]*
 @end multitable
 
@@ -5322,25 +5613,25 @@ a divide-by-zero error.
 For completeness, the following productions formalize the process by
 which @ncptl{} parses relational expressions:
 
-@multitable {@nonterm{rel_expr}} {::=} {@nonterm{rel_disj_expr}}
+@multitable {@nontermNI{rel_expr}} {::=} {@nontermNI{rel_disj_expr}}
 @item @nonterm{rel_expr}
 @tab ::=
 @tab @nonterm{rel_disj_expr}
 @end multitable
 
-@multitable {@nonterm{rel_disj_expr}} {::=} {[@nonterm{rel_disj_expr} @samp{\/}] @nonterm{rel_conj_expr}}
+@multitable {@nontermNI{rel_disj_expr}} {::=} {[@nontermNI{rel_disj_expr} @samp{\/}] @nontermNI{rel_conj_expr}}
 @item @nonterm{rel_disj_expr}
 @tab ::=
 @tab [@nonterm{rel_disj_expr} @samp{\/}] @nonterm{rel_conj_expr}
 @end multitable
 
-@multitable {@nonterm{rel_conj_expr}} {::=} {[@nonterm{rel_conj_expr} @samp{\/}] @nonterm{rel_primary_expr}}
+@multitable {@nontermNI{rel_conj_expr}} {::=} {[@nontermNI{rel_conj_expr} @samp{\/}] @nontermNI{rel_primary_expr}}
 @item @nonterm{rel_conj_expr}
 @tab ::=
 @tab [@nonterm{rel_conj_expr} @samp{/\}] @nonterm{rel_primary_expr}
 @end multitable
 
-@multitable {@nonterm{rel_primary_expr}} {::=} {@samp{(} @nonterm{rel_expr} @samp{)}}
+@multitable {@nontermNI{rel_primary_expr}} {::=} {@samp{(} @nontermNI{rel_expr} @samp{)}}
 @item @nonterm{rel_primary_expr}
 @tab ::=
 @tab @nonterm{eq_expr}
@@ -5349,7 +5640,7 @@ which @ncptl{} parses relational expressions:
 @tab @samp{(} @nonterm{rel_expr} @samp{)}
 @end multitable
 
-@multitable {@nonterm{eq_expr}} {::=} {@nonterm{expr} @keyw{IS NOT IN} @nonterm{range} [@code{,} @nonterm{range}]*}
+@multitable {@nontermNI{eq_expr}} {::=} {@nontermNI{expr} @code{IS NOT IN} @nontermNI{range} [@code{,} @nontermNI{range}]*}
 @item @nonterm{eq_expr}
 @tab ::=
 @tab @nonterm{expr} @samp{=} @nonterm{expr}
@@ -5408,7 +5699,7 @@ List comprehensions
 @noindent
 These are described with the following syntax:
 
-@multitable {@nonterm{range}} {::=} {@samp{@{} @nonterm{expr} [@keyw{FOR EACH} @nonterm{ident} @keyw{IN} @nonterm{range} [@samp{,} @nonterm{range}]* ]+}
+@multitable {@nontermNI{range}} {::=} {@samp{@{} @nontermNI{expr} [@code{FOR EACH} @nontermNI{ident} @code{IN} @nontermNI{range} [@samp{,} @nontermNI{range}]* ]+}
 @item @nonterm{range}
 @tab ::=
 @tab @samp{@{} @nonterm{expr} [@samp{,} @nonterm{expr}]* [@samp{, ... ,} @nonterm{expr}] @samp{@}}
@@ -5485,13 +5776,13 @@ multivariate, as in the following example:
 
 That single range expression represents all cells on the tridiagonal
 of a @texmath{10{\times}10, 10x10} matrix, with @w{cell 0} in the
-upper left and @w{cell 99} in the lower right.  The first @keyw{FOR
-EACH} generator binds @samp{diag} to each cell on the diagonal: 0, 11,
-22, 33, and so forth.  The second @keyw{FOR EACH} generator binds
-@samp{ofs} to each of -1, 0, and 1.  The @samp{WHERE} predicate, which
-itself uses a range expression, selects only those values of
-@samp{diag} and @samp{ofs} which which @w{0 @texmath{\leq, <=}
-@t{diag+ofs} @texmath{\leq, <=} 99}.  The value @samp{diag+ofs} is
+upper left and @w{cell 99} in the lower right.  The first
+@keyw{FOR EACH} generator binds @samp{diag} to each cell on the
+diagonal: 0, 11, 22, 33, and so forth.  The second @keyw{FOR EACH}
+generator binds @samp{ofs} to each of -1, 0, and 1.  The @samp{WHERE}
+predicate, which itself uses a range expression, selects only those
+values of @samp{diag} and @samp{ofs} which which @w{0 @texmath{\leq,
+<=} @t{diag+ofs} @texmath{\leq, <=} 99}.  The value @samp{diag+ofs} is
 returned for all values for which the predicate is true.  The
 following figure illustrates the values described by the preceding
 range expression:
@@ -5629,7 +5920,7 @@ That is,
 ``for all @nonterm{ident} such that @nonterm{rel_expr} is @sc{true}
 and @nonterm{ident} is between zero and the number of tasks@dots{}''.
 
-@multitable {@nonterm{restricted_ident}} {::=} {@nonterm{ident} @keyw{SUCH THAT} @nonterm{rel_expr}}
+@multitable {@nontermNI{restricted_ident}} {::=} {@nontermNI{ident} @code{SUCH THAT} @nontermNI{rel_expr}}
 @item @nonterm{restricted_ident}
 @tab ::=
 @tab @nonterm{ident} @keyw{SUCH THAT} @nonterm{rel_expr}
@@ -5649,9 +5940,9 @@ cases described in @ref{Sending} and @ref{Reordering task IDs}),
 @subsection Source tasks
 @cindex tasks
 
-A @nonterm{source_task} specification takes one of five forms:
+A @nonterm{source_task} specification takes one of six forms:
 
-@multitable {@nonterm{source_task}} {::=} {@keyw{TASKS} @nonterm{restricted_ident}}
+@multitable {@nontermNI{source_task}} {::=} {@code{TASKS} @nontermNI{range} [@code{,} @nontermNI{range}]*}
 @item @nonterm{source_task}
 @tab ::=
 @tab @keyw{ALL TASKS}
@@ -5667,28 +5958,31 @@ A @nonterm{source_task} specification takes one of five forms:
 @item
 @tab |
 @tab @keyw{TASK} @keyw{GROUP} @nonterm{ident}
+@item
+@tab |
+@tab @keyw{TASKS} @nonterm{range} [@code{,} @nonterm{range}]*
 @end multitable
 
 @keyw{ALL TASKS} specifies that each task will perform a given
 operation.  If followed by a variable name (@nonterm{ident}), each
 task will individually bind @nonterm{ident} to its task ID---a number
 from zero to one less than the total number of tasks.  That is,
-@samp{ALL TASKS me} will bind @samp{me} to @samp{0} on @w{task 0},
-@samp{1} on @w{task 1}, and so forth.
+@samp{@keyw{ALL TASKS} me} will bind @samp{me} to @samp{0} on @w{task
+0}, @samp{1} on @w{task 1}, and so forth.
 
-@samp{TASK @nonterm{expr}} specifies that only the task described by
-arithmetic expression @nonterm{expr} will perform the given operation.
-For example, @samp{TASK 2*3+1} says that only @w{task 7} will act; the
-other tasks will do nothing.
+@samp{@keyw{TASK} @nonterm{expr}} specifies that only the task
+described by arithmetic expression @nonterm{expr} will perform the
+given operation.  For example, @samp{TASK 2*3+1} says that only
+@w{task 7} will act; the other tasks will do nothing.
 
-@samp{TASKS @nonterm{restricted_ident}} describes a set of tasks that
-will perform a given operation.  For instance, @samp{TASKS x SUCH THAT
-x>0 /\ x<num_tasks-1}---read as ``tasks @math{x} such that @math{x} is
-greater than zero and @math{x} is less than @i{num_tasks} minus
-one''---expresses that a given operation should be performed on all
-tasks except the first and last in the computation.  On each task that
-satisfies the relational expression, @samp{x} will be bound to the
-task ID as in @keyw{ALL TASKS} above.  Hence, @samp{x} will be
+@samp{@keyw{TASKS} @nonterm{restricted_ident}} describes a set of
+tasks that will perform a given operation.  For instance, @samp{TASKS
+x SUCH THAT x>0 /\ x<num_tasks-1}---read as ``tasks @math{x} such that
+@math{x} is greater than zero and @math{x} is less than @i{num_tasks}
+minus one''---expresses that a given operation should be performed on
+all tasks except the first and last in the computation.  On each task
+that satisfies the relational expression, @samp{x} will be bound to
+the task ID as in @keyw{ALL TASKS} above.  Hence, @samp{x} will be
 undefined on @w{task 0}, @samp{1} on @w{task 1}, @samp{2} on @w{task
 2}, and so forth up to task @samp{num_tasks-1}, on which @samp{x} will
 again be undefined.
@@ -5696,6 +5990,13 @@ again be undefined.
 @samp{@keyw{TASK GROUP} @nonterm{ident}} specifies that a previously
 defined group of tasks will perform a given operation.  This form of
 @nonterm{source_task} is described further in @ref{Binding variables}.
+
+@samp{@keyw{TASKS} @nonterm{range}} is syntactic sugar for the
+@nonterm{restricted_ident} case with an anonymous @nonterm{ident} and
+an @keyw{IS IN} relation.  For example,
+@samp{@keyw{TASKS @{3, 5, 8@}}} is equivalent to
+@samp{@keyw{TASKS} var @keyw{SUCH THAT} var @keyw{IS IN} @{3, 5, 8@}}
+except that it does not bind variable @samp{var}.
 
 As per the definitions in @ref{Primitives} and @ref{Restricted
 identifiers}, respectively, @nonterm{ident}s and
@@ -5714,9 +6015,9 @@ in scope to the surrounding statement.
 @subsection Target tasks
 @cindex tasks
 
-A @nonterm{target_tasks} specification takes one of four forms:
+A @nonterm{target_tasks} specification takes one of six forms:
 
-@multitable {@nonterm{target_tasks}} {::=} {@keyw{TASKS} @nonterm{restricted_ident}}
+@multitable {@nontermNI{target_tasks}} {::=} {@code{TASKS} @nontermNI{range} [@code{,} @nontermNI{range}]*}
 @item @nonterm{target_tasks}
 @tab ::=
 @tab @keyw{ALL OTHER TASKS}
@@ -5729,6 +6030,9 @@ A @nonterm{target_tasks} specification takes one of four forms:
 @item
 @tab |
 @tab @keyw{TASK} @keyw{GROUP} @nonterm{ident}
+@item
+@tab |
+@tab @keyw{TASKS} @nonterm{range} [@code{,} @nonterm{range}]*
 @end multitable
 
 @keyw{ALL OTHER TASKS} is just like @keyw{ALL TASKS} in a
@@ -5737,27 +6041,13 @@ to all tasks @emph{except} the source task.  Also, unlike
 @keyw{ALL TASKS}, @keyw{ALL OTHER TASKS} does not accept an
 @nonterm{ident} term.
 
-@samp{TASK @nonterm{expr}} specifies that only the task described by
-arithmetic expression @nonterm{expr} is the target of the given
-operation.  @nonterm{expr} can use a variable declared as a
-@nonterm{source_task}.  For example, if @nonterm{source_task} is
-@samp{ALL TASKS x}, then a @nonterm{target_tasks} of @samp{TASK (x+1)
-MOD num_tasks} refers to each task's right neighbor (with wraparound
-from @keyw{num_tasks} to @samp{0}).
-
-@samp{TASKS @nonterm{restricted_ident}} describes a set of tasks that
-will perform a given operation.  As with its @samp{source_task}
-counterpart, a @nonterm{restricted_ident} declares a variable.
-However, in a @nonterm{target_tasks} specification the variable's
-scope is limited to the relational expression within the
-@nonterm{restricted_ident}.  As an example, @samp{TASKS dst SUCH THAT
-dst>src} refers to all tasks @samp{dst} with a greater ID than a
-(previously declared) task @samp{src}.
-
-@samp{TASK GROUP @nonterm{ident}} specifies that a previously defined
-group of tasks will perform a given operation.  This form of
-@nonterm{target_tasks} is described further in @ref{Binding
-variables}.
+The remaining @nonterm{target_tasks} variants behave like their
+@nonterm{source_task} counterparts (@pxref{Source tasks}), but their
+variables are evaluated in the scope of the corresponding
+@nonterm{source_task}.  For example, in the @nonterm{source_task}
+@samp{TASKS src SUCH THAT 3 DIVIDES src}, the variable @samp{src} can
+be used in a @nonterm{target_tasks} such as @samp{TASKS dst SUCH THAT
+dst>src}.
 
 
 @node Communication statements, I/O statements, Task descriptions, Grammar
@@ -5811,7 +6101,7 @@ explains its purpose, syntax, and semantics.
 A @dfn{message specification} describes a set of messages.  The
 following is a formal definition:
 
-@multitable {@nonterm{recv_message_spec}} {::=} {@ @keyw{WITHOUT VERIFICATION} | @keyw{WITHOUT DATA TOUCHING}]}
+@multitable {@nontermNI{recv_message_spec}} {::=} {@ @code{WITHOUT VERIFICATION} | @code{WITHOUT DATA TOUCHING}]}
 @item @nonterm{message_spec}
 @tab ::=
 @tab @nonterm{item_count}
@@ -5837,7 +6127,7 @@ A @keyw{SEND} statement's @keyw{WHO RECEIVES IT} clause
 (@pxref{Sending}) utilizes a slightly different message specification,
 which is referred to here as a @nonterm{recv_message_spec}:
 
-@multitable {@nonterm{recv_message_spec}} {::=} {@ @keyw{WITHOUT VERIFICATION} | @keyw{WITHOUT DATA TOUCHING}]}
+@multitable {@nontermNI{recv_message_spec}} {::=} {@ @code{WITHOUT VERIFICATION} | @code{WITHOUT DATA TOUCHING}]}
 @item @nonterm{recv_message_spec}
 @tab ::=
 @tab [@keyw{SYNCHRONOUSLY} | @keyw{ASYNCHRONOUSLY}]
@@ -5863,7 +6153,7 @@ A @keyw{REDUCE} statement (@pxref{Reducing}) utilizes the following
 variations of @nonterm{message_spec} and @nonterm{recv_message_spec},
 respectively:
 
-@multitable {@nonterm{reduce_message_spec}} {::=} {[@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]}
+@multitable {@nontermNI{reduce_message_spec}} {::=} {[@code{WITH DATA TOUCHING} | @code{WITHOUT DATA TOUCHING}]}
 @item @nonterm{reduce_message_spec}
 @tab ::=
 @tab @nonterm{item_count}
@@ -5879,7 +6169,7 @@ respectively:
 @item @tab @tab @ @keyw{BUFFER} @nonterm{expr} | @keyw{THE DEFAULT BUFFER}]
 @end multitable
 
-@multitable {@nonterm{reduce_target_message_spec}} {::=} {[@keyw{WITH DATA TOUCHING} | @keyw{WITHOUT DATA TOUCHING}]}
+@multitable {@nontermNI{reduce_target_message_spec}} {::=} {[@code{WITH DATA TOUCHING} | @code{WITHOUT DATA TOUCHING}]}
 @item @nonterm{reduce_target_message_spec}
 @tab ::=
 @tab [@keyw{AS} @nonterm{item_count}
@@ -5918,7 +6208,7 @@ We now describe in turn each component of a @nonterm{message_spec},
 The @nonterm{item_count} says how many messages the
 @nonterm{message_spec} represents:
 
-@multitable {@nonterm{item_count}} {::=} {@keyw{A} | @keyw{AN} | @nonterm{expr}}
+@multitable {@nontermNI{item_count}} {::=} {@code{A} | @code{AN} | @nontermNI{expr}}
 @item @nonterm{item_count}
 @tab ::=
 @tab @keyw{A} | @keyw{AN} | @nonterm{expr}
@@ -5943,7 +6233,7 @@ buffer-recycling behavior.
 The message size is represented by the @nonterm{item_size} nonterminal.
 It can be empty or expressed in one of two other ways:
 
-@multitable {@nonterm{item_size}} {::=} {@nonterm{expr} @nonterm{data_multiplier}}
+@multitable {@nontermNI{item_size}} {::=} {@nontermNI{expr} @nontermNI{data_multiplier}}
 @item @nonterm{item_size}
 @tab ::=
 @tab @texmath{\varepsilon, <empty>}
@@ -5958,7 +6248,7 @@ unitless number into a number of bytes.  The following are the valid
 possibilities for @nonterm{data_multiplier} and the number of bytes by
 which they multiply @nonterm{expr}:
 
-@multitable {@nonterm{data_multiplier}} {::=} {@keyw{BIT} | @keyw{BYTE} | @keyw{HALFWORD} | @keyw{WORD} | @keyw{INTEGER} | @keyw{DOUBLEWORD} |}
+@multitable {@nontermNI{data_multiplier}} {::=} {@code{BIT} | @code{BYTE} | @code{HALFWORD} | @code{WORD} | @code{INTEGER} | @code{DOUBLEWORD} |}
 @item @nonterm{data_multiplier}
 @tab ::=
 @tab @keyw{BIT} | @keyw{BYTE} | @keyw{HALFWORD} | @keyw{WORD} |
@@ -5966,38 +6256,38 @@ which they multiply @nonterm{expr}:
      @keyw{KILOBYTE} | @keyw{MEGABYTE} | @keyw{GIGABYTE}
 @end multitable
 
-@table @keyw
-@item BIT
+@table @asis
+@item @keyw{BIT}
 1/8 bytes, rounded up to the nearest integral number of bytes
 
-@item BYTE
+@item @keyw{BYTE}
 1 byte
 
-@item HALFWORD
+@item @keyw{HALFWORD}
 2 bytes
 
-@item WORD
+@item @keyw{WORD}
 4 bytes
 
-@item INTEGER
+@item @keyw{INTEGER}
 the number of bytes in the backend's fundamental integer type
 
-@item DOUBLEWORD
+@item @keyw{DOUBLEWORD}
 8 bytes
 
-@item QUADWORD
+@item @keyw{QUADWORD}
 16 bytes
 
-@item PAGE
+@item @keyw{PAGE}
 the number of bytes in an operating-system page
 
-@item KILOBYTE
+@item @keyw{KILOBYTE}
 1,024 bytes
 
-@item MEGABYTE
+@item @keyw{MEGABYTE}
 1,048,576 bytes
 
-@item GIGABYTE
+@item @keyw{GIGABYTE}
 1,073,741,824 bytes
 @end table
 
@@ -6006,33 +6296,33 @@ the number of bytes in an operating-system page
 A @nonterm{data_type} is an ``atomic'' unit of data.  It can be any of
 the following:
 
-@multitable {@nonterm{data_type}} {::=} {@keyw{BYTE} | @keyw{HALFWORD} | @keyw{WORD} | @keyw{INTEGER} | @keyw{DOUBLEWORD} |}
+@multitable {@nontermNI{data_type}} {::=} {@code{BYTE} | @code{HALFWORD} | @code{WORD} | @code{INTEGER} | @code{DOUBLEWORD} |}
 @item @nonterm{data_type}
 @tab ::=
 @tab @keyw{BYTE} | @keyw{HALFWORD} | @keyw{WORD} |
      @keyw{INTEGER} | @keyw{DOUBLEWORD} | @keyw{QUADWORD} | @keyw{PAGE}
 @end multitable
 
-@table @keyw
-@item BYTE
+@table @asis
+@item @keyw{BYTE}
 1 byte
 
-@item HALFWORD
+@item @keyw{HALFWORD}
 2 bytes
 
-@item WORD
+@item @keyw{WORD}
 4 bytes
 
-@item INTEGER
+@item @keyw{INTEGER}
 the number of bytes in the backend's fundamental integer type
 
-@item DOUBLEWORD
+@item @keyw{DOUBLEWORD}
 8 bytes
 
-@item QUADWORD
+@item @keyw{QUADWORD}
 16 bytes
 
-@item PAGE
+@item @keyw{PAGE}
 the number of bytes in an operating-system page
 @end table
 
@@ -6060,7 +6350,7 @@ operating-system page size (commonly 4@dmn{KB} or 8@dmn{KB}, but
 significantly larger sizes are gaining popularity).  A
 @nonterm{message_alignment} is represented as follows:
 
-@multitable {@nonterm{message_alignment}} {::=} {@nonterm{expr} @nonterm{data_multiplier}}
+@multitable {@nontermNI{message_alignment}} {::=} {@nontermNI{expr} @nontermNI{data_multiplier}}
 @item @nonterm{message_alignment}
 @tab ::=
 @tab @nonterm{data_type}
@@ -6224,12 +6514,20 @@ probably typical.)  @ncptl{} will automatically map any @nonterm{expr}
 or @nonterm{string} used as a tag value into whatever range the
 backend supports.  One implication is that different tags in a
 @ncptl{} program can map to the same tag at run time.  For example, if
-a backend limits tag values to the range @math{[0, 32{,}767]}, then
-@samp{USING TAG 131068} is equivalent to @samp{USING TAG 0}---or even
-not using any tag at all.  Also, in that case, two arbitrary strings
-have a 0.003% chance of mapping to the same tag (or 0.00000005% in the
-more typical case for @backend{c_mpi}), which is unlikely but not
-impossible.
+a backend limits tag values to the range
+@iftex
+@tex
+[0, 32{,}767]%
+@end tex
+@end iftex
+@ifnottex
+@math{[0, 32,767]}@c
+@end ifnottex
+, then @samp{USING TAG 131068} is equivalent to @samp{USING TAG
+0}---or even not using any tag at all.  Also, in that case, two
+arbitrary strings have a 0.003% chance of mapping to the same tag (or
+0.00000005% in the more typical case for @backend{c_mpi}), which is
+unlikely but not impossible.
 @end enumerate
 
 
@@ -6291,7 +6589,7 @@ The @keyw{SEND} statement is fundamental to @ncptl{}@.  It is used to
 send a multiple messages from multiple source tasks to multiple target
 tasks.  The syntax is formally specified as follows:
 
-@multitable {@nonterm{send_stmt}} {::=} {@keyw{TO} [@keyw{UNSUSPECTING}] @nonterm{target_tasks}}
+@multitable {@nontermNI{send_stmt}} {::=} {@code{TO} [@code{UNSUSPECTING}] @nontermNI{target_tasks}}
 @item @nonterm{send_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6395,9 +6693,9 @@ ASYNCHRONOUSLY
 @end example
 
 @noindent
-The alternative sequence of statements that does not use @keyw{WHO
-RECEIVES IT} is less straightforward to read because it splits a
-single message transmission into two statements:
+The alternative sequence of statements that does not use
+@keyw{WHO RECEIVES IT} is less straightforward to read because it
+splits a single message transmission into two statements:
 
 @enumerate
 @item
@@ -6493,7 +6791,7 @@ receives a set of messages.  A @nonterm{receive_stmt} is much like a
 @nonterm{send_stmt} (@pxref{Sending}) with the @nonterm{source_task}
 and @nonterm{target_tasks} in the reverse order:
 
-@multitable {@nonterm{receive_stmt}} {::=} {@keyw{TO} [@keyw{UNSUSPECTING}] @nonterm{target_tasks}}
+@multitable {@nontermNI{receive_stmt}} {::=} {@code{TO} [@code{UNSUSPECTING}] @nontermNI{target_tasks}}
 @item @nonterm{receive_stmt}
 @tab ::=
 @tab @nonterm{target_tasks}
@@ -6585,7 +6883,7 @@ are not even sent or received until completion time.  @ncptl{}
 provides the following statement for completing messages that were
 send/received asynchronously:
 
-@multitable {@nonterm{wait_stmt}} {::=} {@keyw{AWAITS COMPLETION}}
+@multitable {@nontermNI{wait_stmt}} {::=} {@code{AWAITS COMPLETION}}
 @item @nonterm{wait_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6615,7 +6913,7 @@ to @math{N} tasks is more efficient than sending a sequence of
 @math{N} individual messages.  @ncptl{} supports multicasting as
 follows:
 
-@multitable {@nonterm{source_task}} {::=} {[@keyw{ASYNCHRONOUSLY}] @keyw{MULTICASTS}}
+@multitable {@nontermNI{source_task}} {::=} {[@code{ASYNCHRONOUSLY}] @code{MULTICASTS}}
 @item @nonterm{mcast_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6689,7 +6987,7 @@ targets with each target receiving a copy of the reduced value.
 The following grammatical rules define @ncptl{}'s many-to-many and
 many-to-one reduction facilities:
 
-@multitable {@nonterm{source_task}} {::=} {[@keyw{WHO RECEIVES THE RESULT} @nonterm{reduce_target_message_spec}]}
+@multitable {@nontermNI{source_task}} {::=} {[@code{WHO RECEIVES THE RESULT} @nontermNI{reduce_target_message_spec}]}
 @item @nonterm{reduce_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6730,11 +7028,11 @@ TASKS xyz+num_tasks/4}.  When that code is run with @w{8 tasks},
 @w{tasks 2--5} each receive identical copies of the @w{100
 doublewords} of reduced data.
 
-Message data used with @keyw{REDUCES} can be transfered @keyw{WITH
-DATA TOUCHING} (but not @keyw{WITH VERIFICATION}); data alignment can
-be specified; and, messages buffers can be named explicitly.  The
-following example represents fairly complex many-to-many usage of
-@keyw{REDUCES}:
+Message data used with @keyw{REDUCES} can be transferred
+ @keyw{WITH DATA TOUCHING} (but not @keyw{WITH VERIFICATION}); data
+alignment can be specified; and, messages buffers can be named
+explicitly.  The following example represents fairly complex
+many-to-many usage of @keyw{REDUCES}:
 
 @example
 TASKS rsrc SUCH THAT rsrc IS EVEN REDUCE 32 64-BYTE-ALIGNED INTEGERS
@@ -6753,7 +7051,7 @@ synchronization}.  The semantics are that no task can finish
 synchronizing until all tasks have started synchronizing.  The syntax
 is as follows:
 
-@multitable {@nonterm{sync_stmt}} {::=} {@keyw{SYNCHRONIZES}}
+@multitable {@nontermNI{sync_stmt}} {::=} {@code{SYNCHRONIZES}}
 @item @nonterm{sync_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6798,7 +7096,7 @@ of every log file as shown in @ref{Log-file format}.  Given a key,
 represents the value associated with that key or the empty string if
 @var{key} does not appear in the log-file comments:
 
-@multitable {@nonterm{string_or_log_comment}} {::=} {@keyw{THE VALUE OF} @nonterm{string}}
+@multitable {@nontermNI{string_or_log_comment}} {::=} {@code{THE VALUE OF} @nontermNI{string}}
 @item @nonterm{string_or_log_comment}
 @tab ::=
 @tab @nonterm{string}
@@ -6811,8 +7109,8 @@ represents the value associated with that key or the empty string if
 That is, @samp{"CPU frequency"} means the literal string ``CPU
 frequency'' while @samp{THE VALUE OF "CPU frequency"} translates to a
 string like ``1300000000 Hz (1.3 GHz)''.  Environment variables are
-also considered keys and are therefore acceptable input to a @keyw{THE
-VALUE OF} construct.
+also considered keys and are therefore acceptable input to a
+@keyw{THE VALUE OF} construct.
 
 
 @node Writing to standard output, Writing to a log file, Utilizing log-file comments, I/O statements
@@ -6825,7 +7123,7 @@ device.  This is useful for providing progress reports during the
 execution of long-running @ncptl{} programs.  An @nonterm{output_stmt}
 looks like this:
 
-@multitable {@nonterm{output_stmt}} {::=} {[@keyw{AND} @ @ @nonterm{expr} | @nonterm{string_or_log_comment}]*}
+@multitable {@nontermNI{output_stmt}} {::=} {[@code{AND} @ @ @nontermNI{expr} | @nontermNI{string_or_log_comment}]*}
 @item @nonterm{output_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6868,7 +7166,7 @@ almost always desirable to store the results in a file.  @ncptl{} has
 language support for writing tabular data to a log file.  The
 @nonterm{log_stmt} command does the bulk of the work:
 
-@multitable {@nonterm{log_stmt}} {::=} {[@keyw{AND} @nonterm{aggr_expr} @keyw{AS} @nonterm{string_or_log_comment}]*}
+@multitable {@nontermNI{log_stmt}} {::=} {[@code{AND} @nontermNI{aggr_expr} @code{AS} @nontermNI{string_or_log_comment}]*}
 @item @nonterm{log_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -6984,6 +7282,29 @@ TASK 0 LOGS 314/100 AS "Pi" AND 22/7 AS "Pi"
 @end example
 @end cartouche
 
+As mentioned in @ref{Aggregate expressions}, multiple
+@nonterm{aggr_func} values can be specified per @nonterm{aggr_expr}.
+This is a convenient feature when a @ncptl{} program needs to compute
+multiple statistics over the same values while reusing the same
+description.  For example,
+
+@example
+ALL TASKS LOG THE MINIMUM OF bytes_received/elapsed_usecs AS
+"Bandwidth (B/us)" AND THE MAXIMUM OF bytes_received/elapsed_usecs AS
+"Bandwidth (B/us)" AND THE MEAN OF bytes_received/elapsed_usecs AS
+"Bandwidth (B/us)" AND THE MEDIAN OF bytes_received/elapsed_usecs AS
+"Bandwidth (B/us)"
+@end example
+
+@noindent
+can be shortened to
+
+@example
+ALL TASKS LOG THE MINIMUM AND THE MAXIMUM AND THE MEAN AND THE MEDIAN
+OF bytes_received/elapsed_usecs AS "Bandwidth (B/us)"
+@end example
+
+
 @menu
 * Computing aggregates::        Forcing aggregates to compute a result
 @end menu
@@ -7003,7 +7324,7 @@ the program to specify explicitly when aggregate functions
 (@keyw{MEDIAN} and all of the other functions listed in @ref{Aggregate
 functions}) compute a value:
 
-@multitable {@nonterm{flush_stmt}} {::=} {@keyw{COMPUTES AGGREGATES}}
+@multitable {@nontermNI{flush_stmt}} {::=} {@code{COMPUTES AGGREGATES}}
 @item @nonterm{flush_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -7030,10 +7351,10 @@ Normally, a @ncptl{} program performs some setup operations,
 @keyw{RESETS ITS COUNTERS} to zero, executes a communication pattern,
 and logs some function of the resulting changes in counter values
 (@pxref{Writing to a log file}).  If additional setup work needs to be
-performed during an experiment, a program can @keyw{STORE ITS
-COUNTERS}, perform any arbitrarily costly operations, @keyw{RESTORE
-ITS COUNTERS}, and continue the experiment as if those operations
-never happened.
+performed during an experiment, a program can
+@keyw{STORE ITS COUNTERS}, perform any arbitrarily costly operations,
+@keyw{RESTORE ITS COUNTERS}, and continue the experiment as if those
+operations never happened.
 
 Some @ncptl{} statements implicitly store and restore counters.  For
 example, the @keyw{LOGS} statement @pxref{Writing to a log file})
@@ -7058,7 +7379,7 @@ At the start of an experiment, after all setup processing has
 completed, all tasks that will eventually log measurement results
 should zero out their counters:
 
-@multitable {@nonterm{reset_stmt}} {::=} {@keyw{RESETS ITS COUNTERS}}
+@multitable {@nontermNI{reset_stmt}} {::=} {@code{RESETS ITS COUNTERS}}
 @item @nonterm{reset_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -7079,7 +7400,7 @@ are considered synonyms (@pxref{Primitives}).
 A program can store the current values of all of the variables listed
 in @ref{Predeclared variables} as follows:
 
-@multitable {@nonterm{store_stmt}} {::=} {@keyw{STORES ITS COUNTERS}}
+@multitable {@nontermNI{store_stmt}} {::=} {@code{STORES ITS COUNTERS}}
 @item @nonterm{store_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -7100,7 +7421,7 @@ and @code{STORES}, are considered synonyms (@pxref{Primitives}).
 Counters can be restored to their most recently saved values with a
 @nonterm{restore_stmt}:
 
-@multitable {@nonterm{restore_stmt}} {::=} {@keyw{RESTORES ITS COUNTERS}}
+@multitable {@nontermNI{restore_stmt}} {::=} {@code{RESTORES ITS COUNTERS}}
 @item @nonterm{restore_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -7194,7 +7515,7 @@ complex statements into more expressive forms.
 
 Complex statements take the following form:
 
-@multitable {@nonterm{complex_stmt}} {::=} {@nonterm{simple_stmt} [@keyw{THEN} @nonterm{complex_stmt}]}
+@multitable {@nontermNI{complex_stmt}} {::=} {@nontermNI{simple_stmt} [@code{THEN} @nontermNI{complex_stmt}]}
 @item @nonterm{complex_stmt}
 @tab ::=
 @tab @nonterm{simple_stmt} [@keyw{THEN} @nonterm{complex_stmt}]
@@ -7205,7 +7526,7 @@ bindings, @keyw{IF} conditionals, grouping constructs, and all of the
 statements introduced in @ref{Communication statements}, @ref{I/O
 statements}, and @ref{Other statements}:
 
-@multitable {@nonterm{simple_stmt}} {::=} {@keyw{FOR} @nonterm{expr} @keyw{REPETITIONS} [@keyw{PLUS} @nonterm{expr} @keyw{WARMUP} @keyw{REPETITIONS}}
+@multitable {@nontermNI{simple_stmt}} {::=} {@code{FOR} @nontermNI{expr} @code{REPETITIONS} [@code{PLUS} @nontermNI{expr} @code{WARMUP} @code{REPETITIONS}}
 @item @nonterm{simple_stmt}
 @tab ::=
 @tab @keyw{FOR} @nonterm{expr} @keyw{REPETITIONS}
@@ -7216,7 +7537,10 @@ statements}, and @ref{Other statements}:
   @keyw{FOR EACH} @nonterm{ident} @keyw{IN} @nonterm{range}
   [@samp{,} @nonterm{range}]* @nonterm{simple_stmt}
 @item @tab | @tab
-  @keyw{FOR} @nonterm{expr} @nonterm{time_unit} @nonterm{simple_stmt}
+  @keyw{FOR} @nonterm{expr} @nonterm{time_unit}
+  [@keyw{PLUS} @nonterm{expr} @keyw{WARMUP} @nonterm{time_unit}
+  [@keyw{AND A SYNCHRONIZATION}]]
+  @nonterm{simple_stmt}
 @item @tab | @tab
   @keyw{LET} @nonterm{let_binding} [@keyw{AND} @nonterm{let_binding}]*
   @keyw{WHILE} @nonterm{simple_stmt}
@@ -7302,8 +7626,8 @@ repeatedly execute a @nonterm{simple_stmt}.
 @cindex loops
 
 The simplest form of iteration in @ncptl{} repeats a
-@nonterm{simple_stmt} a given number of times.  The syntax is simply
-``@keyw{FOR} @nonterm{expr} @keyw{REPETITIONS}
+@nonterm{simple_stmt} a given number of times.  In its most basic form
+the syntax is simply ``@keyw{FOR} @nonterm{expr} @keyw{REPETITIONS}
 @nonterm{simple_stmt}''.  As could be expected, the @nonterm{expr}
 term (@pxref{Arithmetic expressions}) specifies the number of
 repetitions to perform.  Hence, the following @nonterm{simple_stmt}
@@ -7316,17 +7640,17 @@ FOR 100 REPETITIONS ALL TASKS OUTPUT "I will not talk in class."
 @keyw{FOR}@dots{}@keyw{REPETITIONS} can optionally specify a number of
 ``warmup'' repetitions to perform in addition to the base number of
 repetitions.  The syntax is ``@keyw{FOR} @nonterm{expr}
-@keyw{REPETITIONS} @keyw{PLUS} @nonterm{expr} @keyw{WARMUP
-REPETITIONS} @nonterm{simple_stmt}''.  During warmup repetitions, the
-@keyw{OUTPUTS} statement (@pxref{Writing to standard output}), the
-@keyw{LOGS} statement (@pxref{Writing to a log file}), and the
-@keyw{COMPUTES AGGREGATES} statement (@pxref{Computing aggregates})
-are all suppressed (i.e., they have no effect) and none of the special
-variables predeclared by @ncptl{} (@pxref{Predeclared variables}) are
-updated.  Many benchmarks synchronize all tasks after performing a set
-of warmup repetitions.  This behavior can be expressed conveniently as
-part of a @ncptl{} @keyw{FOR} loop by appending the @keyw{AND A
-SYNCHRONIZATION} clause:
+@keyw{REPETITIONS} @keyw{PLUS} @nonterm{expr}
+@keyw{WARMUP REPETITIONS} @nonterm{simple_stmt}''.  During warmup
+repetitions, the @keyw{OUTPUTS} statement (@pxref{Writing to standard
+output}), the @keyw{LOGS} statement (@pxref{Writing to a log file}),
+and the @keyw{COMPUTES AGGREGATES} statement (@pxref{Computing
+aggregates}) are all suppressed (i.e., they have no effect) and none
+of the special variables predeclared by @ncptl{} (@pxref{Predeclared
+variables}) are updated.  Many benchmarks synchronize all tasks after
+performing a set of warmup repetitions.  This behavior can be
+expressed conveniently as part of a @ncptl{} @keyw{FOR} loop by
+appending the @keyw{AND A SYNCHRONIZATION} clause:
 
 @example
 FOR 1000 REPETITIONS PLUS 3 WARMUP REPETITIONS AND A SYNCHRONIZATION
@@ -7357,7 +7681,7 @@ the counted-loop construct presented in @ref{Counted loops}, a range
 loop binds a variable to a different value on each iteration.  Range
 loops have the following syntax:
 
-@multitable {MMMMM} {@keyw{IN} @nonterm{range} [@code{,} @nonterm{range}]*}
+@multitable {MMMMM} {@code{IN} @nontermNI{range} [@code{,} @nontermNI{range}]*}
 @item @tab @keyw{FOR EACH} @nonterm{ident}
 @item @tab @keyw{IN} @nonterm{range} [@code{,} @nonterm{range}]*
 @item @tab @nonterm{simple_stmt}
@@ -7494,7 +7818,7 @@ context of network correctness and performance testing.  The syntax of
 @ncptl{}'s timed-loop construct is ``@keyw{FOR} @nonterm{expr}
 @nonterm{time_unit} @nonterm{simple_stmt}''.  @nonterm{time_unit} is
 unit of time as listed in @ref{Delaying execution} and @nonterm{expr}
-specified the number of @nonterm{time_unit}s for which to execute.
+specifies the number of @nonterm{time_unit}s for which to execute.
 
 The following example shows how to spend three seconds sending
 messages from @w{task 0} to @w{task 1:}
@@ -7508,6 +7832,38 @@ length of time there will invariably be some error in the process.
 Always use @ocode{elapsed_usecs} (@pxref{Predeclared variables}) as
 the indicator of actual time instead of the time requested in the
 loop.
+
+Timed loops can optionally run for a length of ``warmup'' time in
+addition to the base execution time.  The syntax is ``@keyw{FOR}
+@nonterm{expr} @nonterm{time_unit} @keyw{PLUS} @nonterm{expr}
+@keyw{WARMUP} @nonterm{time_unit} @nonterm{simple_stmt}''.  During
+warmup repetitions, the @keyw{OUTPUTS} statement (@pxref{Writing to
+standard output}), the @keyw{LOGS} statement (@pxref{Writing to a log
+file}), and the @keyw{COMPUTES AGGREGATES} statement (@pxref{Computing
+aggregates}) are all suppressed (i.e., they have no effect) and none
+of the special variables predeclared by @ncptl{} (@pxref{Predeclared
+variables}) are updated.  Many benchmarks synchronize all tasks after
+performing a set of warmup repetitions.  This behavior can be
+expressed conveniently as part of a timed loop by appending the
+@keyw{AND A SYNCHRONIZATION} clause:
+
+@example
+FOR 3 SECOND PLUS 1 WARMUP MILLISECOND AND A SYNCHRONIZATION TASK 0
+SENDS A 1 MEGABYTE MESSAGE TO TASK 1
+@end example
+
+@noindent
+@ncptl{} also provides a separate @keyw{SYNCHRONIZES} statement.  This
+is described in @ref{Synchronizing}.
+
+The importance of performing warmup repetitions is that many
+communication layers give atypically poor performance on the first few
+transmissions.  This may be because the messages miss in the cache;
+because the communication layer needs to establish connections between
+pairs of communicating tasks; or, because the operating system needs
+to ``register'' message buffers with the network interface.
+Regardless of the reason, specifying warmup repetitions helps make
+performance measurements less variable.
 
 
 @node Binding variables, Conditional execution, Iterating, Complex statements
@@ -7534,7 +7890,7 @@ explicitly using the @keyw{LET} keyword (this section)
 
 The @keyw{LET} statement has the following form:
 
-@multitable {MMMMM} {@keyw{WHILE} @nonterm{simple_stmt}}
+@multitable {MMMMM} {@code{WHILE} @nontermNI{simple_stmt}}
 @item @tab @keyw{LET} @nonterm{let_binding}
 @item @tab [@keyw{AND} @nonterm{let_binding}]*
 @item @tab @keyw{WHILE} @nonterm{simple_stmt}
@@ -7543,7 +7899,7 @@ The @keyw{LET} statement has the following form:
 @noindent
 where @nonterm{let_binding} is defined as follows:
 
-@multitable {@nonterm{let_binding}} {::=} {@nonterm{ident} @keyw{BE}} {|} {@keyw{A RANDOM TASK} [@nonterm{random_task_constraints}]}
+@multitable {@nontermNI{let_binding}} {::=} {@nontermNI{ident} @code{BE}} {|} {@code{A RANDOM TASK} [@nontermNI{random_task_constraints}]}
 @item @nonterm{let_binding}
 @tab ::=
 @tab @nonterm{ident} @keyw{BE}
@@ -7555,7 +7911,7 @@ where @nonterm{let_binding} is defined as follows:
 The optional @nonterm{random_task_constraints} limits the set of tasks
 from which @keyw{A RANDOM TASK} selects:
 
-@multitable {@nonterm{random_task_constraints}} {::=} {@keyw{IN} @samp{[} @nonterm{expr} @samp{,} @nonterm{expr} @samp{]} [@keyw{BUT NOT} @nonterm{expr}]}
+@multitable {@nontermNI{random_task_constraints}} {::=} {@code{IN} @samp{[} @nontermNI{expr} @samp{,} @nontermNI{expr} @samp{]} [@code{BUT NOT} @nontermNI{expr}]}
 @item @nonterm{random_task_constraints}
 @tab ::=
 @tab @keyw{OTHER THAN} @nonterm{expr}
@@ -7688,7 +8044,7 @@ OUTPUTS "Hello from " AND valid_task
 Like most programming languages, @ncptl{} supports conditional code
 execution:
 
-@multitable {@nonterm{if_stmt}} {::=} {[@keyw{OTHERWISE} @nonterm{simple_stmt}]}
+@multitable {@nontermNI{if_stmt}} {::=} {[@code{OTHERWISE} @nontermNI{simple_stmt}]}
 @item @nonterm{if_stmt}
 @tab ::=
 @tab @keyw{IF} @nonterm{rel_expr}
@@ -7796,7 +8152,7 @@ listed here in this ``catch-all'' section.
 order for the test to run properly.  This is achieved through
 @dfn{assertions}, which are expressed as follows:
 
-@multitable {@nonterm{assert_stmt}} {::=} {@keyw{ASSERT THAT} @nonterm{string}}
+@multitable {@nontermNI{assert_stmt}} {::=} {@code{ASSERT THAT} @nontermNI{string}}
 @item @nonterm{assert_stmt}
 @tab ::=
 @tab @keyw{ASSERT THAT} @nonterm{string}
@@ -7850,7 +8206,7 @@ pattern when delays are inserted at various times on various tasks.
 relinquishes the CPU while delaying (@keyw{SLEEP}) and one that hoards
 it (@keyw{COMPUTE}).
 
-@multitable {@nonterm{delay_stmt}} {::=} {@keyw{FOR} @nonterm{expr} @nonterm{time_unit}}
+@multitable {@nontermNI{delay_stmt}} {::=} {@code{FOR} @nontermNI{expr} @nontermNI{time_unit}}
 @item @nonterm{delay_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -7864,7 +8220,7 @@ expressions}) specifies the number of @nonterm{time_unit}s for which
 to delay and @nonterm{time_unit} represents any of the following
 measures of time:
 
-@multitable {@nonterm{time_unit}} {::=} {@keyw{MICROSECONDS} | @keyw{MILLISECONDS} | @keyw{SECONDS} | @keyw{MINUTES} | @keyw{HOURS} | @keyw{DAYS}}
+@multitable {@nontermNI{time_unit}} {::=} {@code{MICROSECONDS} | @code{MILLISECONDS} | @code{SECONDS} | @code{MINUTES} | @code{HOURS} | @code{DAYS}}
 @item @nonterm{time_unit}
 @tab ::=
 @tab @keyw{MICROSECONDS} | @keyw{MILLISECONDS} | @keyw{SECONDS} |
@@ -7916,7 +8272,7 @@ of a given size.  By varying these parameters, a program can emulate
 an application's computation by hoarding the CPU or any level of the
 memory hierarchy.
 
-@multitable {@nonterm{touch_stmt}} {::=} {[@keyw{WITH STRIDE} @nonterm{expr} @nonterm{data_type} | @keyw{WITH RANDOM STRIDE}]}
+@multitable {@nontermNI{touch_stmt}} {::=} {[@code{WITH STRIDE} @nontermNI{expr} @nontermNI{data_type} | @code{WITH RANDOM STRIDE}]}
 @item @nonterm{touch_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -8019,7 +8375,7 @@ send or receive a message without further data touching.  The
 @keyw{TOUCHES} statement has an alternate form that touches message
 buffers instead of isolated memory regions:
 
-@multitable {@nonterm{touch_buffer_stmt}} {::=} {@ @ | @keyw{THE CURRENT MESSAGE BUFFER}}
+@multitable {@nontermNI{touch_buffer_stmt}} {::=} {@ @ | @code{THE CURRENT MESSAGE BUFFER}}
 @item @nonterm{touch_buffer_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -8084,7 +8440,7 @@ complex expressions to determine peer tasks.  @ncptl{} enables either
 a specific or a randomly selected task to be assigned to a given
 processor:
 
-@multitable {@nonterm{processor_stmt}} {::=} {@keyw{PROCESSOR} @nonterm{expr} | @keyw{A RANDOM PROCESSOR}}
+@multitable {@nontermNI{processor_stmt}} {::=} {@code{PROCESSOR} @nontermNI{expr} | @code{A RANDOM PROCESSOR}}
 @item @nonterm{processor_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -8154,12 +8510,12 @@ corresponds to a unique task.
 @cindex code, injecting arbitrary
 
 There are some features that are outside the scope of the @ncptl{}
-language.  However, @ncptl{} provides a mechanism for inserting
+language.  @ncptl{} does, however, provide a mechanism for inserting
 backend-specific statements into the control flow of a @ncptl{}
 program.  This feature is intended for users with specific needs that
 can't be satisfied through the conventional @ncptl{} statements.
 
-@multitable {@nonterm{backend_stmt}} {::=} {[@keyw{AND} @nonterm{expr} | @nonterm{string}]*}
+@multitable {@nontermNI{backend_stmt}} {::=} {[@code{AND} @nontermNI{expr} | @nontermNI{string}]*}
 @item @nonterm{backend_stmt}
 @tab ::=
 @tab @nonterm{source_task}
@@ -8205,9 +8561,9 @@ buffer is not meaningful in the context of @keyw{BACKEND EXECUTES},
 which is not a communication statement.
 
 @xref{Backend-specific declarations}, for a description of
-@keyw{BACKEND DECLARES}, a companion statement to @keyw{BACKEND
-EXECUTES} that enables @ncptl{} programs to directly declare variables
-and functions in the target language.
+@keyw{BACKEND DECLARES}, a companion statement to
+@keyw{BACKEND EXECUTES} that enables @ncptl{} programs to directly
+declare variables and functions in the target language.
 
 
 @node Header declarations, Complete programs, Other statements, Grammar
@@ -8238,7 +8594,7 @@ altered).  To mitigate future language changes @ncptl{} enables
 programs to specify which version of the language they were written
 to.  The syntax is straightforward:
 
-@multitable {@nonterm{version_decl}} {::=} {@keyw{REQUIRE LANGUAGE VERSION} @nonterm{string}}
+@multitable {@nontermNI{version_decl}} {::=} {@code{REQUIRE LANGUAGE VERSION} @nontermNI{string}}
 @item @nonterm{version_decl}
 @tab ::=
 @tab @keyw{REQUIRE LANGUAGE VERSION} @nonterm{string}
@@ -8262,7 +8618,7 @@ version of the @ncptl{} toolset (@pxref{Usage}) as a whole.
 @ncptl{} makes it easy to declare command-line parameters, although
 the syntax is a bit verbose:
 
-@multitable {@nonterm{param_decl}} {::=} {@keyw{AND COMES FROM} @nonterm{string} @keyw{OR} @nonterm{string}}
+@multitable {@nontermNI{param_decl}} {::=} {@code{AND COMES FROM} @nontermNI{string} @code{OR} @nontermNI{string}}
 @item @nonterm{param_decl}
 @tab ::=
 @tab @nonterm{ident}
@@ -8334,7 +8690,7 @@ code}) provides support for executing non-@ncptl{} code from a
 provides support for embedding non-@ncptl{} variable and function
 declarations in a @ncptl{} program:
 
-@multitable {@nonterm{backend_decl}} {::=} {@keyw{THE BACKEND DECLARES} @nonterm{string}}
+@multitable {@nontermNI{backend_decl}} {::=} {@code{THE BACKEND DECLARES} @nontermNI{string}}
 @item @nonterm{backend_decl}
 @tab ::=
 @tab @keyw{THE BACKEND DECLARES} @nonterm{string}
@@ -8417,14 +8773,14 @@ declarations (@pxref{Header declarations}), each terminated with a
 statements}), each also terminated with a @samp{.}.  More formally,
 @ncptl{}'s top-level nonterminal is the @nonterm{program}:
 
-@multitable {@nonterm{program}} {::=} {(@nonterm{version_decl} | @nonterm{param_decl} | @nonterm{backend_decl} [@samp{.}])*}
+@multitable {@nontermNI{program}} {::=} {(@nontermNI{version_decl} | @nontermNI{param_decl} | @nontermNI{backend_decl} [@samp{.}])*}
 @item @nonterm{program}
 @tab ::=
 @tab (@nonterm{version_decl} | @nonterm{param_decl} | @nonterm{backend_decl} [@samp{.}])*
 @item @tab @tab (@nonterm{top_level_complex_stmt} [@samp{.}])+
 @end multitable
 
-@multitable {@nonterm{top_level_complex_stmt}} {::=} {@nonterm{complex_stmt}}
+@multitable {@nontermNI{top_level_complex_stmt}} {::=} {@nontermNI{complex_stmt}}
 @item @nonterm{top_level_complex_stmt}
 @tab ::=
 @tab @nonterm{complex_stmt}
@@ -9430,18 +9786,18 @@ understand, as they are frequently called from hook methods
 (@pxref{Hook methods}).  The following should be of particular
 importance:
 
-@table @ocode
-@item push
-@itemx pushmany
+@table @asis
+@item @ocodeIT{push}
+@itemx @ocodeIT{pushmany}
 Push a single value (typically a string of C code) or each value in a
 list of values onto a stack.
 
-@item error_fatal
-@itemx error_internal
+@item @ocodeIT{error_fatal}
+@itemx @ocodeIT{error_internal}
 Output a generic error message or an ``internal error'' error message
 and abort the program.
 
-@item code_declare_var
+@item @ocodeIT{code_declare_var}
 Push (using the @ocode{push} method) a line of C code that declares a
 variable with an optionally specified type, name, initial value, and
 comment.  Return the variable name actually used.
@@ -9485,13 +9841,13 @@ really just a list of lines of C code).
 Some useful variables defined by @ocode{NCPTL_CodeGen} include the
 following:
 
-@table @ocode
-@item base_global_parameters
+@table @asis
+@item @ocodeIT{base_global_parameters}
 a list of 6-ary tuples defining extra command-line parameters to parse
 (format: @{@var{type}, @var{variable}, @var{long_name},
 @var{short_name}, @var{description}, @var{default_value}@})
 
-@item events_used
+@item @ocodeIT{events_used}
 a dictionary containing the names of events actually used by the
 program being compiled
 @end table
@@ -9500,21 +9856,21 @@ Some methods in @backendpy{c_generic} that are worth
 understanding but are unlikely to be used directly in a derived
 backend include the following:
 
-@table @ocode
-@item pop
+@table @asis
+@item @ocodeIT{pop}
 Pop a value from a stack.
 
-@item push_marker
+@item @ocodeIT{push_marker}
 Push a specially designated ``marker'' value onto a stack.
 
-@item combine_to_marker
+@item @ocodeIT{combine_to_marker}
 Pop all items off a stack up to the first marker value found; discard
 the marker; then, push the popped items as a single list of items.
 This is used, for example, by a complex statement (@pxref{Complex
 statements}) that applies to a list of statements, which can be popped
 as a unit using @ocode{combine_to_marker}.
 
-@item invoke_hook
+@item @ocodeIT{invoke_hook}
 Call a hook method, specifying code to be pushed before/after the
 hook-produced code and alternative text (or @cncp{Python} code) to be pushed
 (or executed) in the case that a hook method is not provided.
@@ -9857,8 +10213,8 @@ buffer.
 @olindex ncptl_verify
 Verify the contents of memory filled by @ocodecf{ncptl_fill_buffer}.
 The function returns the number of erroneous bits.
-@ocodecf{ncptl_verify} is used to implement @ncptl{}'s @keyw{WITH
-VERIFICATION} construct (@pxref{Data touching}).
+@ocodecf{ncptl_verify} is used to implement @ncptl{}'s
+@keyw{WITH VERIFICATION} construct (@pxref{Data touching}).
 @end deftypefun
 
 @deftypefun void ncptl_touch_data (void *@var{buffer}, ncptl_int @var{numbytes})
@@ -10184,21 +10540,23 @@ the caller should not deallocate the result.
 comments}).
 @end deftypefun
 
-@deftypefun void ncptl_log_write (NCPTL_LOG_FILE_STATE *@var{logstate}, int @var{logcolumn}, char *@var{description}, LOG_AGGREGATE @var{aggregate}, double @var{value})
+@deftypefun void ncptl_log_write (NCPTL_LOG_FILE_STATE *@var{logstate}, int @var{logcolumn}, char *@var{description}, LOG_AGGREGATE @var{aggregate}, double @var{aggregate_param}, double @var{value})
 @olindex ncptl_log_write
 Push value @var{value} onto column @var{logcolumn} of the current
 table.  Gaps between columns are automatically elided.
 @var{description} is used as the column header for column
-@var{logcolumn}.  Acceptable values for @var{aggregate} are defined in
-@ref{Representing aggregate functions}.
+@var{logcolumn}.  @var{aggregate_param} is a parameter needed by
+certain aggregates.  Currently, it used only to represent the target
+percentile for @ocode{NCPTL_FUNC_PERCENTILE}.  Acceptable values for
+@var{aggregate} are defined in @ref{Representing aggregate functions}.
 @end deftypefun
 
 @deftypefun void ncptl_log_compute_aggregates (NCPTL_LOG_FILE_STATE *@var{logstate})
 @olindex ncptl_log_compute_aggregates
-@ocodecf{ncptl_log_compute_aggregates} implements the @keyw{COMPUTES
-AGGREGATES} construct described in @ref{Computing aggregates}.  When
-@ocodecf{ncptl_log_compute_aggregates} is invoked, the @ncptl{}
-run-time library uses the aggregate function specified by
+@ocodecf{ncptl_log_compute_aggregates} implements the
+@keyw{COMPUTES AGGREGATES} construct described in @ref{Computing
+aggregates}.  When @ocodecf{ncptl_log_compute_aggregates} is invoked,
+the @ncptl{} run-time library uses the aggregate function specified by
 @ocodecf{ncptl_log_write} to aggregate all of the data that
 accumulated in each column since the last invocation of
 @ocodecf{ncptl_log_compute_aggregates}.  Note that
@@ -10289,6 +10647,17 @@ Allocate and initialize an opaque @ocode{NCPTL_VIRT_PHYS_MAP} object
 and return a pointer to it.
 @end deftypefun
 
+@deftypefun {NCPTL_VIRT_PHYS_MAP *} ncptl_point_to_task_map (NCPTL_VIRT_PHYS_MAP *@var{oldmap})
+@olindex ncptl_point_to_task_map
+Store a pointer to a task map, and mark the task map as ``live''.
+@end deftypefun
+
+@deftypefun {NCPTL_VIRT_PHYS_MAP *} ncptl_conditionally_copy_task_map (NCPTL_VIRT_PHYS_MAP *@var{oldmap})
+@olindex ncptl_conditionally_copy_task_map
+Replicate an existing task map if it is ``live'' @w{(i.e., something}
+points to it) or return the input parameter if not.
+@end deftypefun
+
 @deftypefun ncptl_int ncptl_virtual_to_physical (NCPTL_VIRT_PHYS_MAP *@var{procmap}, ncptl_int @var{virtID})
 @olindex ncptl_virtual_to_physical
 Given a process map allocated by @ocodecf{ncptl_allocate_task_map} and
@@ -10306,8 +10675,8 @@ Assign a (physical) processor ID, @var{physID}, to a (virtual) task
 ID, @var{virtID} given a virtual-to-physical mapping table,
 @var{procmap}.  Return a new task ID for the caller's processor given
 its @w{processor ID,} @var{physrank}.
-@ocodecf{ncptl_assign_processor} is intended to implement the @keyw{IS
-ASSIGNED TO} construct (@pxref{Reordering task IDs}).
+@ocodecf{ncptl_assign_processor} is intended to implement the
+@keyw{IS ASSIGNED TO} construct (@pxref{Reordering task IDs}).
 @end deftypefun
 
 
@@ -11168,10 +11537,10 @@ of them.
 One catch is that the @cncp{Red Storm} execution server cannot
 directly run compute-node programs.  Rather, it needs to spawn a job
 launcher (@kcmd{yod}) for each test program.  The mechanism for doing
-this is the @envvar{TESTS_ENVIRONMENT} variable, which @kcmd{make
-check} prepends to every command it executes.  We were therefore able
-to regression-test the @ncptl{} run-time library on the @cncp{Red
-Storm} prototype with the following command:
+this is the @envvar{TESTS_ENVIRONMENT} variable, which
+@kcmd{make check} prepends to every command it executes.  We were
+therefore able to regression-test the @ncptl{} run-time library on the
+@cncp{Red Storm} prototype with the following command:
 
 @cartouche
 @example
@@ -11323,7 +11692,7 @@ directory
 configure:12870: $? = 137
 configure: program exited with status 137
 configure: failed program was:
-#line 12851 "configure"
+@hashchar{}line 12851 "configure"
 #include "confdefs.h"
 
 int
@@ -11371,7 +11740,7 @@ a @samp{syntax error before `PRId64'} that was reported when
 compiling a sample program.  A brief search revealed that the
 @ocode{PRId64} macro is not defined in any of the standard C header
 files on the systems in question.  The solution turned out to be to
-configure with @configure{--with-printf-format='"lld"'} to instruct
+configure with @configureA{--with-printf-format='"lld"'} to instruct
 the C compiler to use @ocodecf{printf} format strings such as
 @samp{%lld} when outputting 64-bit signed integers.  The extra pair of
 double quotes is required because the conversion specifier is used in
@@ -11431,7 +11800,7 @@ approximately @w{45 @emph{minutes}}.
 Inspecting the @filespec{configure} script revealed that the result of
 executing the length-checking code in @filespec{configure} is an
 assignment to the @ocode{lt_cv_sys_max_cmd_len} shell variable.
-Consequently, running @configure{lt_cv_sys_max_cmd_len=8192} (or some
+Consequently, running @configureA{lt_cv_sys_max_cmd_len=8192} (or some
 other conservative estimate of the maximum command-line length) caused
 @configure{} to skip the unduly slow length-checking test and use the
 given value instead.
@@ -11538,7 +11907,7 @@ specify a single line of C code to insert into every test file that
 build the run-time library.  This extra line of code can be used to
 make up for missing functionality or to load nonstandard header files.
 If you need to inject more than one line of code use
-@configure{--with-header=code='#include "myheaders.h"'} and create an
+@configureA{--with-header=code='#include "myheaders.h"'} and create an
 appropriate @file{myheaders.h} file.
 
 @cindex variables, @file{configure} cache
@@ -11581,7 +11950,7 @@ components.  This section explains what to do if a compile fails or
 @kcmd{make} is otherwise unable to perform all of its operations.
 
 @menu
-* Failure following "missing" check::  
+* Failure following "missing" check::  Spurious rebuilding of Autotools files
 * Too many columns in multitable item::  Building Emacs info files
 * Can't find compiler_version.h::  Running `make install' properly
 * Could not read symbols::      Linking with the correct libraries
@@ -11678,7 +12047,7 @@ similar error:
 The problem on both platforms turned out to be that the
 @file{/usr/lib/libpopt.so} is a 32-bit binary and could not be linked
 with a 64-bit library.  The solution was to configure with
-@configure{LDFLAGS=-L/usr/lib64} to indicate that libraries should be
+@configureA{LDFLAGS=-L/usr/lib64} to indicate that libraries should be
 read from @file{/usr/lib64} instead of the default of
 @file{/usr/lib64}.
 
@@ -11913,7 +12282,7 @@ instructed to disregard certain libraries---even if they exist on the
 head node---by passing the @copt{with-ignored-libs} option to
 @filespec{configure} (@pxref{configure}).  For example, if
 @filespec{libpopt.so} is not installed on the compute nodes one can
-run @configure{--with-ignored-libs=popt} to prevent
+run @configureA{--with-ignored-libs=popt} to prevent
 @filespec{libpopt.so} from being used.
 
 The @copt{with-ignored-libs} option is of little use if the @ncptl{}
@@ -12371,15 +12740,15 @@ The @ocode{LOG_AGGREGATE} enumerated type, defined in
 The @ncptl{} compiler (@filespec{ncptl}) honors the following
 environment variables:
 
-@table @envvar
-@item NCPTL_BACKEND
+@table @asis
+@item @envvarIT{NCPTL_BACKEND}
 Name a default backend for the compiler to use.  For example, setting
 @envvar{NCPTL_BACKEND} to @samp{c_udgram} tells @filespec{ncptl} to
 use the @backend{c_udgram} backend unless the @copt{backend} compiler
 option designates a different backend.  @xref{Compiling coNCePTuaL
 programs}, for more information.
 
-@item NCPTL_PATH
+@item @envvarIT{NCPTL_PATH}
 Specify a colon-separated list of directories in which to search for
 compiler backends.  @xref{Compiling coNCePTuaL programs}, for more
 information.
@@ -12388,8 +12757,8 @@ information.
 The following environment variables are honored when running a
 @ncptl{} program (any backend):
 
-@table @envvar
-@item NCPTL_CHECKPOINT
+@table @asis
+@item @envvarIT{NCPTL_CHECKPOINT}
 Specify the minimum number of seconds between log-file checkpoints
 (default: 60).  The @ncptl{} run-time library buffers logged data in
 memory because @ncptl{} programs are not restricted to writing data in
@@ -12420,7 +12789,7 @@ crashes and uncatchable signals.  Larger values put less stress on the
 filesystem.  As a special case, if @envvar{NCPTL_CHECKPOINT} is set to
 @samp{0} then log-file checkpointing is disabled altogether.
 
-@item NCPTL_FAST_INIT
+@item @envvarIT{NCPTL_FAST_INIT}
 If set to @samp{1}, more quickly initialize the run-time library by
 skipping the timer calibration and measurement steps.  As a
 consequence, all timing measurements will be meaningless.
@@ -12431,7 +12800,7 @@ initialization even for backends that do not rely on timing
 measurements, for instance the @backend{picl} backend (@pxref{The picl
 backend}).  @xref{Variables and data types}, for more information.
 
-@item NCPTL_LOG_DELAY
+@item @envvarIT{NCPTL_LOG_DELAY}
 Artificially delay each log-file open and flush operation by a random
 number of milliseconds in the range 0@dots{}@envvar{NCPTL_LOG_DELAY}
 (default: @samp{0}).  For example, if 1000 CPUs share a single
@@ -12446,14 +12815,14 @@ workstation clusters and parallel computers in which hundreds or
 thousands of diskless compute nodes compete for access to the same
 filesystem.
 
-@item NCPTL_LOG_ONLY
+@item @envvarIT{NCPTL_LOG_ONLY}
 Limit the set of processes that produce log files.
 @envvar{NCPTL_LOG_ONLY} accepts a comma-separated list of
 dash-separated process ranges such as @samp{0-3,12-16,24,25,32-48}.
 Only processes included in the list produce log files.  @xref{Running
 coNCePTuaL programs}, for more information.
 
-@item NCPTL_NOFORK
+@item @envvarIT{NCPTL_NOFORK}
 If set, inhibit the use of @ocodecf{fork}, @ocodecf{system},
 @ocodecf{popen}, and other process-spawning functions.  The result is
 that some information will be omitted from the log-file prologue.

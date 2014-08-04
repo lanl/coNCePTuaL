@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Code generation module for the coNCePTuaL language:
@@ -9,10 +7,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -173,6 +171,10 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.code_declare_var(name="mpi_tag_ub",
                               comment="Upper bound on an MPI tag value",
                               stack=newvars)
+        self.code_declare_var(type="ncptl_int", name="conc_mcast_tallies",
+                              arraysize="CONC_MCAST_MPI_NUM_FUNCS", rhs="{0}",
+                              comment="Tallies of (static) multicast implementation functions",
+                              stack=newvars)
 
         # Make all declarations static.
         static_newvars = []
@@ -204,7 +206,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                               comment="true=MPI_TAG_UB was extracted; false=not extracted",
                               stack=newvars)
         if self.program_uses_log_file:
-            self.code_declare_var(type="char", name="tag_range_str", arraysize="50",
+            self.code_declare_var(type="char", name="log_key_str", arraysize="128",
                                   comment="String representing the range of valid MPI tags",
                                   stack=newvars)
         return newvars
@@ -300,11 +302,11 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         extraloglines = []
         if self.program_uses_log_file:
             extraloglines.extend([
-                'ncptl_log_add_comment ("MPI send routines", "%s() and %s()");' %
-                (self.send_function, self.isend_function),
-                'ncptl_log_add_comment ("MPI reduction operation", REDUCE_OPERATION_NAME);',
-                'sprintf (tag_range_str, "[0, %" NICS "]", mpi_tag_ub);',
-                'ncptl_log_add_comment ("MPI tag range", tag_range_str);'])
+                    'ncptl_log_add_comment ("MPI send routines", "%s() and %s()");' %
+                    (self.send_function, self.isend_function),
+                    'ncptl_log_add_comment ("MPI reduction operation", REDUCE_OPERATION_NAME);',
+                    'sprintf (log_key_str, "[0, %" NICS "]", mpi_tag_ub);',
+                    'ncptl_log_add_comment ("MPI tag range", log_key_str);'])
         return extraloglines
 
     def code_def_init_misc_EXTRA(self, localvars):
@@ -363,7 +365,31 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.code_declare_var(type="int", name="mpiresult",
                               comment="Return code from MPI_Finalize()",
                               stack=newvars)
+        if self.program_uses_log_file:
+            self.code_declare_var(type="char", name="log_key_str", arraysize="128",
+                                  comment="String representing the range of valid MPI tags",
+                                  stack=newvars)
         return newvars
+
+    def code_def_finalize_PRE(self, localvars):
+        "Write some additional data to the log file."
+        finalcode = []
+        if self.program_uses_log_file:
+            self.push("log_key_str[0] = '\\0';", finalcode)
+            for mpi_func in ["Bcast", "Alltoall", "Alltoallv"]:
+                self.pushmany([
+                        "if (conc_mcast_tallies[CONC_MCAST_MPI_%s] > 0) {" % string.upper(mpi_func),
+                        "char onefuncstr[50];",
+                        'sprintf (onefuncstr, "%%sMPI_%s()*%%" NICS,' % mpi_func,
+                        'log_key_str[0] == \'\\0\' ? "" : " ", conc_mcast_tallies[CONC_MCAST_MPI_%s]);' % string.upper(mpi_func),
+                        "strcat (log_key_str, onefuncstr);",
+                        "}"],
+                              stack=finalcode)
+            self.pushmany([
+                    "if (log_key_str[0] != '\\0')",
+                    'ncptl_log_add_comment ("Multicast functions used (statically)", log_key_str);'],
+                          stack=finalcode)
+        return finalcode
 
     def code_def_finalize_POST(self, localvars):
         "Finish up cleanly."
@@ -423,7 +449,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                       handlecode)
         elif tag == "EV_MCAST":
             self.pushmany([
-                    "if (%s.source == -1)" % struct,
+                    "if (%s.mpi_func == CONC_MCAST_MPI_ALLTOALL || %s.mpi_func == CONC_MCAST_MPI_ALLTOALLV)" % (struct, struct),
                     "%s.buffer2 = ncptl_malloc_message (%s.bufferofs2 + %s.size2," % \
                         (struct, struct, struct),
                     "%s.alignment," % struct,
@@ -609,6 +635,16 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             "(void) MPI_Allreduce (&elapsedtime, &minelapsedtime,",
             "1, MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD);"]
 
+    def code_declare_datatypes_PRE(self, localvars):
+        "Declare extra datatypes needed by the C+MPI backend."
+        return ["/* Enumerate the various mechanisms used to implement MULTICAST statements. */",
+                "typedef enum {",
+                "CONC_MCAST_MPI_BCAST,       /* One to many */",
+                "CONC_MCAST_MPI_ALLTOALL,    /* Many to many, same data to all */ ",
+                "CONC_MCAST_MPI_ALLTOALLV,   /* General many to many */",
+                "CONC_MCAST_MPI_NUM_FUNCS    /* Number of the above */",
+                "} CONC_MCAST_MPI_FUNC;"]
+
     def code_declare_datatypes_MCAST_STATE(self, localvars):
         "Declare fields in the CONC_MCAST_EVENT structure for multicast events."
         newfields = []
@@ -638,6 +674,9 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                               stack=newfields)
         self.code_declare_var(type="int *", name="rcvdisp",
                               comment="Offset from buffer2 of each message to receive",
+                              stack=newfields)
+        self.code_declare_var(type="CONC_MCAST_MPI_FUNC", name="mpi_func",
+                              comment="MPI function to use to perform the multicast",
                               stack=newfields)
         return newfields
 
@@ -692,6 +731,23 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                               rhs="(char *) ncptl_malloc (var_num_tasks*sizeof(char), 0)",
                               comment="Flags indicating whether each task is in or out",
                               stack=mcastcode)
+        self.code_declare_var(type="ncptl_int *", name="sendsfrom",
+                              rhs="(ncptl_int *) ncptl_malloc (var_num_tasks*sizeof(ncptl_int), 0)",
+                              comment="Tally of sends from each rank",
+                              stack=mcastcode)
+        self.code_declare_var(type="ncptl_int *", name="recvsby",
+                              rhs="(ncptl_int *) ncptl_malloc (var_num_tasks*sizeof(ncptl_int), 0)",
+                              comment="Tally of receives by each rank",
+                              stack=mcastcode)
+        self.code_declare_var(type="int", name="stasknum",
+                              comment="A single source task mapped by ncptl_virtual_to_physical()",
+                              stack=mcastcode)
+        self.code_declare_var(type="int", name="ttasknum",
+                              comment="A single target task mapped by ncptl_virtual_to_physical()",
+                              stack=mcastcode)
+        self.code_declare_var(type="CONC_MCAST_MPI_FUNC", name="mpi_func",
+                              comment="The MPI function that will implement the multicast",
+                              stack=mcastcode)
         self.communicator = self.code_declare_var(type="MPI_Comm", name="subcomm",
                                                   comment="MPI subcommunicator to use",
                                                   stack=mcastcode)
@@ -704,13 +760,19 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.push("", mcastcode)
 
         # Create a communicator holding all sources and all targets.
-        self.push(" /* Determine all participants in the many-to-many multicast. */", mcastcode)
-        self.push("memset(procflags, 0, var_num_tasks);", mcastcode)
+        self.pushmany([
+                " /* Determine all participants in the many-to-many multicast. */",
+                "memset(procflags, 0, var_num_tasks);",
+                "memset(sendsfrom, 0, var_num_tasks*sizeof(ncptl_int));",
+                "memset(recvsby, 0, var_num_tasks*sizeof(ncptl_int));"],
+                      stack=mcastcode)
         if source_task[0] == "task_expr":
             sloopvar = None
             self.pushmany([
-                    "procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % source_task[1],
-                    "numsenders = (%s) >= 0 && (%s) < var_num_tasks ? 1 : 0;" % (source_task[1], source_task[1])],
+                    "if ((%s) >= 0 && (%s) < var_num_tasks) {" % (source_task[1], source_task[1]),
+                    "stasknum = (int) ncptl_virtual_to_physical(procmap, %s);" % source_task[1],
+                    "procflags[stasknum] = 1;",
+                    "numsenders = 1;"],
                           stack=mcastcode)
         else:
             self.push("{", mcastcode)
@@ -723,11 +785,15 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                     "",
                     "for (%s=0; %s<var_num_tasks; %s++)" % (sloopvar, sloopvar, sloopvar),
                     "if (%s) {" % sexpression,
-                    "numsenders++;",
-                    "procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % sloopvar],
+                    "stasknum = (int) ncptl_virtual_to_physical(procmap, %s);" % sloopvar,
+                    "procflags[stasknum] = 1;",
+                    "numsenders++;"],
                           stack=mcastcode)
         if target_tasks[0] == "task_expr":
-            self.push("procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % target_tasks[1],
+            self.pushmany(["ttasknum = (int) ncptl_virtual_to_physical(procmap, %s);" % target_tasks[1],
+                           "sendsfrom[stasknum] = 1;",
+                           "recvsby[ttasknum] = 1;",
+                           "procflags[ttasknum] = 1;"],
                       mcastcode)
         else:
             # Convert target task groups to ordinary tasks.
@@ -752,14 +818,42 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
             self.pushmany([
                     "",
                     "for (%s=0; %s<var_num_tasks; %s++)" % (tloopvar, tloopvar, tloopvar),
-                    "if (%s)" % texpression,
-                    "procflags[(int) ncptl_virtual_to_physical(procmap, %s)] = 1;" % tloopvar,
+                    "if (%s) {" % texpression,
+                    "ttasknum = (int) ncptl_virtual_to_physical(procmap, %s);" % tloopvar,
+                    "sendsfrom[stasknum]++;",
+                    "recvsby[ttasknum]++;",
+                    "procflags[ttasknum] = 1;",
+                    "}",
                     "}"],
                           stack=mcastcode)
+        self.push("}", mcastcode)
         if source_task[0] != "task_expr":
             self.push("}", mcastcode)
-            self.push("}", mcastcode)
         self.push("subcomm = define_MPI_communicator(procflags);", mcastcode)
+
+        # See if it's safe to use MPI_Alltoall() instead of MPI_Alltoallv().
+        self.pushmany([
+                "",
+                " /* Determine if all participants are sending and receiving the same number",
+                "  * and volume of messages.  If so, then we can use the faster MPI_Alltoall()",
+                "  * function for the multicast instead of the slower MPI_Alltoallv(). */",
+                "{",
+                "ncptl_int msgtally = -1;   /* Messages sent or received by any participant */",
+                "ncptl_int i;",
+                "mpi_func = CONC_MCAST_MPI_ALLTOALL;  /* Use MPI_Alltoall() unless we require MPI_Alltoallv(). */",
+                "for (i=0; i<var_num_tasks; i++) {",
+                "stasknum = (int) ncptl_virtual_to_physical(procmap, i);",
+                "if (procflags[stasknum]) {",
+                "if (msgtally == -1)",
+                "msgtally = sendsfrom[stasknum];",
+                "if (sendsfrom[stasknum] != msgtally || recvsby[stasknum] != msgtally) {",
+                "mpi_func = CONC_MCAST_MPI_ALLTOALLV;",
+                "break;",
+                "}",
+                "}",
+                "}",
+                "}"],
+                      stack=mcastcode)
 
         # As a special case, use MPI_Bcast() for one-to-one and
         # one-to-many multicasts.
@@ -780,6 +874,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                       stack=mcastcode)
         if sloopvar != None:
             self.code_declare_var(name=sloopvar, rhs="virtrank", stack=mcastcode)
+        self.push("conc_mcast_tallies[CONC_MCAST_MPI_BCAST]++;", mcastcode)
         one = "1" + self.ncptl_int_suffix
         if num_messages == "1":
             num_messages = one
@@ -793,7 +888,8 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                                       source_task[1], "source", mcastcode)
         self.pushmany([
                 "if (var_num_tasks == 1)",
-                "%s.source = 0%s;" % (struct, self.ncptl_int_suffix)],
+                "%s.source = 0%s;" % (struct, self.ncptl_int_suffix),
+                "%s.mpi_func = CONC_MCAST_MPI_BCAST;  /* One-to-many communication */" % struct],
                       stack=mcastcode)
         self.pushmany(self.invoke_hook("n_mcast_stmt_INIT", locals(),
                                        before=[""]),
@@ -857,6 +953,7 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.code_end_source_scope(source_task, mcastcode)
 
         # Determine all of the tasks who will send to the caller.
+        self.push("", mcastcode)
         self.push(" /* Determine each task who will send data to me. */", mcastcode)
         sourcevar = self.code_begin_target_loop(source_task, target_tasks, mcastcode)
         self.pushmany([
@@ -869,18 +966,32 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         self.code_end_target_loop(source_task, target_tasks, mcastcode)
         self.push("", mcastcode)
 
+        # Adjust sndnum and rcvnum if we're using MPI_Alltoall().
+        self.pushmany([
+                " /* MPI_Alltoall() includes sends to self.  Adjust sndnum and rcvnum appropriately. */",
+                "if (mpi_func == CONC_MCAST_MPI_ALLTOALL) {",
+                "MPI_Comm_size (subcomm, &sndnum);",
+                "rcvnum = sndnum;",
+                "}",
+                ""],
+                      stack=mcastcode)
+
         # Perform the correct number of multicasts.
         one = "1" + self.ncptl_int_suffix
         if num_messages == "1":
             num_messages = one
         if num_messages == one:
-            self.push(" /* Prepare to multicast a message. */", mcastcode)
-            self.push("{", mcastcode)
+            self.pushmany([
+                    " /* Prepare to multicast a message. */",
+                    "conc_mcast_tallies[mpi_func]++;",
+                    "if (1) {"],
+                          stack=mcastcode)
         else:
             self.pushmany([
-                " /* Prepare to multicast %s messages. */" % num_messages,
-                "{"],
-                          mcastcode)
+                    " /* Prepare to multicast %s messages. */" % num_messages,
+                    "conc_mcast_tallies[mpi_func]++;",
+                    "if (1) {"],
+                          stack=mcastcode)
             loopvar = self.code_declare_var(suffix="loop", stack=mcastcode)
             self.push("for (%s=0; %s<%s; %s++) {" %
                       (loopvar, loopvar, num_messages, loopvar),
@@ -901,7 +1012,12 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                       stack=mcastcode)
         for a2av_var in ["sndvol", "snddisp", "rcvvol", "rcvdisp"]:
             self.push("%s.%s = %s;" % (struct, a2av_var, a2av_var), mcastcode)
-        self.push("%s.source = -1;    /* Indicates many-to-many instead of one-to-many. */" % struct, mcastcode)
+        self.pushmany([
+                "%s.source = -1;" % struct,
+                "%s.mpi_func = mpi_func;" % struct,
+                "if (mpi_func == CONC_MCAST_MPI_ALLTOALL)",
+                "%s.sndvol[0] = %s.rcvvol[0] = %s;" % (struct, struct, message_spec[2])],
+                      stack=mcastcode)
         if num_messages != one:
             self.push("}", mcastcode)
         self.push("}", mcastcode)
@@ -911,6 +1027,8 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
                 "}",
                 "}",
                 "ncptl_free(procflags);",
+                "ncptl_free(sendsfrom);",
+                "ncptl_free(recvsby);",
                 "}"],
                       stack=mcastcode)
         self.combine_to_marker(mcastcode)
@@ -937,12 +1055,27 @@ class NCPTL_CodeGen(codegen_c_generic.NCPTL_CodeGen):
         "Multicast a message to a set of tasks."
         struct = "thisev->s.mcast"
         return [
-            "if (%s.source == -1)" % struct,
+            "switch (%s.mpi_func) {" % struct,
+            "case CONC_MCAST_MPI_BCAST:",
+            " /* One to many */",
+            "(void) MPI_Bcast (CONC_GETBUFPTR(mcast), %s.size, MPI_BYTE," % struct,
+            "%s.root, %s.communicator);" % (struct, struct),
+            "break;",
+            "case CONC_MCAST_MPI_ALLTOALL:",
+            " /* Many to many, same to each */",
+            "(void) MPI_Alltoall (CONC_GETBUFPTR(mcast), %s.sndvol[0], MPI_BYTE," % struct,
+            "(void *)((char *)%s.buffer2 + %s.bufferofs2), %s.rcvvol[0], MPI_BYTE, %s.communicator);" % (struct, struct, struct, struct),
+            "break;",
+            "case CONC_MCAST_MPI_ALLTOALLV:",
+            " /* Many to many, different to each */",
             "(void) MPI_Alltoallv (CONC_GETBUFPTR(mcast), %s.sndvol, %s.snddisp, MPI_BYTE," % (struct, struct),
             "(void *)((char *)%s.buffer2 + %s.bufferofs2), %s.rcvvol, %s.rcvdisp, MPI_BYTE, %s.communicator);" % (struct, struct, struct, struct, struct),
-            "else",
-            "(void) MPI_Bcast (CONC_GETBUFPTR(mcast), %s.size, MPI_BYTE," % struct,
-            "%s.root, %s.communicator);" % (struct, struct)]
+            "break;",
+            "default:",
+            " /* We should never get here. */",
+            'ncptl_fatal ("Internal error: Unrecognized multicast function");',
+            "break;",
+            "}"]
 
     def code_declare_datatypes_REDUCE_STATE(self, localvars):
         "Declare fields in the CONC_REDUCE_EVENT structure for reduction events."

@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -73,7 +73,10 @@
 /* Define as the name of the CPU on which coNCePTuaL applications will run. */
 #undef CPU_TYPE
 
-/* Define as a special file containing a Cray XT node ID. */
+/* Define as a special file containing a Cray node location. */
+#undef CRAY_XC_CNAME_FILE
+
+/* Define as a special file containing a Cray node ID. */
 #undef CRAY_XT_NID_FILE
 
 /* Define as the number of times the cycle counter increments per microsecond
@@ -163,6 +166,9 @@
 
 /* Define to 1 if you have the `fork' function. */
 #undef HAVE_FORK
+
+/* Define to 1 if you have the `getaddrinfo' function. */
+#undef HAVE_GETADDRINFO
 
 /* Define to 1 if you have the `getcwd' function. */
 #undef HAVE_GETCWD
@@ -351,10 +357,10 @@
 /* Define to 1 if you have the <pwd.h> header file. */
 #undef HAVE_PWD_H
 
-/* Define if Cray XT mesh coordinates are available. */
+/* Define if Cray mesh coordinates are available. */
 #undef HAVE_RCAMESHCOORD
 
-/* Define if the Cray XT mesh topology is available. */
+/* Define if the Cray mesh topology is available. */
 #undef HAVE_RCAMESHTOPOLOGY
 
 /* Define to 1 if you have the <rca_lib.h> header file. */
@@ -369,7 +375,7 @@
 /* Define to 1 if you have the `round' function. */
 #undef HAVE_ROUND
 
-/* Define if Cray XT event data is available. */
+/* Define if Cray event data is available. */
 #undef HAVE_RSMSEVENT
 
 /* Define to 1 if you have the <rsms/rs_id.h> header file. */
@@ -437,6 +443,9 @@
 
 /* Define to 1 if you have the `strtoq' function. */
 #undef HAVE_STRTOQ
+
+/* Define to 1 if `ai_canonname' is a member of `struct addrinfo'. */
+#undef HAVE_STRUCT_ADDRINFO_AI_CANONNAME
 
 /* Define if you have the `CuAt' struct. */
 #undef HAVE_STRUCT_CUAT
@@ -547,13 +556,13 @@
    extensions. */
 #undef HAVE_X86_64_CPU
 
-/* Define if the Cray XT node ID is available in _my_pnid. */
+/* Define if the Cray node ID is available in _my_pnid. */
 #undef HAVE__MY_PNID
 
 /* Define to 1 if you have the `_strtoi64' function. */
 #undef HAVE__STRTOI64
 
-/* Define if the Cray XT clock frequency is available in __cpu_mhz. */
+/* Define if the Cray clock frequency is available in __cpu_mhz. */
 #undef HAVE___CPU_MHZ
 
 /* Define if stdarg.h defines a __va_copy() macro. */

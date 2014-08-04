@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -93,7 +93,7 @@ int main (int argc, char *argv[])
   testvar = 999;
   stringvar = "xxx999";
   ncptl_parse_command_line(1, test_argv, arglist, 2);
-  debug_printf ("\tExpected 123;      got %lld.\n", (int64_t)testvar);
+  debug_printf ("\tExpected 123;      got %" NICS ".\n", testvar);
   debug_printf ("\tExpected \"abc123\"; got \"%s\".\n", stringvar);
   if (testvar != 123)
     RETURN_FAILURE();
@@ -109,7 +109,7 @@ int main (int argc, char *argv[])
   testvar = 999;
   stringvar = "xxx999";
   ncptl_parse_command_line(5, test_argv, arglist, 2);
-  debug_printf ("\tExpected 456;      got %lld.\n", (int64_t)testvar);
+  debug_printf ("\tExpected 456;      got %" NICS ".\n", testvar);
   debug_printf ("\tExpected \"def456\"; got \"%s\".\n", stringvar);
   if (testvar != 456)
     RETURN_FAILURE();
@@ -126,7 +126,7 @@ int main (int argc, char *argv[])
   testvar = 999;
   stringvar = "xxx999";
   ncptl_parse_command_line(5, test_argv, arglist, 2);
-  debug_printf ("\tExpected 789;      got %lld.\n", (int64_t)testvar);
+  debug_printf ("\tExpected 789;      got %" NICS ".\n", testvar);
   debug_printf ("\tExpected \"ghi789\"; got \"%s\".\n", stringvar);
   if (testvar != 789)
     RETURN_FAILURE();
@@ -140,7 +140,7 @@ int main (int argc, char *argv[])
   test_argv[3] = NULL;
   testvar = 999;
   ncptl_parse_command_line(3, test_argv, arglist, 2);
-  debug_printf ("\tExpected 101100;      got %lld.\n", (int64_t)testvar);
+  debug_printf ("\tExpected 101100;      got %" NICS ".\n", testvar);
   if (testvar != 101100)
     RETURN_FAILURE();
 

@@ -1,6 +1,6 @@
 # Send data down a task pipeline.
 
-Require language version "1.4".
+Require language version "1.5".
 
 chunksize is "Number of bytes to send at once" and comes from "--chunk" or
   "-c" with default 1K.

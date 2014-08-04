@@ -1,14 +1,14 @@
 %!PS-Adobe-2.0 EPSF-2.0
-%%Creator: dvips(k) 5.991 Copyright 2011 Radical Eye Software
+%%Creator: dvips(k) 5.994 Copyright 2014 Radical Eye Software
 %%Title: latex_vis.dvi
-%%CreationDate: Tue Jan 10 14:34:01 2012
+%%CreationDate: Fri Aug  1 19:00:10 2014
 %%BoundingBox: 66 527 266 726
-%%DocumentFonts: Times-Roman
+%%DocumentFonts: NimbusRomNo9L-Regu
 %%EndComments
 %DVIPSWebPage: (www.radicaleye.com)
 %DVIPSCommandLine: dvips -E -Ppdf -Pcmz -o - latex_vis.dvi
 %DVIPSParameters: dpi=8000
-%DVIPSSource:  TeX output 2012.01.10:1434
+%DVIPSSource:  TeX output 2014.08.01:1900
 %%BeginProcSet: tex.pro 0 0
 %!
 /TeXDict 300 dict def TeXDict begin/N{def}def/B{bind def}N/S{exch}N/X{S
@@ -78,10 +78,10 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pstricks.pro 0 0
-% $Id: pstricks.pro 622 2012-01-01 15:36:14Z herbert $
+% $Id: pstricks.pro 919 2014-05-19 18:42:47Z herbert $
 %
 %% PostScript prologue for pstricks.tex.
-%% Version 1.09, 2011/10/31
+%% Version 1.23, 2014/05/15
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -96,7 +96,7 @@ systemdict /.setshapealpha known not {/.setshapealpha { pop } def } if
 %
 /tx@Dict 200 dict def 				% the main PSTricks dictionary
 tx@Dict begin
-/ADict 25 dict def				% The arrow dictionaray
+/ADict 25 dict def				% The arrow dictionary
 /CM { matrix currentmatrix } bind def
 /SLW /setlinewidth load def
 /CLW /currentlinewidth load def
@@ -110,6 +110,7 @@ tx@Dict begin
 /Atan { /atan load stopped { pop pop 0 } if } def % return 0 if atan not known
 /ATAN1 {neg -1 atan 180 sub } def		% atan(x) (only one parameter)
 /Div { dup 0 eq { pop } { div } ifelse } def  	% control the division
+/Log { dup 1e-20 lt { pop -1e30 }{ log } ifelse } def % control the log
 /tan { dup cos abs 1.e-10 lt 
   { pop 1.e10 } 				% return 1.e10 as infinit
   { dup sin exch cos div } ifelse 		% default sin/cos
@@ -117,6 +118,14 @@ tx@Dict begin
 /Tan { dup sin exch cos Div } def 		% sin(x)/cos(x) x in degrees
 /Acos {dup dup mul neg 1 add dup 0 lt {		% arc cos, returns 0 when negative root
   pop pop 0 }{ sqrt exch atan} ifelse } def
+/Acos2 { 2 dict begin 
+  /x ED /y ED
+  y abs 1.0e-20 lt { 1.0e30 } if
+  x y div 
+  dup dup mul neg 1 add dup 0 lt {		% arc cos needs two values x,y
+  pop pop 0 }{ sqrt exch atan} ifelse 
+  y 0 lt { 180 add } if
+} def
 /NET { neg exch neg exch T } def	      	% change coordinate system to the negative one		
 /Pyth { dup mul exch dup mul add sqrt } def   	% Pythagoras, expects 2 parameter
 /Pyth2 {					% Pythagoras, xA yA xB yB
@@ -125,8 +134,10 @@ tx@Dict begin
   3 1 roll 		% yB-yA xA xB
   sub			% yB-yA xA-xB
   Pyth } def
-/PtoC { 2 copy cos mul 3 1 roll sin mul } def 	% Polar to Cartesian
-/Rand { rand 4294967295 div } def		% a real random number
+/PtoC { 2 copy cos mul 3 1 roll sin mul } def % Polar to Cartesian
+/PtoCab { dup cos 4 -1 roll mul 3 1 roll sin mul } def % Polar to Cartesian (Ellipse) a b phi-> x y 
+%/Rand { rand 4294967295 div } def		% a real random number
+/Rand { rand 2147483447 div } def		% a real random number between 0 and 1
 %----------------- hv added 20050516 ---------------
 /PiDiv2 1.57079632680 def
 /Pi 3.14159265359 def 
@@ -136,6 +147,13 @@ tx@Dict begin
 %
 /RadtoDeg { 180 mul Pi div } bind def 		% convert from radian to degrees
 /DegtoRad { Pi mul 180 div } bind def 		% viceversa
+%
+/startGlobal { true setglobal globaldict begin } bind def
+/endGlobal { end false setglobal } bind def
+/pssetRGBcolor /setrgbcolor load def
+/pssetCMYKcolor /setcmykcolor load def
+/pssetGraycolor /setgray load def
+%
 %----------------- hv end---------------------------
 /PathLength@ { /z z y y1 sub x x1 sub Pyth add def /y1 y def /x1 x def } def
 %
@@ -203,22 +221,55 @@ tx@Dict begin
     /YLength YB YA sub def
     /PAngle YLength XLength Atan def
     /XYLength XLength YLength Pyth def
-    /nSym XYLength SymStep div cvi def
+    %% for negative SymStep we calculate the distance 
+    SymStep 0 lt 
+      { %XYLength SymStep div abs cvi 
+        /nSym SymStep abs cvi def } 
+      { /nSym XYLength SymStep div cvi def }
+    ifelse
+    0.5 setflat
     /Shift Symbol stringwidth pop 2 div def 
     /deltaX XLength nSym div def
     /deltaY YLength nSym div def
-    XA Shift sub YA Shift sub moveto 
+    curveticks 
+      { XA YA moveto }
+      { XA Shift sub YA Shift sub moveto }
+    ifelse 
     nSym { 
-      gsave rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
-      Symbol show 
+      gsave 
+      curveticks 
+        { PAngle 180 sub CorrAngle sub tickAngle add /rotAngle ED  
+          currentpoint translate rotAngle rotate 
+          0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+          SymbolLinewidth setlinewidth stroke
+        }
+        { 
+          rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
+          Symbol show 
+        }
+      ifelse 
       grestore 
       deltaX deltaY rmoveto
     } repeat
     /YA YB def /XA XB def
   } repeat 
-  XA Shift sub YA Shift sub moveto 
-  gsave rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
-  Symbol show grestore
+  curveticks 
+    { XA YA moveto }
+    { XA Shift sub YA Shift sub moveto }
+  ifelse 
+  gsave 
+  curveticks 
+    { PAngle 180 sub CorrAngle sub tickAngle add /rotAngle ED  
+      XA YA translate rotAngle rotate 
+      0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+      SymbolLinewidth setlinewidth stroke
+    }
+    { 
+      rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
+      Symbol show 
+    }
+  ifelse 
+  grestore
   pop 				% delete the mark symbol
 } def
 %
@@ -235,7 +286,7 @@ tx@Dict begin
   /y2 ED 
   a Div ceiling cvi /x2 ED /y1 ED 
   a Div cvi /x1 ED /y2 y2 y1 sub def 
-  clip 
+  clipType   % must be defined in pstricks.tex: clip -- eoclip 
   newpath 
   2 setlinecap 
   systemdict
@@ -265,7 +316,7 @@ tx@Dict begin
   /y2 ED /x2 ED /y1 ED /x1 ED 
   y2 y1 sub a div 2 add cvi /Ny ED
   x2 x1 sub a div 2 add cvi /Nx ED
-  clip 
+  clipType   % must be defined in pstricks.tex: clip -- eoclip 
   newpath 
   /yA y1 dotRadius add CLW add def
   /xA0 x1 dotRadius add CLW add def
@@ -284,28 +335,69 @@ tx@Dict begin
 } def
 %
 /PenroseFill {%	 on stack: scaling factor
-  dup dup scale
-  1 exch div round /penroseFactor ED 
-  a 0 dtransform round exch round exch
-  2 copy idtransform 
-  exch Atan rotate 
-  idtransform pop /a ED 
-  .25 .25 itransform pathbbox 
-  /y2 ED 
-  a Div ceiling cvi /x2 ED /y1 ED 
-  a Div cvi /x1 ED /y2 y2 y1 sub def 
+  /Scale ED
+%  1 exch div round /penroseFactor ED 
+%  a 0 dtransform round exch round exch
+%  2 copy idtransform 
+%  exch Atan rotate 
+%  idtransform pop /a ED 
+%  .25 .25 itransform pathbbox 
+%  /y2 ED 
+%  a Div ceiling cvi /x2 ED /y1 ED 
+%  a Div cvi /x1 ED /y2 y2 y1 sub def 
   clip 
   newpath 
-  systemdict
-  /setstrokeadjust known { true setstrokeadjust } if 
+gsave
+  220 150 translate
+  Scale dup scale
+  systemdict /setstrokeadjust known { true setstrokeadjust } if 
   /I/S/L/W/G/+/Z/F/E/D[/def/exch/for{E D}/add{s E get mul}
  { Z -36.2001 1 33 }{25 E S rlineto}{/q Z dup q G E q 1 + G}{Z 2 2}]{cvx def}forall
   [0 72 1008 {dup sin E cos }F ]1 setlinejoin/s W{/a W{/b I 10{/i I 4{/m I moveto
   i m +/j I 10{/l Z b m l + G a l G sub s m get div .2 + floor .3 + 25
   mul j l + S rmoveto}F i L j L stroke }F}F}F}F 
   grestore 
-  pop pop 
+%  pop pop 
 } def
+%
+/PenroseFillA {%  on stack: scaling factor, border color, kite color, dart color
+  /Scale ED
+  Scale dup scale
+  /border_colour ED 
+  /kite_colour ED 
+  /dart_colour ED
+  clip 
+  newpath 
+  gsave
+  100 100 translate
+  6 
+  Scale 1 lt { 1 Scale dup add div mul cvi } if %%%%   Number of iterations
+  10					%%%%   Long side length in millimeters
+  /border_width { L 0.06 mul }def		%%%%   Choose the scalefactor for the borders
+  /L exch 25.4 div 72 mul def		%%%%   Conversion: mm -> inches -> points
+  /f{-1 5 sqrt add 2 div}bind def		%%%%   The reciprocal of the golden ratio
+  /l{L f mul}bind def			%%%%   Short side length l = L*f
+  /Ll{L l add}bind def			%%%%   Ll =  L + l
+  /c{36 cos L mul}bind def		%%%%   c  =  L*cos(36)
+  /s{36 sin L mul}bind def		%%%%   s  =  L*sin(36)
+  /draw_tile { 0 0 moveto c s lineto 0 lineto gsave closepath gsave fill grestore
+	     0 setlinewidth stroke grestore border_colour stroke } bind def
+  /half_kite { dup dup 0 gt{ 1 sub gsave f f neg scale -36 rotate half_dart
+			   Ll 0 translate 144 rotate kite grestore }
+	      		 { kite_colour L draw_tile }ifelse
+	     pop } bind def
+  /half_dart { dup dup 0 gt{ 1 sub gsave f f scale half_kite
+			   -144 rotate Ll neg 0 translate half_dart grestore }
+	      		 { dart_colour l draw_tile }ifelse
+  	     pop } bind def
+  /kite{ gsave half_kite 1 -1 scale half_kite grestore }bind def
+  border_width setlinewidth  1 setlinejoin  1 setlinecap
+%  450 0 translate  
+  dup f exch neg exp dup scale
+  5 {kite 72 rotate } repeat stroke 
+  grestore
+} def
+%
 %
 /TruchetFill { %	 on stack: scaling factor
   10 dict begin
@@ -622,28 +714,62 @@ tx@Dict begin
 } def
 %
 /CurvePath { 
+  %% for negative SymStep we calculate the distance 
+  SymStep 0 lt { gsave PathLength SymStep div abs /SymStep ED grestore } if
+  0.5 setflat
   flattenpath /z 0 def /z0 0 def
   { /y1 ED /x1 ED /y2 y1 def /x2 x1 def 
     x1 Shift sub y1 Shift sub moveto 
     gsave 
-    startAngle rotate Symbol show 
+    curveticks 
+      { x1 y1 translate startAngle rotate 
+        0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+        SymbolLinewidth setlinewidth stroke      
+      }
+      { startAngle rotate Symbol show }
+    ifelse 
     grestore /z0 z def }
   { /y ED /x ED PathLength@ z z0 sub SymStep ge {
       x Shift sub y Shift sub moveto 
       gsave 
-      rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if
-      Symbol show 
+      curveticks 
+        { y yOld sub x xOld sub Atan 180 sub CorrAngle sub /rotAngle ED  
+          x y translate rotAngle rotate 
+          0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+          SymbolLinewidth setlinewidth stroke
+        }
+        { 
+          rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if        
+          Symbol show 
+        }
+      ifelse 
       grestore /z0 z def } if 
     /yOld y def /xOld x def } 
-  {} 
+  {} %% the lineto part
   { /y y2 def /x x2 def PathLength@ 
     x Shift sub y Shift sub moveto 
     gsave
-    rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if
-    Symbol show 
+    curveticks 
+      { y yOld sub x xOld sub Atan 180 sub /rotAngle ED  
+        x y translate rotAngle rotate 
+        0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+        SymbolLinewidth setlinewidth stroke
+      }
+      { 
+        x Shift sub y Shift sub moveto 
+        rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if        
+        Symbol show 
+      }
+    ifelse 
     grestore
   }
   pathforall 
+%  curveticks 
+%   { gsave 
+%     x y translate rotAngle rotate 
+%     0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+%     SymbolLinewidth setlinewidth stroke grestore
+%   } if
   z 
 } def
 %
@@ -686,6 +812,100 @@ tx@Dict begin
   /Shift Symbol stringwidth pop 2 div def 
   CurvePath 
 } def
+%
+/CalcBezierSpline {%  Christoph Bersch
+  10 dict begin
+  /getX { Points exch 2 mul get } def
+  /getY { Points exch 2 mul 1 add get } def
+  /n Points length 1 sub 2 idiv def
+  /GetFirstControlPoints {
+    /x n array def
+    /tmp n array def
+    /b 2 def
+    x 0 rhs 0 get b div put
+    1 1 n 1 sub {
+      /i exch def
+      tmp i 1 b div dup 4 1 roll put
+      i n 1 sub lt { 4 }{ 3.5 } ifelse exch sub /b exch def
+      x i rhs i get x i 1 sub get sub b div put
+    } for
+    1 1 n 1 sub {
+      n exch sub
+      dup dup x exch 1 sub 2 copy 6 2 roll
+      get 3 1 roll tmp exch get
+      exch x exch get mul sub
+      put	
+    } for
+    x
+  } def
+  % 
+  n 1 eq {
+    0 getX 2 mul 1 getX add 3 div
+    0 getY 2 mul 1 getY add 3 div
+    exch dup 3 1 roll 2 mul 0 getX sub
+    exch dup 3 1 roll 2 mul 0 getY sub
+    [ 0 getX 0 getY 7 3 roll 1 getX 1 getY ] /outPoints exch def
+  } {
+    /outPoints 6 n mul 2 add array def
+    0 1 n {
+      dup dup 6 mul dup 1 add
+      outPoints exch 5 -1 roll getY put
+      outPoints exch 3 -1 roll getX put
+    } for
+    /rhs n array def
+    1 1 n 2 sub {
+      rhs exch dup dup getX 4 mul exch 1 add getX 2 mul add put
+    } for
+    rhs 0 0 getX 1 getX 2 mul add put
+    rhs n 1 sub dup getX 8 mul n getX add 2 div put
+    GetFirstControlPoints
+    1 1 n 2 sub {
+      rhs exch dup dup getY 4 mul exch 1 add getY 2 mul add put
+    } for
+    rhs 0 0 getY 1 getY 2 mul add put
+    rhs n 1 sub dup getY 8 mul n getY add 2 div put
+    GetFirstControlPoints
+    0 1 n 1 sub {
+      /i exch def
+      2 copy
+      i get outPoints 6 i mul 3 add 3 -1 roll put
+      i get outPoints 6 i mul 2 add 3 -1 roll put
+      2 copy
+      i n 1 sub lt {
+        i 1 add get i 1 add getY 2 mul exch sub outPoints 6 i mul 5 add 3 -1 roll put
+        i 1 add get i 1 add getX 2 mul exch sub outPoints 6 i mul 4 add 3 -1 roll put
+      }{
+        n 1 sub get n getY add 2 div outPoints 6 n 1 sub mul 5 add 3 -1 roll put
+        n 1 sub get n getX add 2 div outPoints 6 n 1 sub mul 4 add 3 -1 roll put
+      } ifelse
+    } for
+    pop pop
+  } ifelse
+  outPoints
+  end
+} def
+/Spline {
+  /showpoints ED
+  counttomark 2 div dup cvi /n ED
+  n eq not { exch pop } if
+  ] /Points ED
+  n 1 gt {
+    CalcBezierSpline
+    mark exch aload pop
+    ArrowA
+    n 2 sub {
+      6 2 roll 4 2 roll curveto
+    } repeat
+    6 2 roll 4 2 roll ArrowB curveto
+  } if
+} def
+/OpenSymbolSpline {
+  Spline
+  0.1 setflat
+  /Shift Symbol stringwidth pop 2 div def 
+  CurvePath 
+} def
+
 %
 /SQ { /r ED r r moveto r r neg L r neg r neg L r neg r L fill } def
 /ST { /y ED /x ED x y moveto x neg y L 0 x L fill } def
@@ -902,7 +1122,9 @@ tx@Dict begin
   /mtrx CM def 
   T 
   rotAngle rotate
-  scale 0 0 1 5 3 roll arc 
+  scale 
+  0 0 moveto 1 0 rmoveto  % move to the start position
+  0 0 1 5 3 roll arc 
   mtrx setmatrix 
 } def
 %
@@ -1024,7 +1246,7 @@ dup angle0 sub dup abs 180 gt { 180 add 360 div floor 360 mul sub } { pop } ifel
 /PutBegin { /TMatrix [ TMatrix CM ] cvx def CP 4 2 roll T moveto } def
 /PutEnd { CP /TMatrix [ TMatrix setmatrix ] cvx def moveto } def
 %
-/Uput { 
+/Uput {
   /a ED 
   add 2 div /h ED 2 
   div /w ED 
@@ -1039,6 +1261,7 @@ dup angle0 sub dup abs 180 gt { 180 add 360 div floor 360 mul sub } { pop } ifel
 } def
 %
 /UUput { 
+  5 dict begin
   /z ED 
   abs /y ED 
   /x ED 
@@ -1049,73 +1272,6 @@ dup angle0 sub dup abs 180 gt { 180 add 360 div floor 360 mul sub } { pop } ifel
   a PtoC 
   h1 add exch 
   w1 add exch 
-} def
-%
-/BeginOL { 
-  dup (all) eq exch TheOL eq or 
-    { IfVisible not { Visible /IfVisible true def } if } 
-    { IfVisible { Invisible /IfVisible false def } if } ifelse 
-} def
-%
-/InitOL { 
-  /OLUnit [ 3000 3000 matrix defaultmatrix dtransform ] cvx def
-  /Visible { CP OLUnit idtransform T moveto } def 
-  /Invisible { CP OLUnit neg exch neg exch idtransform T moveto } def 
-  /BOL { BeginOL } def
-  /IfVisible true def 
-} def
-%
-%%%%%%%%%%%%%%%%% tools %%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%% ### bubblesort ###
-%% syntax : array bubblesort --> array2 trie par ordre croissant
-%% code de Bill Casselman
-%% http://www.math.ubc.ca/people/faculty/cass/graphics/text/www/
-/bubblesort {
-4 dict begin
-   /a exch def
-   /n a length 1 sub def
-   n 0 gt {
-      % at this point only the n+1 items in the bottom of a remain to
-      % the sorted largest item in that blocks is to be moved up into
-      % position n
-      n {
-         0 1 n 1 sub {
-            /i exch def
-            a i get a i 1 add get gt {
-               % if a[i] > a[i+1] swap a[i] and a[i+1]
-               a i 1 add
-               a i get
-               a i a i 1 add get
-               % set new a[i] = old a[i+1]
-               put
-               % set new a[i+1] = old a[i]
-               put
-            } if
-         } for
-         /n n 1 sub def
-      } repeat
-   } if
-   a
-end
-} def
-%
-%
-/concatstringarray{  %  [(a) (b) ... (z)] --> (ab...z)  20100422
-  0 1 index { length add } forall 
-  string     
-  0 3 2 roll      
-  { 3 copy putinterval length add }forall 
-  pop  
-} bind def
-%
-/dot2comma {% on stack a string (...) 
-  2 dict begin
-  /Output exch def
-  0 1 Output length 1 sub { 
-    /Index exch def 
-    Output Index get 46 eq { Output Index 44 put } if 
-  } for
-  Output
   end
 } def
 %
@@ -1126,16 +1282,18 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-algparser.pro 0 0
-% $Id: pst-algparser.pro 594 2011-10-31 18:13:18Z herbert $
+% $Id: pst-algparser.pro 919 2014-05-19 18:42:47Z herbert $
 %%
 %% PostScript prologue for PSTricks algorithm parser
-%% Version 0.04, 2011/10/21
+%% Version 0.06, 2014/05/19
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
 %% in directory macros/latex/base/lppl.txt.
 %%
 %%-----------------------------------------------------------------------------%
+%
+%currentdict /Pi known not { /Pi 3.14159265359 def } if
 %
 /AlgParser { tx@AlgToPs begin AlgToPs end } def  % Dominique Rodriguez
 %
@@ -1432,7 +1590,7 @@ end
 %% (name) ->
 /TrigoFunc {
   dup (cos) eq 1 index (sin) eq or exch (tan) eq or
-  { /ExpressionVector ExpressionVector aload length Pi /div cvx 180 /mul cvx 5 -1 roll 4 add
+  { /ExpressionVector ExpressionVector aload length 3.1415926 /div cvx 180 /mul cvx 5 -1 roll 4 add
     array astore def
   } if
 } def
@@ -1479,7 +1637,7 @@ end   %tx@CoreAnalyzerDict
 %%increase ^^ for each function added
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% algExpr variable -> PSVector
-/Derive {%
+/Derive {
   10240 string 3 1 roll 0 3 1 roll
   /Variable exch def
   tx@CoreAnalyzerDict begin InitParser AnalyzeListOfE end
@@ -1696,6 +1854,10 @@ end   %tx@CoreAnalyzerDict
   PreCommonFunc
   { (1/\(1+\() StrConcat 5 index StrConcat (\)^2\)\)) StrConcat } if
   PostCommonFunc } def
+/EvalFunc_floor {%
+  PreCommonFunc
+  {  dup 0 eq { (1) StrConcat } { 1 sub } ifelse (/\() StrConcat 5 index StrConcat AddClPar } if
+  PostCommonFunc } def
 /EvalFunc_ln {%
   PreCommonFunc
   {  dup 0 eq { (1) StrConcat } { 1 sub } ifelse (/\() StrConcat 5 index StrConcat AddClPar } if
@@ -1895,10 +2057,10 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-tools.pro 0 0
-% $Id: pst-tools.pro 622 2012-01-01 15:36:14Z herbert $
+% $Id: pst-tools.pro 842 2013-10-26 10:25:41Z herbert $
 %
 %% PostScript tools prologue for pstricks.tex.
-%% Version 0.02, 2012/01/01
+%% Version 0.04, 2013/10/26
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -1920,6 +2082,15 @@ end
   end
 } def
 %
+/ps@ReverseOrderOfPoints { % on stack [P1 P2 P3 ...Pn]=>[Pn,Pn-1,...,P2,P1]
+  5 dict begin       % all local
+  aload length /n ED % number of coors
+  n 2 div cvi /m ED  % number of Points
+  /n1 n def
+  m { n1 2 roll /n1 n1 2 sub def } repeat
+  n array astore
+  end
+} def
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % subroutines for complex numbers, given as an array [a b] 
 % which is a+bi = Real+i Imag
@@ -2109,12 +2280,56 @@ end
   end
 } def
 %
+/rightTrim { % on stack the string and the character number to be stripped  
+  /charNo exch def
+  dup
+  length 1 sub -1 0 { 
+    /i exch def dup i get charNo ne { exit } if 
+  } for
+  0 i 1 add getinterval
+  dup length string copy
+} bind def  % leaves the stripped string on the stack
+
+/psStringwidth /stringwidth load def
+/psShow /show load def
+
+%/stringwidth{ 32 rightTrim psStringwidth } bind def
+
+%/show { 32 rightTrim psShow } bind def
+%-----------------------------------------------------------------------------%
+
+/pgffunctions {
+    /pgfsc{}bind def% stroke color is empty by default
+    /pgffc{}bind def% fill color is empty by default
+    /pgfstr{stroke}bind def%
+    /pgffill{fill}bind def%
+    /pgfeofill{eofill}bind def%
+    /pgfe{a dup 0 rlineto exch 0 exch rlineto neg 0 rlineto closepath}bind def% rectangle
+    /pgfw{setlinewidth}bind def% setlinewidth
+    /pgfs{save pgfpd 72 Resolution div 72 VResolution div neg scale 
+      magscale{1 DVImag div dup scale}if 
+      pgfx neg pgfy neg translate pgffoa .setopacityalpha}bind def% save
+    /pgfr{pgfsd restore}bind def %restore
+    userdict begin%
+    /pgfo{pgfsd /pgfx currentpoint /pgfy exch def def @beginspecial}bind def %open
+    /pgfc{newpath @endspecial pgfpd}bind def %close
+    /pgfsd{globaldict /pgfdelta /delta where {pop delta} {0} ifelse put}bind def% save delta
+    /pgfpd{/delta globaldict /pgfdelta get def}bind def % put delta
+    /.setopacityalpha where {pop} {/.setopacityalpha{pop}def} ifelse % install .setopacityalpha 
+    /.pgfsetfillopacityalpha{/pgffoa exch def
+      /pgffill{gsave pgffoa .setopacityalpha fill 1 .setopacityalpha newpath fill grestore newpath}bind def
+      /pgfeofill{gsave pgffoa .setopacityalpha eofill 1 .setopacityalpha newpath eofill grestore newpath}bind def}bind def
+    /.pgfsetstrokeopacityalpha{/pgfsoa exch def /pgfstr{gsave pgfsoa .setopacityalpha stroke grestore newpath}bind def}bind def
+    /pgffoa 1 def
+    /pgfsoa 1 def
+    end
+} def
 %-----------------------------------------------------------------------------%
 % END pst-tools.pro
 
 %%EndProcSet
 %%BeginProcSet: pst-dots.pro 0 0
-% $Id: pst-dots.pro 130 2009-08-27 08:55:03Z herbert $
+% $Id: pst-dots.pro 801 2013-07-09 18:10:41Z herbert $
 %
 %% PostScript prologue for pstricks.tex.
 %% Version 2.02,  2009/06/16
@@ -2290,20 +2505,25 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-node.pro 0 0
-% $Id: pst-node.pro 440 2010-12-28 21:06:39Z herbert $
+% $Id: pst-node.pro 876 2014-01-28 15:03:13Z herbert $
 %%
 %% PostScript prologue for pst-node.tex.
-%% Version 1.13, 2011/11/21.
+%% Version 1.15, 2014/01/27.
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
 %% in directory macros/latex/base/lppl.txt.
 %
-/tx@NodeDict 400 dict def tx@NodeDict begin
+%%%%  EMPTY lines are not aload!!! Problem with pst-eps -> \par
+%
+%
 tx@Dict begin 			% from main pstricks dict
  /T /translate load def 
  /CP /currentpoint load def 
+% /startGlobal { true setglobal globaldict begin } bind def
+% /endGlobal { end false setglobal } bind def
 end
+/tx@NodeDict 400 dict def tx@NodeDict begin
 /NewNode { % on stack: { x y } boolean N@name type InitXnode 
   gsave 
   NodeScale                     % a bugfix for xelatex, it's empty for dvips
@@ -2497,15 +2717,26 @@ end
 %
 /HPosBegin { yB yA ge { /t 1 t sub def } if /Y yB yA sub t mul yA add def
 } def
+%
 /HPosEnd { /X Y yyA sub yyB yyA sub Div xxB xxA sub mul xxA add def
-/NAngle yyB yyA sub xxB xxA sub Atan def } def
+           /NAngle yyB yyA sub xxB xxA sub Atan def 
+} def
 /HPutLine { HPosBegin /yyA ED /xxA ED /yyB ED /xxB ED HPosEnd  } def
-/HPutLines { HPosBegin yB yA ge { /check { le } def } { /check { ge } def
-} ifelse /xxA xA def /yyA yA def mark xB yB LPutVar { dup Y check { exit
-} { /yyA ED /xxA ED } ifelse } loop /yyB ED /xxB ED cleartomark HPosEnd 
+%
+/HPutLines { HPosBegin yB yA ge 
+  { /check { le } def } { /check { ge } def } ifelse 
+  /xxA xA def 
+  /yyA yA def 
+  mark xB yB LPutVar 
+    { dup Y check { exit } { /yyA ED /xxA ED } ifelse } 
+  loop 
+  /yyB ED /xxB ED cleartomark HPosEnd 
 } def
-/VPosBegin { xB xA lt { /t 1 t sub def } if /X xB xA sub t mul xA add def
+%
+/VPosBegin { 
+  xB xA lt { /t 1 t sub def } if /X xB xA sub t mul xA add def
 } def
+%
 /VPosEnd { /Y X xxA sub xxB xxA sub Div yyB yyA sub mul yyA add def
 /NAngle yyB yyA sub xxB xxA sub Atan def } def
 /VPutLine { VPosBegin /yyA ED /xxA ED /yyB ED /xxB ED VPosEnd  } def
@@ -2515,11 +2746,19 @@ exit } { /yyA ED /xxA ED } ifelse } loop /yyB ED /xxB ED cleartomark
 VPosEnd  } def
 /HPutCurve { gsave newpath /SaveLPutVar /LPutVar load def LPutVar 8 -2
 roll moveto curveto flattenpath /LPutVar [ {} {} {} {} pathforall ] cvx
-def grestore exec /LPutVar /SaveLPutVar load def } def
-/NCCoor { /AngleA yB yA sub xB xA sub Atan def /AngleB AngleA 180 add def
-GetEdgeA GetEdgeB /LPutVar [ xB1 yB1 xA1 yA1 ] cvx def /LPutPos {
-LPutVar LPutLine } def /HPutPos { LPutVar HPutLine } def /VPutPos {
-LPutVar VPutLine } def LPutVar } def
+def grestore exec /LPutVar /SaveLPutVar load def 
+} def
+%
+/NCCoor { 
+  /AngleA yB yA sub xB xA sub Atan def 
+  /AngleB AngleA 180 add def
+  GetEdgeA GetEdgeB 
+  /LPutVar [ xB1 yB1 xA1 yA1 ] cvx def 
+  /LPutPos { LPutVar LPutLine } def 
+  /HPutPos { LPutVar HPutLine } def 
+  /VPutPos { LPutVar VPutLine } def 
+  LPutVar 
+} def
 %
 /NCLine { 
   NCCoor 
@@ -3149,9 +3388,249 @@ setcmykcolor}DC/Gray{0 0 0 0.50 setcmykcolor}DC/Black{0 0 0 1
 setcmykcolor}DC/White{0 0 0 0 setcmykcolor}DC end
 
 %%EndProcSet
+%%BeginFont: NimbusRomNo9L-Regu
+%!PS-AdobeFont-1.0: NimbusRomNo9L-Regu 1.05
+%%CreationDate: Wed Dec 22 1999
+% Copyright (URW)++,Copyright 1999 by (URW)++ Design & Development
+% (URW)++,Copyright 1999 by (URW)++ Design & Development
+% See the file COPYING (GNU General Public License) for license conditions.
+% As a special exception, permission is granted to include this font
+% program in a Postscript or PDF file that consists of a document that
+% contains text to be displayed or printed using this font, regardless
+% of the conditions or license applying to the document itself.
+12 dict begin
+/FontInfo 10 dict dup begin
+/version (1.05) readonly def
+/Notice ((URW)++,Copyright 1999 by (URW)++ Design & Development. See the file COPYING (GNU General Public License) for license conditions. As a special exception, permission is granted to include this font program in a Postscript or PDF file that consists of a document that contains text to be displayed or printed using this font, regardless of the conditions or license applying to the document itself.) readonly def
+/Copyright (Copyright (URW)++,Copyright 1999 by (URW)++ Design & Development) readonly def
+/FullName (Nimbus Roman No9 L Regular) readonly def
+/FamilyName (Nimbus Roman No9 L) readonly def
+/Weight (Regular) readonly def
+/ItalicAngle 0.0 def
+/isFixedPitch false def
+/UnderlinePosition -100 def
+/UnderlineThickness 50 def
+end readonly def
+/FontName /NimbusRomNo9L-Regu def
+/PaintType 0 def
+/WMode 0 def
+/FontBBox {-168 -281 1000 924} readonly def
+/FontType 1 def
+/FontMatrix [0.001 0.0 0.0 0.001 0.0 0.0] readonly def
+/Encoding StandardEncoding def
+currentdict end
+currentfile eexec
+D9D66F633B846A989B9974B0179FC6CC445BC2C03103C68570A7B354A4A280AE
+6FBF7F9888E039AB60FCAF852EB4CE3AFEB979D5EA70FDE44A2AE5C8C0166C27
+BF9665EEA11C7D2329C1A211DD26BB372BE5822F5EA70D99EB578C7BEFD44CDF
+045A363056E5E1CC51525EA6FC061DCEBB337208EFF729802376A2801424F670
+0E7E6397B28F15BC10B40012B0A3EAEB2693E8F7F627C4C9C7C6C5BFF105C1E4
+1B2B9E8F09253B76040D268B80719E1B3F5A55AB7B8E152A40E590419249F2E4
+C36159F8E54B532468E36965A38646781AB0B7F6A3E851FD10CAA49ADFC1E546
+2FD2EC6150DC6E19523050F6148348A561AD8D2E2721EFF8A570CB33460A745B
+926C889304C09753C2D78FB0CA95DC6DE5B8C524752C83601E7E9F73DF660674
+F05AD83A166DA9BE89F22FEABD4B2665960F6FB5BC32928E1230C212E5D69CEE
+0B3311A1738A11747AE263106916D8E95F25B25B4BC6AFB03B79ABB95DDA518B
+41A49458111D2A1433C043627EF9460D324FFE22935F4F6DA88B8B91AE95B34E
+08408A34EC8EAC3F65B6AE3E3E2524867EE9D29068F81E4372F4470BEEB4D6BE
+EE4DF956BECC0CB77F8490117B22B2FB75C938ED0A5E208D88BC38B2AB8B9CFB
+F1D53084B6F43DF336481ECA0AA2D5317BC83FC0E1D4DB01D0B7707EEF217E94
+A7F985102DED27D8E8B009F7EF6DB91B91E78BFAE7BD688E10B3DC9AC77CDEE8
+47AA4DC8EC78241E593D26EC7A60696151A2AE5325D736E99E01BDCBDE69579F
+92EEEC224B6757EEDC64A75455BB665DF42A0E4CE7B99BF3E7D66F8FFC8C13F9
+D7A1FF7A9D5FF7AC43396779F11C9B008C33A2043D48B61B88B03104B1425F09
+675B559CA4302C001EE80D2B739CC0FD1023BF4F1FF9C01E892E59CCA7C26011
+B8E0B6D29CC29FC72792FDA5E7D5D88EF98F9DBA960C96534C399C54865EAB86
+0FA2E0D6C7C44B553EAC1574D55E7970744D4792FFFBDCE6FB4365BDBC2965BB
+2E9EDAD9E0EBF0B620DB415AD98297F5AE83D9C710436657E74D26E83957C745
+89834337035A7501803947F6880B70E56A3A404C62D57B849D28804CBE0F5884
+435A0E12DCC9BA414ABB732BFBAE237001F557DEA5E972BA0838A3C7C9EB75AA
+4A050DA0A529BDFFBF9011C360564FD17A02C18860AF6B86EFD4E2C125686C9A
+5E114E95C71FC89A5DE9C589BFE5AC0480CFF716345265D2435EDAE67CFC4801
+5BC08E7A48D683ACDB91E05F469C0C8919D73A5D07A1CCB173E30E76680ACB09
+02A40A3E11916198BD69F1A26E88330F50692D0D5917E99E7A01B327413E24AA
+E98EA484E45897E6AE4D6997B6E8BBF61C9406E916D56985CB2BD297E8ACFC6E
+CF2D2281AD84696B7C6CB584BD85CC20BA14ADD3BC3E25DB91124C0ACF22E902
+3CFBF04CC40DE331991E9075D22AB5EE0E849B340050E6C417C664A782D05549
+DB2EF572F193B1C12B4635C2B358747046DE5BEEAC87B3D62ECDDD442D0D5BE9
+323F04F95D06470E7CD2B151061A15CC1027F6F4AB5F7471ADF319AA50F05423
+B864964479A2AA2792A5BF8E92703E6C2C337E4C19C71DAF6A5D81BD0FDF6E2F
+EA17C3BD241B2BE5142DEBA285B98FA1CC5E64E32A94C5623538EAD5C8185DB5
+230F54DCD8AA3CCE6DC74199B5AC793F7177BD08C44F0BABC60F72CE2CB794D5
+D86E1A0419D9579AAB962B34C9800758D65160325837F8FADACFD56BD05121AF
+6C3FF776ED7996C5EBA0C337251B70D688848D48A7E98A78F95DEC58D847DC65
+E9CB0E3D26843F3F6A4B5F54DC2F30B792C83DB0D7310579F341E75742241AD4
+1FAE4BB693A50E24F925F3A8DCC15FB907C50FDBC4B919AF9DCFE7C822301F9D
+4C7DD47713C9A925DD73C4C95CF2906028E08CB5287A726E53ECB0894A7A3A64
+569699C1C085B3CF6D6F6133530D116F38220E50161799BE7C2359DCC11C39FE
+B1AB5F4DF4B1F9DB41360FBB27DAA529E2F8B9C28DFDD4DB36230DF2369ACF7E
+E964D92D0989D89A115F3B7B0870B7575D67832B87E025992C81E31E226BD21E
+7DE171D9BC7ECA7FEA2B7ABE317AAB1C982F26247058A681558677A7ADFFCA03
+CCF78564288A3818DFA72BE5ABC80AC9D793153E99C4B4F9467A98BB2A1B03B3
+BC7E59ED22D13CFDF599DD43370E6F28DB5DE10E1340EE4E7B14727B086F27E4
+3E6E3EA6EF0DE68E1CC1A60043869CC3E1517463D978B1858E5E38F0CAE548E3
+BCE7BD020554071ABD455F33FC351418F361113884986FA2E67F9064EC92E4D0
+E7C706E4A4AAE9DF238AAE385AD7B587A7E8E59EF92E6CC1D2BC815E11FED611
+AEEF629BEFFD5239C9CC0937BF33358AAB880B492095E0C27CCAA30E0DB63F02
+F11DC0CE8A94BD9A6113FE9E1C781C3CBE645A0F2B353C392C7D740444D65547
+A0EC71D4169ECC5A9AF15C361F4CA0CB88C14FA84C65F169BAE1A8FF2CD4050C
+116B8861EFDEC7051A3CA7F34164660413E66E1FB5B051B7D6BAF4F6AD056A6C
+4A5B98E62CCE5E54157595FF7F576183471FC067B29749B49E74A594BFAE0CF4
+E8415EDFE48D98A7EC74DFE4B9A148D9DB524EF389B1FD4EB8407292110510B8
+1B1D598AADA642549516E6C4E63F54837BE4300283AE5AC540D464771454AC4C
+A92840DBD7D3DCAA1172A04E445A281AF2607DBFFDFABDFCE1F3BDFBF15591B2
+7312E42848A40A6098BB95D07FB57B262F0FC065D56EB983207F1478ABCD112D
+3ACD5ED9DE66D79470F252D22FBF1A6B0C77C49A031843A2B34E8018569F67C8
+65E244FB22B99E4297887C58033F740D246EB15EC2183F1CB7655376F5FE6469
+726A1B890C67186CCA0576C1BC1A6D881BB06CD0E301666A5C8D6483C58F2F27
+B706A377A048BE4150CB95C41AF8BD73148E885B22C95FA78B9E9B4E4483DD25
+2B25505BF7D84597813143C60D3D1A515D52CB8732BC7B913CFE94687B5B3875
+0616F6DADA390B4641F27001DBFD5615A35253D968BEC1722CE2A13645590B04
+C5D3AD5C7BE95535B486F8C805A2EE1D38F2EA58597C4526D5861D0184F4956D
+B9D9BEEF25BF02427893F786227B12FAA9D620113A18D118B979650E646A0218
+77BAE6D06BB1AB0AEA89B6683EFB7343EA55CD31D8B3B22BFF3FA494F5FBFA38
+486197A1CED5292DB08791E0EE47BE4421A95E6B02E8C66AA06F9C88B0A75EAD
+8B3F993452076B780AA2A76F0A3ED01796438B8BB5CFD22B7733708CCBE758EF
+219FD72CE49301522D136570B4C3191D8A4E83102B81DC22CDD8965A3CE816B3
+3B0262CE0FCACB72E14C2FDB87A97F47425FD5B0B3AE8CEBC1461957D7BAA20E
+B9168C6AA9E4204766A829619C268D692AC008C42D510A67435DB54E9EE48347
+3A359ABF0C020AA89F9E74BA70701B18DA0CEED088561D13ABFB757B8E552BD0
+795515FAD3FCA11622FD0636EA28FCDFFC002E337F0805ABEC524ECD96F9E565
+A118251C02B0178BA9F7C33DE68CAA5F310FE44C853F2229F0B33072C41E0A3B
+D9C333C710AAAB2AD094A7AA0F104D59B2DEF879704DC55C0C282F001D11E932
+D5EC958B748D10CED272BE97B2167565A7F67DE4B05EB590B84128302DB8E707
+90FE93DA1573877C96840957E36A27E2AFF795B9397057D3AD58244783E4BB00
+36D7FC5A03114BABC2D268C833BEB10F205B7C98854899BDB3A7627071F647D5
+D73708274E5718EF450F84B5A7C7079F23C5B62994AF67FFB97417CB8AEE8E3C
+008C723A2D89E1EC21A9429823F083D8DD40C333ED47C5AE093B0D65464F19F4
+8EE2DA48DD65322FBFBEAB1604DDB53FFDFBE812757E453A5CE29E71571B42A5
+315E7BA052190509727D8385E5F898B7E28470245FF44A9A4E204506038E76EC
+13C6264E69B55D1971CD164CE2315F4B5E508BA65A489B68544ACD7953AAC7FD
+D494C3052ED84AB231B88E71B9D3FE88048DAB5228D9C1F035BEAAA6D87458CC
+F25F198AA55DBC4F8AFB20F5AB93F4A47525B967F5BC367753638A95F1653207
+490EAF501057E3A9FF7B3D1A0671ADF319AA50F05D741FD7C3CF1E5DC7C05F1C
+8877B6246750E57C8B3162A2A8E591C7AA3445D0F86AF773B960B1F5B7604945
+3C6BD044D6F63233C4E83966F8B4B4C033E07E85DD6BC50B20EDB37953452F66
+53DC4E88F2CF6E93E20C770CA00FD02267EAF68823BFE0AA2FD9ECA512F08D64
+B70F307C0F59500B5F331E1E3EB4135A0D60609EABC66D73678FDE76E5E2EEEF
+D24F40D32CF1914FDFC5E4B5575F5FB13461FBF9606133FA94413F30FE8C7A80
+FF3B4169AFE951EE366495F4E6DED831F051FCD70B303E2D6010F849FE4E17A6
+9F02E7B4C69CA5FB702438D156E64AE439117E2DAB10AD6548D0F2FB68AE48D7
+7AFF7345B8FC52548179C62D839B35D998BE11A7D7613AA7C519BCE1182B6C30
+F93DD0D7DEA0CD987957698B8EFD8067C4900E70DF9EA4A876EF7B4A37D3E87D
+399B65090F5CDEF1325975357562C9D615EDF6820E69D5CC3D80B2834416E19C
+17F6D844523546515B1EE31660B76219EE4C2F891E2EA012B33B9928206629B2
+27617A2BA68D430F1E8FE6F40F1E0E42E3BFA076C19DB786990F5ADF4BDAF4FA
+2F411723EC657B9BCDD963E79046E4538E1175311D5C8EC1832FA06FD2AF9356
+F39EC3901F4654DA943F55F75330C1BAFA15BCED07FC274A5222CF5323949721
+1C13D02F8FBA8AFCD3060095F72715128053E9B14A055D9F688B1F4DADE56985
+9D5BCC5C0B83DC56E6B235EBF3767BECF1C789B789793BC051BBBF440365B4EA
+CB0932EDB316D352B0909D6833903A296C641CC83BA1B169B1729DA75FB5D964
+6FFC9A23B8BB4A46413D6F2AEF5FD2BA95D15B8AF2FAC3D217AB69A6E25B87D4
+414045A3317968C12BF214D387AD444210B3B5205B17654B523F126651F8DFCF
+75923C475363EED630B3B78199AD5E1B2A9E80327477AC73682300A2B1B20403
+BDAAD162A2D613C84BA85E7A4B252C2052CD47181C522BF50A4499EEE2DD8A29
+811E6DB9B83C2E60FAD90F8645D9F33BED6ED1FF78968EA8BAA3C06FBE3D0E27
+67BF26025C660F271711B7EF75BEB4DA877CD6ABE4B45866BBD7D924C65833FF
+C839829A21B12D1667EB9C26FDCDB564486BEA7135B0A68B24A2E86BAB5A00D0
+F166D1AA18041878CDDF9BFF0F7D37498A6E2F8AC2E4CE7FF33F6ADA6D8D62E6
+24BC2288BD1556D40E81A3759E13390EB9EFE0C2E2442F285A81A0DE27676753
+87CA88D3E224CC0A3C917EA3055C85D171C0378299712D1177AA7469F1EA9394
+F97602A69B85F86AEC6253DA395A55DED9117BC31140E3E00F45773DC20480C8
+D6BB75756FFD8F5C79B758820EF03EB99A23AE97938041F7541CCD2694F0999D
+DEAC4225406AD7709307918E322F471CD166272471D00CA75CFF00F7ACAA23C9
+40555F6C8B2141EA551B121F0CCD38B5901221B1DC3066AEFE92E3FBB7E4176D
+ACC2B56E5ACD4F6DD29CFE584C5204B59BAFEC5FB40AC71D133FDD00FF977941
+44F0343368A9170BECE87FD515FBBF5CF836B39A9FB148BC286EA1A4B5E3E1BB
+901E688A139DB0C939EB45253B4022AB3359D2EBB743BEA31FC97C20EF5F6787
+1FAD992447F76CF16F85D0A04140B2482E882003FDC5DA687CFA43C0D1856C46
+1F97C7AEDE11AA7391B164BB10E3357B171C924E5F431EBD722806C99BB68967
+704D31695637109405150D9B3A9D82BE7F1D61396D9F990892C2D7E95B159A68
+B1967CA98D2A8E33951AEA71D636FB538ABCB63688B4D69C3A91607ED5D6BB41
+209BF77FCCB5ABDC05E978BFAE410EAD0B667DB2B244836480F5C02A3B5CC0FD
+8F5932C6DA4ACA73678C4ED71FD442CC584FD6EA914F5FCFA9A23037BD3215FD
+7563D8BBACAE4B22606DF4F87EC63BD74CE9504531A5FC9DF6679D980EAAC613
+1940026E3C2297E197FB8F12510F6F21CC05DA1CE1392F29895BE53E4212079F
+B2AEA22D0890A369061A83A297255CDA995A30B8144AC55000FFA1D391A7728D
+51B18A0E1DDB27E711C889B7DCAD289C8B110472F95FD5CEE1A7EC2A78941AFD
+0B102C6F70041EF49EBDC17F49804D19359F53090C4C06B1E73E481956F64295
+D6C26DA5A183E079CAE86824F23F6A0CD7A228C8604285777D95E72413DF80D5
+F696FC6E2F2D7B3E046A6F68F5F70F441E5AD1D487917247805FBD542151B3F7
+8D75DBDCE36109147088AC6F4ED2BCE9A0D21471DA0E46468695A4CA7D1B1BF6
+D4AC2B193FEF981A606F4CD48A5197F98F35341EA3A752FBF80C009DAC881E14
+26C498D274ADC1D97A103530EFB969DD821155C14BB97FDCA298C41A6F6798C5
+361119B81C6191E2BC7F60BE8AD8FD28A9EF8EEB25F6A230DC6AB0708EA90222
+D2B0BC253EFACB7155F81135F30EE078434B7BE9CFB6A2473726E1F3D6DA978D
+71BB0A50519CEC6E1EC23605F7B23D88EB36BC2E699A11EC1AE28E0E6F2B3837
+1601F4A9F6A5EB4F570CE4ABE7C8A1852095D045E85DA3E1AEB2C6694A816A7E
+158615829E59EE73573363006C5ACBCE892965D7D4CF9DB0F7ACF7CC00AD38CE
+90C439D2D317C2F14F34A61F3CBD2E72C40D21EC002434DEF7835C9D9140ADD2
+348CA838B3A1CA68A22C5A5134CB06C2D93E2428C6699442358D5345D634EF08
+86A20B66AB09AD36B73CE97C83E306D223CE7774FA5AF973D985C517035A14BC
+7B27B47AB8E9CC40C85CEC9807E21A6FE254FF941A711F25E4FBAEBDE4CC1F74
+F1000A12E26A6E3E53FC86D328500A1BEA9D3128504CF2131FF06AC9ACE64842
+E756A68697334E1160E2ECB75AC97158A7C9038D225FC6D0158061CC26D52597
+12E4B57653F9D8316762FABD4AAA271DDEC0F7D5FD905C59F0E7BC1EE0E3D0F1
+4CBD6D696AE7B5E2FF38A99470D10F396AE8952447DAC39BAB1CE577EE970A2B
+5E013E23CB0654536FBDA23EF3D3E0197151EFFBD0C3AC4C36967A941825BEAB
+6934BD18942E5AA2C99D424B8AB1F5A341530C88F6424FE26970A78D313F992F
+FAAB30A5EEA4AC13C5AFCF78EC8979ABFAD681F156FE238B89608E63C7EE1A84
+A1CC12541B789CCEA510AB3E173171554DE156E4428BA4CA619844CDFA384407
+8AEB61E010A7298BAF0F4D6E3B6C4AB9271E8DA94598691F774407905226AC4A
+A63AFB215091E29FC181032081C0686DA62604444B04310B269840574430EC4F
+1494C878F7F63EDEA60DAF2448DE8A7987E5A6AA1E86BB937E35BE1811C42D85
+1229D0720F347709879C7A580610905847A649E4477773B87686F7F28B3EC21E
+8635EC99CF31C670AC326493BFE78A4B3D18056DA303E2F0198DA96155E68E8F
+6CDE3F99D19B442952B3CE8DD1549B730374F5251C04E601C27E854D53B85D05
+5C59F0CEFD84E9F655600B8893EE2C65BB593B873941CE4BB8BAED589DC8B917
+2A0752D4E0EF8B8C63299F59E277FECD107853612CB37BCB221B328D41B17F7A
+181B56110505BF29411E0A908DB4E1BCAEF75C34B1C0A49368C63F84AE09FF5C
+7902A238A22607F158FFE415CDF5E8E695E526BF8394BE7D685F4AE35AA17151
+913D792C504464FF1B63899BB364EE8847B033D5A12CAD1DBC4D9E8E026C7165
+561ABC5CFA653F5B6075D28B255581DCAFAB72CFA23B1739B485A184E3C6DADF
+FFBF9F33C4550819C42CA57F8C49E984886DE1666238BFEB19F8827271F32D81
+E5527A622CA6618D5AD3834271D059B513969FD36AB9677E91EBA09B010D026C
+D9B0ED52FEC2EF1E25A0D50858C3B11CA3C7B31545FEF6B1F8FF071E03D12C11
+781673DDF8FE18A38BB177F9AA48C54F49AA9C2BED449992426730E10BBB2DEA
+B280D09D9C92F48B956C6013920213271BCDFFE2BC025C012E85B2B1C145A6B5
+7312A6618C246B7874B3F53AACFF43DAC245AF2F848580F69F86F98E5F69E307
+AF8417256FE0CAD816A41A896FD1C7FFCCEC6D88FCCA807B596B1B75F4C95CDC
+C49C3D84E67FFE1DAAF69AA7CF556AB34652BA45CE45008A4EE206760A7FC6CC
+0CEDD4B8E919D5ADEE6FFD2D98714302E3F9F4738779B8E643B13A8C833E6A3B
+53D7A89D2B3052589B3719A694F94030A66977720BE6BA4889AFD7030B2B6F4F
+4BBAFEB86BC9B420F68E3F12FE84DBDF4ADE14C12D246AB5B543DC14DA911A5B
+1211F7C0638F3405FBFA1313DC1A27AF870774D17BE075E6DB33C7C943AC2461
+BCC33B37220CE90C9AD1252DFE0D681E551D69148FF9AB87C31C102A9A56D8E4
+312F3D210790D863513D6463E9EA5741E1209D4CEFCDA9C7B07DAB895621FB21
+5D773B913987536582B1062FC1E4FA48F49CD3EA4F350E802172F25489EC30AD
+23AB0DAD21098C16374CFFD453817EFA9DDC8EA5CE1A79B85A6471BDC57410AB
+401FF3C77457CDD3A0207E8AE63D28F76830B477B79528603BECDCD0219698DC
+1D26D40196C7F468EA40C6022C1F724A0DE1CDEAD38DDB16C727D679A74AC739
+2BDBC9D6CB584C9D7D1071F35B3A2B0DDCC055264CF38070211D40B1366E9F44
+71A9CA43EFC5F5543106CFB83143F884B6B5DA3AAD19FE793BCF69D30A62805A
+748B8062A6152C62107710DD0B8626E88F3BC72B34D95F953700C727626EAC98
+747BD946CABCCFB9A4B244F81A9D2D97A69AB19C9458C45F0D26C046DADFD0C3
+4D738A7826449E390AE607F379043917D825D54C5A46EEBD01A954D7506E5233
+5F19D11C7D746EE56BDF274AEC77C7C9AB68FDB20DAD0ACE020B4D6882F6C2F1
+0272B1D4C0D7D504EFA3E5DE4A808DEFDD3D0E23E8DF39583BD39F068F60D557
+3CD0C4D8B300D2141DBAA77FC94278362B6B2582CC6998489DBED786B2389790
+D26CA8024845D43C2644029EAFF922CB7CDD5FB6D8D775BC731C524116F3F2CB
+2B4821EE779B6551B3A822ED29F6B4132C020F11DB1C1CECFBB3C4504928FF97
+1D28295CAA36D45CC3E3C4189ED50C0EFE092D93E3D4FEF04C904F3171905A98
+7D170F9B7E9FE91A9622108BCD1722416901D4485EBCCFA92E9925BD10F893
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+cleartomark
+%%EndFont 
 TeXDict begin 40258437 52099154 1000 8000 8000 (latex_vis.dvi)
 @start /Fa 146[861 3[308 3[491 16[676 33[553 553 553
-48[{ TeXBase1Encoding ReEncodeFont }7 1106.96 /Times-Roman
+48[{ TeXBase1Encoding ReEncodeFont }7 1106.96 /NimbusRomNo9L-Regu
 rf end
 %%EndProlog
 %%BeginSetup
@@ -3160,24 +3639,28 @@ TeXDict begin
  end
 %%EndSetup
 TeXDict begin 1 0 bop 0 19388 a
-tx@Dict begin  gsave STV CP T /ps@rot 0 def grestore  end
+ /pssetRGBcolor /setrgbcolor load def /pssetCMYKcolor /setcmykcolor
+load def /pssetGraycolor /setgray load def
  0 19388 a 0 19388 a
-tx@Dict begin  gsave STV CP T /ps@refangle 0.  def grestore  end
+tx@Dict begin  gsave STV CP T /ps@rot 0 def grestore  end
  0
-19388 a 0 TeXcolorgray 0 19388 a
+19388 a 0 19388 a
+tx@Dict begin  gsave STV CP T /ps@refangle 0.  def grestore  end
+ 0 19388 a 0 TeXcolorgray 0 19388 a
 tx@Dict begin  gsave STV CP T /ps@rot 0 def grestore  end
- 0 19388 a 0 19388 a
+
+0 19388 a 0 19388 a
 tx@Dict begin gsave CM STV CP newpath moveto 3.0 neg 0 rmoveto clip
 setmatrix end
-
-0 19388 a 0 20729 19694 20729 v 19694 19388 a
+ 0 19388 a 0 20729 19694 20729 v 19694
+19388 a
 currentpoint grestore moveto
- 19694 19388
-a 5229 1711 a
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399 
-add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-1-1
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 5229 1711 a @beginspecial @setspecial
+ 19694 19388 a 5229 1711 a
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399
+ add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false
+/N@M-1-1-1 11 {InitCnode } /NodeScale {} def NewNode end  end
+ 5229 1711 a @beginspecial
+@setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.1399  add
@@ -3185,52 +3668,25 @@ add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-1-1
 arc closepath gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin
 0  setlinecap stroke  grestore end
  
-@endspecial
-557 w Fa(0)11240 1719 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+@endspecial 557 w Fa(0)11240 1719 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-1-2
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 11240 1719 a @beginspecial @setspecial
+ 11240
+1719 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
 2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
 gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
-
-
-@endspecial 557 w Fa(1)17247 1719 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+ 
+@endspecial 557 w Fa(1)17247
+1719 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-1-3
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 17247 1719 a @beginspecial
-@setspecial
-  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
-3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
- } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
-2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
-gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
-stroke  grestore end
- 
-@endspecial 556 w Fa(2)5229 7726 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399 
-add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-2-1
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 5229
-7726 a @beginspecial @setspecial
-  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
-3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
- } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.1399  add
-2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360
-arc closepath gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin
-0  setlinecap stroke  grestore end
- 
-@endspecial 557 w Fa(0)11240
-7734 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
-2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-2-2
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 11240 7734 a @beginspecial @setspecial
+ 17247 1719 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
@@ -3239,25 +3695,51 @@ gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
  
 @endspecial
-557 w Fa(1)17247 7734 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
-2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-2-3
+556 w Fa(2)5229 7726 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399
+ add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false
+/N@M-1-2-1 11 {InitCnode } /NodeScale {} def NewNode end  end
+ 5229 7726 a @beginspecial @setspecial
+  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
+3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
+ } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.1399  add
+2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360
+arc closepath gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin
+0  setlinecap stroke  grestore end
+
+
+@endspecial 557 w Fa(0)11240 7734 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-2-2
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 17247 7734 a @beginspecial @setspecial
+ 11240 7734 a @beginspecial
+@setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
 2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
 gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
-
-
-@endspecial 556 w Fa(2)5229 13742 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399 
-add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-3-1
+ 
+@endspecial 557 w Fa(1)17247 7734 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-2-3
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 5229 13742 a @beginspecial
-@setspecial
+ 17247
+7734 a @beginspecial @setspecial
+  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
+3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
+ } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
+2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
+gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
+stroke  grestore end
+ 
+@endspecial 556 w Fa(2)5229
+13742 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399
+ add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false
+/N@M-1-3-1 11 {InitCnode } /NodeScale {} def NewNode end  end
+ 5229 13742 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.1399  add
@@ -3265,11 +3747,25 @@ add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-3-1
 arc closepath gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin
 0  setlinecap stroke  grestore end
  
-@endspecial 557 w Fa(0)11240 13750 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+@endspecial
+557 w Fa(0)11240 13750 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-3-2
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 11240
+ 11240 13750 a @beginspecial
+@setspecial
+  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
+3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
+ } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
+2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
+gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
+stroke  grestore end
+ 
+@endspecial 557 w Fa(1)17247 13750 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-3-3
+11 {InitCnode } /NodeScale {} def NewNode end  end
+ 17247
 13750 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
@@ -3278,38 +3774,38 @@ tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
 gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
  
-@endspecial 557 w
-Fa(1)17247 13750 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
-2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-3-3
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 17247 13750 a @beginspecial @setspecial
-  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
-3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
- } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
-2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
-gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
-stroke  grestore end
-
-
-@endspecial 556 w Fa(2)5229 19757 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399 
-add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-4-1
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 5229 19757 a @beginspecial
-@setspecial
+@endspecial 556 w
+Fa(2)5229 19757 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.1399
+ add 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add 0.8 add} false
+/N@M-1-4-1 11 {InitCnode } /NodeScale {} def NewNode end  end
+ 5229 19757 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.1399  add
 2 div 2 copy 0.1399  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360
 arc closepath gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin
 0  setlinecap stroke  grestore end
- 
+
+
 @endspecial 557 w Fa(0)11240 19765 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-4-2
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 11240
+ 11240 19765 a @beginspecial
+@setspecial
+  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
+3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
+ } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
+2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
+gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
+stroke  grestore end
+ 
+@endspecial 557 w Fa(1)17247 19765 y
+tx@Dict begin  tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
+2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-4-3
+11 {InitCnode } /NodeScale {} def NewNode end  end
+ 17247
 19765 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
@@ -3318,21 +3814,8 @@ tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
 gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
  
-@endspecial 557 w
-Fa(1)17247 19765 y
-tx@Dict begin tx@NodeDict begin { 15.05624  2 div 6.81989  0.0  add
-2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@M-1-4-3
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 17247 19765 a @beginspecial @setspecial
-  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
-3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
- } def  0.8 SLW 0  setgray    15.05624  2 div 6.81989  0.0  add 2 div
-2 copy 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath
-gsave 0.8 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
-stroke  grestore end
-
-
-@endspecial 556 w Fa(2)19694 19388 y
+@endspecial 556 w
+Fa(2)19694 19388 y
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0 0 1  setrgbcolor  /ArrowA { moveto } def /ArrowB
@@ -3341,15 +3824,15 @@ tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 0.0 0.0 0 0 /N@M-1-1-1 /N@M-1-2-2 InitNC { NCLine  } if end  gsave
 0.8 SLW 0 0 1  setrgbcolor  1. .setopacityalpha   0  setlinejoin 0
  setlinecap stroke  grestore  grestore end
- 19694 19388 a 19694
-19388 a
+ 19694 19388 a 19694 19388 a
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { }
 def  4.015 SLW 0 1 0  setrgbcolor  /ArrowA { moveto } def /ArrowB {
 } def  /NCLW CLW def tx@NodeDict begin 26.09749 26.09749 neg -26.09749
 -26.09749 0 0 /N@M-1-3-1 /N@M-1-3-3 InitNC { NCLine  } if end  gsave
 4.015 SLW 0 1 0  setrgbcolor  1. .setopacityalpha   0  setlinejoin
 0  setlinecap stroke  grestore  grestore end
- 19694 19388 a 19694 19388 a
+ 19694
+19388 a 19694 19388 a
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.8 SLW 0 0 1  setrgbcolor  /ArrowA { moveto } def /ArrowB
@@ -3358,8 +3841,7 @@ tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 0.0 0.0 0 0 /N@M-1-3-2 /N@M-1-4-1 InitNC { NCLine  } if end  gsave
 0.8 SLW 0 0 1  setrgbcolor  1. .setopacityalpha   0  setlinejoin 0
  setlinecap stroke  grestore  grestore end
- 19694 19388 a 19694
-19388 a
+ 19694 19388 a 19694 19388 a
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 2.  2.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  2.00749 SLW 0  setgray  /ArrowA { moveto } def /ArrowB { BeginArrow
@@ -3368,27 +3850,27 @@ tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 0 0 /N@M-1-1-1 /N@M-1-4-1 InitNC { NCLine  } if end  gsave 2.00749
 SLW 0  setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore  grestore end
- 19694 19388 a 19694 19388 a
+ 19694
+19388 a 19694 19388 a
 tx@Dict begin  gsave STV CP T /ps@rot 90. def grestore  end
- 19694 19388 a 19694
-19388 a
-tx@Dict begin  tx@NodeDict begin /t .5 def LPut end PutBegin  end
  19694 19388 a 19694 19388 a
+tx@Dict begin  tx@NodeDict begin /t .5 def LPut end PutBegin  end
+ 19694
+19388 a 19694 19388 a
 tx@Dict begin 90.  RotBegin  end
- 19694 19388 a 18544
-19759 a @beginspecial @setspecial
+ 19694 19388 a 18544 19759 a @beginspecial
+@setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { BeginArrow
 3.  3.  scale  false 0.2 1.4 1.5 2.   1. .setopacityalpha  Arrow  EndArrow
  } def  0.0 SLW 1  setgray  0. true 3.0 neg 3.11491 neg 23.75972 9.81989
 .5 Frame  gsave 1  setgray  1. .setopacityalpha  fill  grestore end
  
-@endspecial Fa(T)-39
-b(ime)19694 19388 y
+@endspecial Fa(T)-39 b(ime)19694 19388 y
 tx@Dict begin RotEnd  end
- 19694 19388 a 19694 19388 a
+
+19694 19388 a 19694 19388 a
 tx@Dict begin PutEnd  end
- 19694
-19388 a eop end
+ 19694 19388 a eop end
 %%Trailer
 
 userdict /end-hook known{end-hook}if

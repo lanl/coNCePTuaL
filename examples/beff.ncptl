@@ -2,7 +2,7 @@
 # Based on the b_eff benchmark by Rolf Rabenseifner and Gerrit Schulz
 # Ported to coNCePTuaL by Scott Pakin <pakin@lanl.gov>
 
-Require language version "1.4".
+Require language version "1.5".
 
 total_mb is "Total amount of memory (megabytes)" and comes from "--memory" or "-m" with default 128.
 

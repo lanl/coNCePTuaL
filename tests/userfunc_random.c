@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -173,11 +173,11 @@ int main (void)
   CHECK_STUCK("poisson",  poisson,    NICS);
   CHECK_STUCK("pareto2",  pareto2,    NICS);
   CHECK_STUCK("pareto3",  pareto3,    NICS);
-  CHECK_STUCK("uniform",  uniform_d,  "%g");
-  CHECK_STUCK("gaussian", gaussian_d, "%g");
-  CHECK_STUCK("poisson",  poisson_d,  "%g");
-  CHECK_STUCK("pareto2",  pareto2_d,  "%g");
-  CHECK_STUCK("pareto3",  pareto3_d,  "%g");
+  CHECK_STUCK("uniform",  uniform_d,  "g");
+  CHECK_STUCK("gaussian", gaussian_d, "g");
+  CHECK_STUCK("poisson",  poisson_d,  "g");
+  CHECK_STUCK("pareto2",  pareto2_d,  "g");
+  CHECK_STUCK("pareto3",  pareto3_d,  "g");
 
   /* Ensure that the uniform values are within the specified range. */
   debug_printf ("\tTesting the range of ncptl_*_random_uniform() ...\n");
@@ -230,7 +230,7 @@ int main (void)
   /* Ensure that all of the floating-point means are within a given
    * tolerance. */
   debug_printf ("\tTesting the mean of ncptl_dfunc_random_*() ...\n");
-  CHECK_MEAN_D("uniform",  uniform_d,  (ULOW+UHIGH)/2.0);
+  CHECK_MEAN_D("uniform",  uniform_d,  (ULOW+UHIGH)/2);
   CHECK_MEAN_D("gaussian", gaussian_d, GMEAN);
   CHECK_MEAN_D("poisson",  poisson_d,  PMEAN);
   CHECK_MEAN_D("pareto2",  pareto2_d,  R2MEAN);

@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Parser module for the coNCePTuaL language
@@ -8,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -78,7 +76,7 @@ except ImportError:
 _tabmodule = "ncptl_parse_table"
 
 class NCPTL_Parser:
-    language_version = "1.4"
+    language_version = "1.5"
 
     def __init__(self, lexer):
         "Initialize the coNCePTuaL parser."
@@ -186,9 +184,10 @@ class NCPTL_Parser:
         return self._token2ast(token, left=left, right=right, kids=kids)
 
     def _str2ast(self, str, lineno=-1, lineno0=-1, lineno1=-1,
-                 attr=None, left=None, right=None, kids=None):
+                 attr=None, left=None, right=None, kids=None, printable=""):
         "Convert a string into an AST."
         dummyToken = Token(type=str, attr=attr, lineno=lineno)
+        dummyToken.printable = printable
         if lineno0 != -1:
             dummyToken.lineno0 = lineno0
         if lineno1 != -1:
@@ -546,8 +545,16 @@ class NCPTL_Parser:
         args[0] = self._wrapAST_twice("simple_stmt", "for_count", args, attr=attr)
 
     def p_simple_stmt_4(self, args):
-        ' simple_stmt : FOR expr time_unit simple_stmt '
-        args[0] = self._wrapAST_twice("simple_stmt", "for_time", args)
+        '''
+             simple_stmt : FOR expr time_unit simple_stmt
+                         | FOR expr time_unit PLUS expr WARMUP time_unit simple_stmt
+                         | FOR expr time_unit PLUS expr WARMUP time_unit AND AN SYNCHRONIZATION simple_stmt
+        '''
+        if len(args.slice) == 12:
+            attr = "synchronized"
+        else:
+            attr = ""
+        args[0] = self._wrapAST_twice("simple_stmt", "for_time", args, attr=attr)
 
     def p_simple_stmt_5(self, args):
         ' simple_stmt : LET let_binding_list WHILE simple_stmt '
@@ -921,9 +928,9 @@ class NCPTL_Parser:
 
     def p_aggregate_expr_3(self, args):
         '''
-             aggregate_expr : THE aggregate_func expr
-                            | THE aggregate_func OF expr
-                            | THE aggregate_func OF THE expr
+             aggregate_expr : THE aggregate_func_list expr
+                            | THE aggregate_func_list OF expr
+                            | THE aggregate_func_list OF THE expr
         '''
         args[0] = self._wrapAST("aggregate_expr", args)
 
@@ -1096,6 +1103,32 @@ class NCPTL_Parser:
         mytaskAST = self._str2ast("my_task", lineno0=lineno0, lineno1=lineno1)
         mytaskAST.printable = args[1] + " " + args[2]
         args[0] = self._str2ast("primary_expr", left=mytaskAST)
+        self._assign0state(args)
+
+    def p_primary_expr_9(self, args):
+        # FILE_DATA and STATIC_FILE_DATA are special because their
+        # first, fourth, and fifth arguments are strings.
+        '''
+            primary_expr : FILE_DATA lparen string rparen
+            primary_expr : FILE_DATA lparen string comma expr rparen
+            primary_expr : FILE_DATA lparen string comma expr comma expr rparen
+            primary_expr : FILE_DATA lparen string comma expr comma expr comma string rparen
+            primary_expr : FILE_DATA lparen string comma expr comma expr comma string comma string rparen
+
+            primary_expr : STATIC_FILE_DATA lparen string rparen
+            primary_expr : STATIC_FILE_DATA lparen string comma expr rparen
+            primary_expr : STATIC_FILE_DATA lparen string comma expr comma expr rparen
+            primary_expr : STATIC_FILE_DATA lparen string comma expr comma expr comma string rparen
+            primary_expr : STATIC_FILE_DATA lparen string comma expr comma expr comma string comma string rparen
+        '''
+        lineno0, lineno1 = self._linespan(args)
+        children = []
+        for i in range(3, len(args), 2):
+            children.append(args[i])
+        funcAST = self._str2ast("func_call", attr=string.upper(args[1]),
+                                kids=children, lineno0=lineno0, lineno1=lineno1)
+        funcAST.printable = args[1]
+        args[0] = self._str2ast("primary_expr", left=funcAST)
         self._assign0state(args)
 
 
@@ -1384,6 +1417,41 @@ class NCPTL_Parser:
         ' task_expr : TASKS GROUP ident '
         args[0] = self._wrapAST("task_expr", args, attr="let_task")
 
+    def p_task_expr_6(self, args):
+        ' task_expr : TASKS range_list '
+        # "TASKS <range_list>" is syntactic sugar for "TASKS a SUCH
+        # THAT a IS IN <range_list>".
+        range_list = args[2]
+        ident_A = self._str2ast("ident", attr="a",
+                                lineno0=range_list.lineno0,
+                                lineno1=range_list.lineno1)
+        expr_A = copy.copy(ident_A)
+        for exprtype in ["primary_expr", "power_expr", "unary_expr",
+                         "mult_expr", "add_expr", "ifelse_expr", "expr"]:
+            expr_A = self._str2ast(exprtype,
+                                   lineno0=range_list.lineno0,
+                                   lineno1=range_list.lineno1,
+                                   left=expr_A)
+        eq_expr = self._str2ast("eq_expr", attr="op_in_range_list",
+                                lineno0=range_list.lineno0,
+                                lineno1=range_list.lineno1,
+                                left=expr_A, right=range_list)
+        rel_expr = eq_expr
+        for exprtype in ["rel_primary_expr", "rel_conj_expr", "rel_disj_expr", "rel_expr"]:
+            rel_expr = self._str2ast(exprtype,
+                                     lineno0=range_list.lineno0,
+                                     lineno1=range_list.lineno1,
+                                     left=rel_expr)
+        restricted_ident = self._str2ast("restricted_ident",
+                                         lineno0=range_list.lineno0,
+                                         lineno1=range_list.lineno1,
+                                         left=ident_A, right=rel_expr)
+        args[0] = self._str2ast("task_expr", attr="such_that",
+                                lineno0=range_list.lineno0,
+                                lineno1=range_list.lineno1,
+                                printable=args[2].printable,
+                                left=restricted_ident)
+
     def p_restricted_ident(self, args):
         ' restricted_ident : ident SUCH THAT rel_expr '
         args[0] = self._wrapAST("restricted_ident", args)
@@ -1502,6 +1570,22 @@ class NCPTL_Parser:
         ' byte_count : expr data_multiplier '
         args[0] = self._wrapAST("byte_count", args)
 
+    def p_aggregate_func_list_1(self, args):
+        ' aggregate_func_list : aggregate_func '
+        args[0] = self._wrapAST("aggregate_func_list", args, attr=1L)
+
+    def p_aggregate_func_list_2(self, args):
+        '''
+            aggregate_func_list : aggregate_func AND aggregate_func_list
+            aggregate_func_list : aggregate_func AND THE aggregate_func_list
+        '''
+        lastarg = len(args) - 1
+        numentries = args[lastarg].attr + 1L
+        args[lastarg].attr = None
+        args[0] = self._str2ast("aggregate_func_list", attr=numentries,
+                                kids=[args[1]] + args[lastarg].kids)
+        self._assign0state(args)
+
     def p_aggregate_func(self, args):
         '''
         aggregate_func : MEAN
@@ -1516,19 +1600,23 @@ class NCPTL_Parser:
                        | MINIMUM
                        | MAXIMUM
                        | FINAL
+                       | expr PERCENTILE
         '''
-        funcname = string.lower(args[1])
-        if funcname == "standard":
-            funcname = "stdev"
-        elif funcname == "harmonic":
-            funcname = "harmonic_mean"
-        elif funcname == "geometric":
-            funcname = "geometric_mean"
-        elif funcname == "arithmetic":
-            funcname = "mean"
-        elif funcname == "median" and len(args) >= 3 and string.lower(args[2]) == "absolute":
-            funcname = "mad"
-        args[0] = self._str2ast("aggregate_func", attr=funcname)
+        if len(args) == 3 and string.lower(args[2]) == "percentile":
+            args[0] = self._str2ast("aggregate_func", attr="percentile", left=args[1])
+        else:
+          funcname = string.lower(args[1])
+          if funcname == "standard":
+              funcname = "stdev"
+          elif funcname == "harmonic":
+              funcname = "harmonic_mean"
+          elif funcname == "geometric":
+              funcname = "geometric_mean"
+          elif funcname == "arithmetic":
+              funcname = "mean"
+          elif funcname == "median" and len(args) >= 3 and string.lower(args[2]) == "absolute":
+              funcname = "mad"
+          args[0] = self._str2ast("aggregate_func", attr=funcname)
         self._assign0state(args)
 
     def p_func_name(self, args):
@@ -1539,21 +1627,23 @@ class NCPTL_Parser:
                   | CEILING
                   | FACTOR10
                   | FLOOR
-                  | LOG10
-                  | ROUND
-                  | SQRT
-                  | ROOT
-                  | MIN
-                  | MAX
-                  | TREE_PARENT
-                  | TREE_CHILD
-                  | KNOMIAL_PARENT
                   | KNOMIAL_CHILD
                   | KNOMIAL_CHILDREN
-                  | RANDOM_UNIFORM
+                  | KNOMIAL_PARENT
+                  | LOG10
+                  | MAX
+                  | MIN
+                  | PROCESSOR_OF
                   | RANDOM_GAUSSIAN
                   | RANDOM_PARETO
                   | RANDOM_POISSON
+                  | RANDOM_UNIFORM
+                  | ROOT
+                  | ROUND
+                  | SQRT
+                  | TASK_OF
+                  | TREE_CHILD
+                  | TREE_PARENT
         '''
         args[0] = self._lextoken2ast(args.slice[1])
 

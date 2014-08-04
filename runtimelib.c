@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -845,13 +845,14 @@ static void calculate_process_time_quality (void)
   timerdeltas =
     (uint64_t *) ncptl_malloc (datapoints * sizeof(uint64_t),
                                sizeof(uint64_t));
-  for (i=0; i<datapoints; ) {
-    uint64_t initial = ncptl_process_time(0);
-    uint64_t final = ncptl_process_time(0);
-    if (initial != final) {
-      timerdeltas[i] = final - initial;
-      meandelta += (double) timerdeltas[i++];
-    }
+  for (i=0; i<datapoints; i++) {
+    uint64_t initial = ncptl_process_time(0) + ncptl_process_time(1);
+    uint64_t final;
+    do
+      final = ncptl_process_time(0) + ncptl_process_time(1);
+    while (initial == final);
+    timerdeltas[i] = final - initial;
+    meandelta += (double) timerdeltas[i];
   }
 
   /* Calculate the mean and standard deviation of the timing deltas. */
@@ -1845,7 +1846,41 @@ NCPTL_VIRT_PHYS_MAP *ncptl_allocate_task_map (ncptl_int numtasks)
     procmap->virt2phys[i] = i;
     procmap->phys2virt[i] = i;
   }
+  procmap->used = 0;
   return procmap;
+}
+
+
+/* Store a pointer to a task map, and mark the task map as "live". */
+NCPTL_VIRT_PHYS_MAP *ncptl_point_to_task_map (NCPTL_VIRT_PHYS_MAP *oldmap)
+{
+  oldmap->used = 1;
+  return oldmap;
+}
+
+
+/* Replicate an existing task map if it is "live" (i.e., something
+ * points to it) or return the input parameter if not.  There is not
+ * currently a function to deallocate the result. */
+NCPTL_VIRT_PHYS_MAP *ncptl_conditionally_copy_task_map (NCPTL_VIRT_PHYS_MAP *oldmap)
+{
+  NCPTL_VIRT_PHYS_MAP *newmap;    /* Map to return */
+  ncptl_int numtasks;             /* Number of tasks in the map */
+  ncptl_int i;
+
+  if (!oldmap->used)
+    return oldmap;
+  numtasks = oldmap->numtasks;
+  newmap = (NCPTL_VIRT_PHYS_MAP *) ncptl_malloc (sizeof(NCPTL_VIRT_PHYS_MAP), 0);
+  newmap->numtasks = numtasks;
+  newmap->virt2phys = (ncptl_int *) ncptl_malloc (numtasks*sizeof(ncptl_int), 0);
+  newmap->phys2virt = (ncptl_int *)ncptl_malloc (numtasks*sizeof(ncptl_int), 0);
+  for (i=0; i<newmap->numtasks; i++) {
+    newmap->virt2phys[i] = oldmap->virt2phys[i];
+    newmap->phys2virt[i] = oldmap->phys2virt[i];
+  }
+  newmap->used = 0;
+  return newmap;
 }
 
 

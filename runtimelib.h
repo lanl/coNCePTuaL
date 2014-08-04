@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -342,6 +342,7 @@ typedef struct {
   ncptl_int numtasks;       /* Number of entries in the following arrays */
   ncptl_int *virt2phys;     /* Map from virtual to physical */
   ncptl_int *phys2virt;     /* Map from physical to virtual */
+  int used;                 /* 1=map is used by PROCESSOR_OF or TASK_OF; 0=unused */
 } NCPTL_VIRT_PHYS_MAP;
 
 #endif

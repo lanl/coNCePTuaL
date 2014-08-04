@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -115,11 +115,11 @@ int main (int argc, char *argv[])
   for (i=0; i<11; i++) {
     double somevalue = (double) ((i*7) % 11);
 
-    ncptl_log_write (logstate, 2, "Summary #1", NCPTL_FUNC_MEDIAN, somevalue);
-    ncptl_log_write (logstate, 3, "Summary #2", NCPTL_FUNC_MEAN, somevalue);
-    ncptl_log_write (logstate, 5, "Summary \"1a\"", NCPTL_FUNC_MAD, somevalue);
-    ncptl_log_write (logstate, 6, "Summary \"2a\"", NCPTL_FUNC_STDEV, somevalue);
-    ncptl_log_write (logstate, 0, "Integers", NCPTL_FUNC_NO_AGGREGATE, somevalue);
+    ncptl_log_write (logstate, 2, "Summary #1", NCPTL_FUNC_MEDIAN, 0.0, somevalue);
+    ncptl_log_write (logstate, 3, "Summary #2", NCPTL_FUNC_MEAN, 0.0, somevalue);
+    ncptl_log_write (logstate, 5, "Summary \"1a\"", NCPTL_FUNC_MAD, 0.0, somevalue);
+    ncptl_log_write (logstate, 6, "Summary \"2a\"", NCPTL_FUNC_STDEV, 0.0, somevalue);
+    ncptl_log_write (logstate, 0, "Integers", NCPTL_FUNC_NO_AGGREGATE, 0.0, somevalue);
   }
 
 #ifdef HAVE_NANOSLEEP
@@ -133,9 +133,9 @@ int main (int argc, char *argv[])
   for (i=0; i<8; i++) {
     double somevalue = (double) ((i*3) % 8 + 1);
 
-    ncptl_log_write (logstate, 11, "Info #1", NCPTL_FUNC_MEDIAN, somevalue);
-    ncptl_log_write (logstate, 12, "Info #2", NCPTL_FUNC_MINIMUM, somevalue);
-    ncptl_log_write (logstate, 13, "Info #3", NCPTL_FUNC_MAXIMUM, somevalue);
+    ncptl_log_write (logstate, 11, "Info #1", NCPTL_FUNC_MEDIAN, 0.0, somevalue);
+    ncptl_log_write (logstate, 12, "Info #2", NCPTL_FUNC_MINIMUM, 0.0, somevalue);
+    ncptl_log_write (logstate, 13, "Info #3", NCPTL_FUNC_MAXIMUM, 0.0, somevalue);
   }
 
 #ifdef HAVE_NANOSLEEP
@@ -148,9 +148,9 @@ int main (int argc, char *argv[])
    * also the ability to have two NCPTL_FUNC_NO_AGGREGATEs in the same
    * table. */
   for (i=-6; i<=6; i++) {
-    ncptl_log_write (logstate, 14, "Numbers A", NCPTL_FUNC_NO_AGGREGATE, (double)i);
-    ncptl_log_write (logstate, 15, "Numbers B", NCPTL_FUNC_MEDIAN, (double)i);
-    ncptl_log_write (logstate, 16, "Squares",   NCPTL_FUNC_HISTOGRAM, (double)(i*i));
+    ncptl_log_write (logstate, 14, "Numbers A", NCPTL_FUNC_NO_AGGREGATE, 0.0, (double)i);
+    ncptl_log_write (logstate, 15, "Numbers B", NCPTL_FUNC_MEDIAN, 0.0, (double)i);
+    ncptl_log_write (logstate, 16, "Squares",   NCPTL_FUNC_HISTOGRAM, 0.0, (double)(i*i));
   }
 
   /* Write what we have so far to disk. */
@@ -165,9 +165,9 @@ int main (int argc, char *argv[])
   /* Start a fourth data set.  Here, we're checking whether
    * ncptl_log_commit_data() functions as it's supposed to. */
   for (i=0, j=1; i<10; i++, j<<=1) {
-    ncptl_log_write (logstate, 0, "Powers of two", NCPTL_FUNC_NO_AGGREGATE, (double)j);
-    ncptl_log_write (logstate, 1, "Average", NCPTL_FUNC_HARMONIC_MEAN, (double)j);
-    ncptl_log_write (logstate, 2, "Average", NCPTL_FUNC_GEOMETRIC_MEAN, (double)j);
+    ncptl_log_write (logstate, 0, "Powers of two", NCPTL_FUNC_NO_AGGREGATE, 0.0, (double)j);
+    ncptl_log_write (logstate, 1, "Average", NCPTL_FUNC_HARMONIC_MEAN, 0.0, (double)j);
+    ncptl_log_write (logstate, 2, "Average", NCPTL_FUNC_GEOMETRIC_MEAN, 0.0, (double)j);
   }
 
   /* Flush and close the log file. */

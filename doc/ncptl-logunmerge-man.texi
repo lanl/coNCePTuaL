@@ -2,10 +2,10 @@
 * ncptl-logunmerge manual page::   The result of running ``ncptl-logunmerge --man''
 @end menu
 
-@c Copyright (C) 2012, Los Alamos National Security, LLC
+@c Copyright (C) 2014, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2012).  Los Alamos National Security, LLC.  This software
+@c Copyright (2014).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -61,10 +61,10 @@ ncptl-logunmerge
 @sp 1
 @noindent
 ncptl-logunmerge
-[@copt{logfile}=@var{template}]
-[@copt{procs}=@var{process_list}]
+[@coptargs{logfile, @var{template}}]
+[@coptargs{procs, @var{process_list}}]
 [@copt{quiet}]
-[@copt{memcache}=@var{megabytes}]
+[@coptargs{memcache, @var{megabytes}}]
 @var{filename}
 
 @subsubheading DESCRIPTION
@@ -106,17 +106,17 @@ written only to @w{process 0's} log file:
 @file{ncptl-logunmerge} accepts the following command-line options:
 
 @table @asis
-@item @copts{u}, @copt{usage}
+@item @coptsIT{u}, @coptIT{usage}
 Output the Synopsis section then exit the program.
 
-@item @copts{h}, @copt{help}
+@item @coptsIT{h}, @coptIT{help}
 Output the Synopsis section and the Options section then exit the program.
 
-@item @copts{m}, @copt{man}
+@item @coptsIT{m}, @coptIT{man}
 Output a complete Unix man (``manual'') page for @file{ncptl-logunmerge}
 then exit the program.
 
-@item @copts{L} @var{template}, @copt{logfile}=@var{template}
+@item @coptsIT{L} @var{template}, @coptIT{logfile}=@var{template}
 Specify a template for the names of the generated log files.  The
 template must contain the literal string @code{%p} which will be replaced
 by the appropriate processor number.  The template may contain the
@@ -131,19 +131,19 @@ the default template from the merged log file's @code{Log-file template}
 line, discards the directory component of the filename, and uses the
 result as the log-file template.
 
-@item @copts{p} @var{process_list}, @copt{procs}=@var{process_list}
+@item @coptsIT{p} @var{process_list}, @coptIT{procs}=@var{process_list}
 Identify a subset of log files to extract from the merged log file.
 By default, @file{ncptl-logunmerge} extracts all of the constituent log
 files.  @var{process_list} is a comma-separated list of process number or
 process ranges.
 
-@item @copts{q}, @copt{quiet}
+@item @coptsIT{q}, @coptIT{quiet}
 Suppress progress output.  Normally, @file{ncptl-logunmerge} outputs
 status information regarding its operation.  The @copt{quiet} option
 instruct @file{ncptl-logunmerge} to output only warning and error
 messages.
 
-@item @copts{M} @var{megabytes}, @copt{memcache}=@var{megabytes}
+@item @coptsIT{M} @var{megabytes}, @coptIT{memcache}=@var{megabytes}
 Specify the size of the in-memory file cache.  By default the program
 keeps up to @w{8 MB} of extracted file data resident in memory to
 improve performance.  The @copt{memcache} option enables more or less

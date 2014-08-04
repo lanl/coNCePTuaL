@@ -9,10 +9,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -85,6 +85,25 @@ except ImportError:
     # We're running from ordinary C-based Python.
     from pyncptl import *
 
+# Define "safe" versions of ncptl_virtual_to_physical.
+def ncptl_func_processor_of(procmap, vtask, num_tasks):
+    if vtask < 0 or vtask >= num_tasks:
+        return -1L
+    else:
+        return ncptl_virtual_to_physical(procmap, vtask)
+
+def ncptl_dfunc_processor_of(procmap, vtask, num_tasks):
+    return ncptl_func_processor_of(procmap, int(vtask), num_tasks)
+
+# Define "safe" versions of ncptl_physical_to_virtual.
+def ncptl_func_task_of(procmap, ptask, num_tasks):
+    if ptask < 0 or ptask >= num_tasks:
+        return -1L
+    else:
+        return ncptl_physical_to_virtual(procmap, ptask)
+
+def ncptl_dfunc_task_of(procmap, ptask, num_tasks):
+    return ncptl_func_task_of(procmap, int(ptask), num_tasks)
 
 class NCPTL_CodeGen:
     thisfile = globals()["__file__"]
@@ -1143,8 +1162,8 @@ class NCPTL_CodeGen:
 
         # Acquire the function name and parameters.
         funcname = node.attr
-        if funcname[:5] == "MESH_":
-            # Mesh functions store their parameters directly.
+        if funcname[:5] == "MESH_" or funcname[-9:] == "FILE_DATA":
+            # Mesh functions and *FILE_DATA store their parameters directly.
             funcparams = map(self.process_node, node.kids)
         else:
             # All other functions store their parameters within a
@@ -1168,28 +1187,32 @@ class NCPTL_CodeGen:
 
         # Ensure we have the correct number of arguments.
         function_arguments = {
-            "ABS":              [1],
-            "BITS":             [1],
-            "CBRT":             [1],
-            "CEILING":          [1],
-            "FACTOR10":         [1],
-            "FLOOR":            [1],
-            "KNOMIAL_CHILD":    [2, 3, 4],
-            "KNOMIAL_CHILDREN": [1, 2, 3],
-            "KNOMIAL_PARENT":   [1, 2, 3],
-            "LOG10":            [1],
-            "MESH_COORDINATE":  [3],
-            "MESH_DISTANCE":    [3],
-            "MESH_NEIGHBOR":    [3],
-            "RANDOM_GAUSSIAN":  [2],
-            "RANDOM_PARETO":    [2, 3],
-            "RANDOM_POISSON":   [1],
-            "RANDOM_UNIFORM":   [2],
-            "ROOT":             [2],
-            "ROUND":            [1],
-            "SQRT":             [1],
-            "TREE_CHILD":       [2, 3],
-            "TREE_PARENT":      [1, 2]
+            "ABS":               [1],
+            "BITS":              [1],
+            "CBRT":              [1],
+            "CEILING":           [1],
+            "FACTOR10":          [1],
+            "FILE_DATA":         [1, 2, 3, 4, 5],
+            "FLOOR":             [1],
+            "KNOMIAL_CHILD":     [2, 3, 4],
+            "KNOMIAL_CHILDREN":  [1, 2, 3],
+            "KNOMIAL_PARENT":    [1, 2, 3],
+            "LOG10":             [1],
+            "MESH_COORDINATE":   [3],
+            "MESH_DISTANCE":     [3],
+            "MESH_NEIGHBOR":     [3],
+            "PROCESSOR_OF":      [1],
+            "RANDOM_GAUSSIAN":   [2],
+            "RANDOM_PARETO":     [2, 3],
+            "RANDOM_POISSON":    [1],
+            "RANDOM_UNIFORM":    [2],
+            "ROOT":              [2],
+            "ROUND":             [1],
+            "SQRT":              [1],
+            "STATIC_FILE_DATA":  [1, 2, 3, 4, 5],
+            "TASK_OF":           [1],
+            "TREE_CHILD":        [2, 3],
+            "TREE_PARENT":       [1, 2]
         }
         try:
             valid_num_params = function_arguments[funcname]
@@ -1266,6 +1289,16 @@ class NCPTL_CodeGen:
         # the two-argument form.
         elif funcname == "RANDOM_PARETO" and num_params == 2:
             funcparams.append(funcparams[1])
+        # PROCESSOR_OF and TASK_OF take a few extra arguments.
+        elif funcname[-3:] == "_OF":
+            funcparams = [self.procmap, funcparams[0], self.numtasks]
+        # Fill in all of the optional arguments for *FILE_DATA.
+        elif funcname[-9:] == "FILE_DATA":
+            funcname = "FILE_DATA"   # Treated the same except for semantic analysis.
+            default_args = ["DUMMY_ARG", 1, 1, " \t", "\n"]
+            params_needed = len(default_args) - len(funcparams)
+            if params_needed > 0:
+                funcparams.extend(default_args[-params_needed:])
 
         # Evaluate the function and return the result.
         funcname = string.lower(funcname)
@@ -1618,8 +1651,9 @@ class NCPTL_CodeGen:
 
     def n_aggregate_expr(self, node):
         """
-             Return a pair consisting of an aggregate-function number
-             and a value to write.
+             Return a triple consisting of an aggregate-function
+             number, an additional parameters used by certain
+             aggregate functions, and a value to write.
         """
         if node.attr == "no_aggregate":
             aggregate_number = long(NCPTL_FUNC_NO_AGGREGATE)
@@ -1627,10 +1661,14 @@ class NCPTL_CodeGen:
             aggregate_number = self.process_node(node.kids[0])
         else:
             self.errmsg.error_internal('I don\'t know how to process aggregate expressions of type "%s"' % node.attr)
-        return (aggregate_number, self.process_node(node.kids[-1]))
+        if aggregate_number == NCPTL_FUNC_PERCENTILE:
+            aggregate_param = self.process_node(node.kids[0].kids[0])
+        else:
+            aggregate_param = 0.0
+        return (aggregate_number, aggregate_param, self.process_node(node.kids[-1]))
 
     def n_log_expr_list(self, node):
-        "Return a list of (logcolumn, description, aggregate, value) tuples."
+        "Return a list of (logcolumn, description, aggregate, parameter, value) tuples."
         # Assign a unique column to each log_expr_list_elt child.
         if not hasattr(node.kids[0], "logcolumn"):
             kidlist = node.kids
@@ -1640,10 +1678,10 @@ class NCPTL_CodeGen:
         return map(self.process_node, node.kids)
 
     def n_log_expr_list_elt(self, node):
-        "Return a (logcolumn, description, aggregate, value) tuple."
-        aggregate_number, value = self.process_node(node.kids[0])
+        "Return a (logcolumn, description, aggregate, parameter, value) tuple."
+        aggregate_number, aggregate_param, value = self.process_node(node.kids[0])
         header = self.process_node(node.kids[1])
-        return (node.logcolumn, header, aggregate_number, value)
+        return (node.logcolumn, header, aggregate_number, aggregate_param, value)
 
     def n_message_spec(self, node):
         "Return a tuple that describes a particular message."
@@ -2029,10 +2067,36 @@ class NCPTL_CodeGen:
 
     def n_for_time(self, node):
         "Repeat a statement for a given length of time."
+        # If kill_reps is set, ignore the warmup time,
+        # synchronization, and trip count.
+        statement_node = node.kids[-1]
+        if self.kill_reps:
+            self.process_node(statement_node)
+            return
+
+        # Perform the warmup repetitions if any and optional synchronization.
+        if len(node.kids) == 5:
+            warmups = self.process_node(node.kids[2])
+            if warmups > 0L:
+                # Because time isn't particularly meaningful here, any
+                # nonzero warmup time produces 1 warmup repetition.
+                suppress = self.suppress_output
+                self.suppress_output = 1
+                self.process_node(statement_node)
+                self.suppress_output = suppress
+            if node.attr == "synchronized":
+                newevents = {}
+                tasklist = range(0, self.numtasks)
+                unique_id = self.get_unique_id()
+                for task in tasklist:
+                    self.push_event(self.Event("SYNC", task=task, peers=tasklist,
+                                               srclines=(node.lineno0, node.lineno1),
+                                               collective_id=unique_id))
+
         # Because time isn't particularly meaningful here, we simply
         # perform a fixed number of repetitions.
         for i in range(0, self.for_time_reps):
-            self.process_node(node.kids[2])
+            self.process_node(statement_node)
 
     def n_if_stmt(self, node):
         "Execute a statement if a given condition is true."
@@ -2815,15 +2879,16 @@ class NCPTL_CodeGen:
         self.initialize_log_file(task)           # Safe to invoke repeatedly
         event.attributes = map(lambda attr, self=self:
                                (attr[0], self.eval_lazy_expr(attr[1], types.StringType),
-                                attr[2], self.eval_lazy_expr(attr[3], types.FloatType)),
+                                attr[2], self.eval_lazy_expr(attr[3], types.FloatType),
+                                self.eval_lazy_expr(attr[4], types.FloatType)),
                                event.attributes)
-        for column, header, aggregate_number, value in event.attributes:
-            ncptl_log_write(self.logstate[task], column, header, aggregate_number, value)
+        for column, header, aggregate_number, aggregate_param, value in event.attributes:
+            ncptl_log_write(self.logstate[task], column, header, aggregate_number, aggregate_param, value)
         self.eventlist[task].complete()
         return None
 
     def process_aggregate(self, event):
-        "Process an AGGREGATE event."
+        "Process a COMPUTES AGGREGATES event."
         task = event.task
         self.initialize_log_file(task)           # Safe to invoke repeatedly
         ncptl_log_compute_aggregates(self.logstate[task])

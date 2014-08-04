@@ -5,7 +5,7 @@
 # and again in February 2011                 #
 ##############################################
 
-Require language version "1.4".
+Require language version "1.5".
 
 # Parse the command line.
 SX is "Mesh width" and comes from "--width" or "-w" with default 1.

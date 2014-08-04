@@ -3,7 +3,7 @@
 # By Scott Pakin <pakin@lanl.gov>      #
 ########################################
 
-Require language version "1.4".
+Require language version "1.5".
 
 iters is "Number of iterations to perform" and comes from "--iters" or "-i" with default 1000.
 msgsize is "Message size (B)" and comes from "--bytes" or "-b" with default 1M.

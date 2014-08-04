@@ -1,6 +1,6 @@
 # Ensure that every task can send to every other task.
 
-Require language version "1.4".
+Require language version "1.5".
 
 msgsize is "Number of bytes each task sends" and comes from "--msgsize" or "-m" with default 1K.
 testlen is "Number of minutes for which to run" and comes from "--duration" or "-d" with default 1.

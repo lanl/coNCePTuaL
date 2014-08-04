@@ -1,6 +1,6 @@
 # Determine computational "noise"
 
-Require language version "1.4".
+Require language version "1.5".
 
 accesses is "Number of data accesses to perform" and comes from
   "--accesses" or "-a" with default 500000.

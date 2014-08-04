@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -118,6 +118,7 @@ typedef long ssize_t;
 typedef struct {
   char *description;        /* Textual description of a column (NULL=invalid column) */
   LOG_AGGREGATE aggregate;  /* Aggregate used to summarize the column */
+  double aggregate_param;   /* Additional information specific to certain aggregates */
   NCPTL_QUEUE *rawdata;     /* Non-aggregated data values */
   NCPTL_QUEUE *finaldata;   /* Aggregated data values */
 } LOG_COLUMN;
@@ -361,9 +362,36 @@ static double find_median (NCPTL_LOG_FILE_STATE *logstate, double *data,
 }
 
 
+/* Return the nth percentile of a column of LOGFILEDATA. */
+static double find_percentile (NCPTL_LOG_FILE_STATE *logstate, double *data,
+                               ncptl_int datalen, double percentile)
+{
+  double data_offset;                  /* Index into the sorted data */
+  ncptl_int floor_data_offset;         /* Integral version of the above */
+  double lower_value, upper_value;     /* Values read from data_offset and data_offset+1 */
+
+  /* Handle the simple cases first. */
+  if (percentile < 0.0 || percentile > 100.0)
+    ncptl_fatal ("Percentile %.25g is invalid (must be from 0 to 100)", percentile);
+  if (percentile == 0.0)
+    return data[0];
+  if (percentile == 100.0)
+    return data[datalen - 1];
+
+  /* Compute the percentile using a linear interpolation of the modes
+   * for the order statistics for the uniform distribution on [0,1].
+   * See http://en.wikipedia.org/wiki/Quantile for details. */
+  data_offset = (datalen - 1)*percentile/100.0 + 1.0;
+  floor_data_offset = (ncptl_int) floor(data_offset);
+  lower_value = find_k_median (logstate, data, floor_data_offset, 0, datalen-1);
+  upper_value = find_k_median (logstate, data, floor_data_offset + 1, 0, datalen-1);
+  return lower_value + (data_offset - (double)floor_data_offset)*(upper_value - lower_value);
+}
+
+
 /* Return the median absolute deviation of a column of LOGFILEDATA. */
 static double find_mad (NCPTL_LOG_FILE_STATE *logstate, double *data,
-			ncptl_int datalen)
+                        ncptl_int datalen)
 {
   double median;     /* Median of the given data */
   double *abs_devs;  /* Absolute deviations of the given data from the median */
@@ -1250,7 +1278,7 @@ static void log_write_prologue_hardware_bgl (NCPTL_LOG_FILE_STATE *logstate)
 #endif
 
 #if defined(HAVE__MY_PNID) || defined(CRAY_XT_NID_FILE)
-/* Write some Cray XT-specific information to the log file. */
+/* Write some Cray-specific information to the log file. */
 static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
 {
 # ifdef HAVE__MY_PNID
@@ -1258,7 +1286,7 @@ static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
 # elif defined(CRAY_XT_NID_FILE)
   uint32_t _my_pnid;              /* To be read from CRAY_XT_NID_FILE */
 # else
-#  error Unable to determine how to read a Cray XT node ID
+#  error Unable to determine how to read a Cray node ID
 # endif
   char rsinfostr[NCPTL_MAX_LINE_LEN];
 # if defined(HAVE_RCAMESHTOPOLOGY) || defined(HAVE_RSMSEVENT)
@@ -1285,7 +1313,7 @@ static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
 
   /* Write our physical node ID. */
   sprintf (rsinfostr, "%u", _my_pnid);
-  log_key_value (logstate, "Cray XT node ID", rsinfostr);
+  log_key_value (logstate, "Cray node ID", rsinfostr);
 
   /* Use topology class information to interpret the physical node ID. */
 # ifdef HAVE_RCAMESHTOPOLOGY
@@ -1293,28 +1321,48 @@ static void log_write_prologue_hardware_xt (NCPTL_LOG_FILE_STATE *logstate)
     int topo;                  /* Topology class */
 
     rca_get_meshtopology(&topo);
-    log_key_value (logstate, "Cray XT topology class", get_topo_str(topo));
+    log_key_value (logstate, "Cray topology class", get_topo_str(topo));
     rca_get_nodeid(&physinfo);
     rs_phys2str(&physinfo, rsinfostr);
-    log_key_value (logstate, "Cray XT node location", rsinfostr);
+    log_key_value (logstate, "Cray node location", rsinfostr);
   }
 # elif defined(HAVE_RSMSEVENT)
   /* The topology class defaults to class 4 because that's what some
    * of Cray's programs do.  The user can override the default by
    * setting RSMS_TOPO_CLASS. */
   rs_nid_init (env_topo_class ? atoi(env_topo_class) : RS_TOPO_CLASS_4);
-  log_key_value (logstate, "Cray XT topology class", get_topo_str(topo_class));
+  log_key_value (logstate, "Cray topology class", get_topo_str(topo_class));
   memset ((void *)&physinfo, 0, sizeof(rs_node_t));
   rs_nid2phys(_my_pnid, rt_node, &physinfo);
   rs_format_phys (&physinfo, rsinfostr);
-  log_key_value (logstate, "Cray XT node location", rsinfostr);
+  log_key_value (logstate, "Cray node location", rsinfostr);
+# else
+  /* Newer Cray systems maintain node location in the /proc filesystem. */
+  do {
+    FILE *cnamefile;
+    int col, row, cage, slot, node;
+    char physinfostr[NCPTL_MAX_LINE_LEN];
+
+    if (!(cnamefile=fopen (CRAY_XC_CNAME_FILE, "r")))
+      break;
+    if (fscanf (cnamefile, "c%d-%dc%ds%dn%d", &col, &row, &cage, &slot, &node) != 5) {
+      fclose (cnamefile);
+      break;
+    }
+    fclose (cnamefile);
+    sprintf (physinfostr, "column %d, row %d, cage %d, slot %d, node %d (c%d-%dc%ds%dn%d)",
+             col, row, cage, slot, node,
+             col, row, cage, slot, node);
+    log_key_value (logstate, "Cray node location", physinfostr);
+  }
+  while (0);
 # endif
 
 # ifdef HAVE_RCAMESHCOORD
   if (rca_get_meshcoord ((uint16_t)_my_pnid, &mesh_coord) == 0) {
     sprintf (rsinfostr, "(%u, %u, %u)",
              mesh_coord.mesh_x, mesh_coord.mesh_y, mesh_coord.mesh_z);
-    log_key_value (logstate, "Cray XT node coordinates", rsinfostr);
+    log_key_value (logstate, "Cray node coordinates", rsinfostr);
   }
 # endif
 }
@@ -2688,7 +2736,8 @@ char *ncptl_log_lookup_string (NCPTL_LOG_FILE_STATE *logstate, char *key)
 
 /* Log a value to a given column. */
 void ncptl_log_write (NCPTL_LOG_FILE_STATE *logstate, int logcolumn,
-                      char *description, LOG_AGGREGATE aggregate, double value)
+                      char *description, LOG_AGGREGATE aggregate,
+                      double aggregate_param, double value)
 {
   LOG_COLUMN *thiscolumn;    /* Cache of the current column */
   int i;
@@ -2716,6 +2765,7 @@ void ncptl_log_write (NCPTL_LOG_FILE_STATE *logstate, int logcolumn,
   if (!thiscolumn->description) {
     thiscolumn->description = ncptl_strdup (description);
     thiscolumn->aggregate = aggregate;
+    thiscolumn->aggregate_param = aggregate_param;
     thiscolumn->rawdata = ncptl_queue_init (sizeof(double));
     thiscolumn->finaldata = ncptl_queue_init (sizeof(double));
     if (logcolumn >= logstate->log_columns_used)
@@ -2723,6 +2773,7 @@ void ncptl_log_write (NCPTL_LOG_FILE_STATE *logstate, int logcolumn,
   }
   else
     if (thiscolumn->aggregate != aggregate ||
+        thiscolumn->aggregate_param != aggregate_param ||
         strcmp (thiscolumn->description, description))
       ncptl_fatal ("Column information was altered unexpectedly");
 
@@ -2856,6 +2907,11 @@ void ncptl_log_compute_aggregates (NCPTL_LOG_FILE_STATE *logstate)
 
           case NCPTL_FUNC_FINAL:
             aggregate = find_final (rawdata, rawdatalen);
+            break;
+
+          case NCPTL_FUNC_PERCENTILE:
+            aggregate = find_percentile (logstate, rawdata, rawdatalen,
+                                         logstate->logfiledata[c].aggregate_param);
             break;
 
           case NCPTL_FUNC_ONLY:
@@ -3010,6 +3066,32 @@ void ncptl_log_commit_data (NCPTL_LOG_FILE_STATE *logstate)
 
       case NCPTL_FUNC_HISTOGRAM:
         log_printf (logstate, "(hist. values)\",\"(hist. tallies)");
+        break;
+
+      case NCPTL_FUNC_PERCENTILE:
+        {
+          char pctstr[25];
+          const char *ordstr;
+          sprintf(pctstr, "%.0f", logstate->logfiledata[c].aggregate_param);
+          switch (pctstr[strlen(pctstr)-1]) {
+            case 1:
+              ordstr = "st";
+              break;
+
+            case 2:
+              ordstr = "nd";
+              break;
+
+            case 3:
+              ordstr = "rd";
+              break;
+
+            default:
+              ordstr = "th";
+              break;
+          }
+          log_printf (logstate, "(%s%s percentile)", pctstr, ordstr);
+        }
         break;
 
       default:

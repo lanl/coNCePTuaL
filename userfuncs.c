@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -1116,4 +1116,125 @@ double ncptl_dfunc_random_pareto (double shape, double low, double high)
     double den = high_shape * low_shape;
     return ncptl_dfunc_power(-num/den, -1.0/shape);
   }
+}
+
+
+/* Read a row and column from a file and return it as a string, which
+ * the caller must ncptl_free(). */
+static char *read_cell_from_file (const char *filename,
+                                  ncptl_int col, ncptl_int row,
+                                  const char *colsep, const char *rowsep)
+{
+  FILE *infile;            /* Handle to filename */
+  char **rowdata;          /* Contents of a single row if ROW>1, of -ROW rows if ROW<1 */
+  ncptl_int rows_alloced;  /* Number of entries in the above */
+  char *rowptr;            /* Pointer to a single row of rowdata */
+  char *colptr;            /* Point to a single column within rowptr */
+  char *result = "";       /* Data value to return */
+  ncptl_int i;
+
+  /* Ensure that the row and column counts are nonzero. */
+  if (col == 0)
+    ncptl_fatal ("FILE_DATA column numbers must be nonzero");
+  if (row == 0)
+    ncptl_fatal ("FILE_DATA row numbers must be nonzero");
+
+  /* We don't currently support row separators other than '\n'. */
+  if (!(rowsep[0] == '\n' && rowsep[1] == '\0'))
+    ncptl_fatal ("FILE_DATA row separators other than \"\\n\" are not yet implemented");
+
+  /* Open the input file for reading.  Abort on failure. */
+  infile = fopen (filename, "r");
+  if (!infile) {
+#ifdef HAVE_STRERROR
+    if (strerror(errno))
+      ncptl_fatal ("Failed to open file \"%s\" (%s)", filename, strerror(errno));
+    else
+#endif
+      ncptl_fatal ("Failed to open file \"%s\" (errno=%d)", filename, errno);
+  }
+
+  /* Allocate memory for row buffers. */
+  rows_alloced = row > 0 ? 1 : -row;
+  rowdata = (char **) ncptl_malloc (rows_alloced*sizeof(char *), sizeof(char *));
+  for (i = 0; i < rows_alloced; i++)
+    rowdata[i] = (char *) ncptl_malloc (NCPTL_MAX_LINE_LEN + 1, 0);
+
+  /* Read the specified row. */
+  if (row > 0) {
+    /* Positive -- read and discard until we find the target row. */
+    for (i = 0; i < row; i++)
+      if (fgets (rowdata[0], NCPTL_MAX_LINE_LEN + 1, infile) == NULL)
+        ncptl_fatal ("Failed to read row %" NICS " from \"%s\"", row, filename);
+    rowptr = rowdata[0];
+  }
+  else {
+    /* Negative -- read until EOF. */
+    i = 0;
+    while (fgets (rowdata[i % rows_alloced], NCPTL_MAX_LINE_LEN + 1, infile) != NULL)
+      i++;
+    if (!feof (infile) || i < rows_alloced)
+      ncptl_fatal ("Failed to read row %" NICS " from the end of \"%s\"", -row, filename);
+    rowptr = rowdata[(i + row + rows_alloced) % rows_alloced];
+  }
+
+  /* Find the specified column. */
+  if (col > 0) {
+    /* Positive -- read and discard until we find the target column. */
+    for (i = 0; i < col; i++) {
+      colptr = strtok (i == 0 ? rowptr : NULL, colsep);
+      if (colptr == NULL)
+        ncptl_fatal ("Failed to read column %" NICS " from row %" NICS " of \"%s\"", col, row, filename);
+    }
+  }
+  else {
+    /* Negative -- Buffer columns until the end, then read backwards. */
+    ncptl_int cols_alloced = -col;
+    char **coldata = (char **) ncptl_malloc (cols_alloced*sizeof(char *), sizeof(char *));
+    i = 0;
+    while ((colptr = strtok (i == 0 ? rowptr : NULL, colsep)) != NULL) {
+      coldata[i % cols_alloced] = colptr;
+      i++;
+    }
+    if (i < cols_alloced)
+      ncptl_fatal ("Failed to read column %" NICS " from the end of row %" NICS " of \"%s\"", -col, row, filename);
+    colptr = coldata[(i + col + cols_alloced) % cols_alloced];
+    ncptl_free (coldata);
+  }
+
+  /* Make a copy of the current cell. */
+  result = ncptl_strdup(colptr);
+
+  /* Deallocate row memory, close the file descriptor, and return. */
+  for (i = 0; i < rows_alloced; i++)
+    ncptl_free (rowdata[i]);
+  ncptl_free (rowdata);
+  fclose(infile);
+  return result;
+}
+
+/* Read a row and column from a file, convert it to an ncptl_int, and
+ * return it. */
+ncptl_int ncptl_func_file_data (const char *filename,
+                                ncptl_int col, ncptl_int row,
+                                const char *colsep, const char *rowsep)
+{
+  char *strval;        /* Cell contents as a string */
+
+  strval = read_cell_from_file (filename, col, row, colsep, rowsep);
+  return strtoll(strval, NULL, 0);
+}
+
+/* Read a row and column from a file, convert it to an double, and
+ * return it. */
+double ncptl_dfunc_file_data (const char *filename,
+                              double col, double row,
+                              const char *colsep, const char *rowsep)
+{
+  char *strval;        /* Cell contents as a string */
+
+  VALIDATE_FLOAT(col);
+  VALIDATE_FLOAT(row);
+  strval = read_cell_from_file (filename, col, row, colsep, rowsep);
+  return strtod(strval, NULL);
 }

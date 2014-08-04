@@ -7,10 +7,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -119,9 +119,16 @@ sub command
           }
 
           # Output a new item.
+	  my $itemIT = $item;
+	  $itemIT =~ s/\@(copts?|coptargs)\{/\@$1IT\{/g;
+	  if ($itemIT =~ /coptargs/) {
+	      # Put the argument to coptargs inside the coptargs invocation.
+	      $itemIT =~ s/\}//;
+	      $itemIT .= "}";
+	  }
           $output .= ($list_types[$#list_types] =~ /itemize|enumerate/ ?
                       "\@item\n" :
-                      "\@item $item\n");
+                      "\@item $itemIT\n");
           last PROCESS_COMMAND;
       };
 
@@ -169,6 +176,7 @@ sub verbatim
 sub textblock
 {
     my ($parser, $paragraph, $line_num) = @_;
+
     my $outfile = $parser->output_handle();
     $paragraph =~ s/[{}]/\@$&/g;   # Must substitute _before_ interpolation.
     my $expanded = $parser->interpolate($paragraph, $line_num);
@@ -181,7 +189,7 @@ sub textblock
     $expanded =~ s/\@CODEDQUOTE/\@code\{\"\}/g;
     $expanded =~ s/same as ([^\]]+)/same as \@code{$1}/g;
     $expanded =~ s/--/---/g;
-
+    $expanded =~ s/\@copt\{([-\w]+)\}=(\@var\{.*?\})/\@coptargs\{$1, $2\}/g;
     print $outfile $expanded;
 }
 

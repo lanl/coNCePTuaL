@@ -8,10 +8,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -642,8 +642,8 @@ def eventlist():
     # some meaning.
     say_generated_by("@c")
     print ""
-    print "@table @ocode"
-    print string.join(map(lambda e, events=events: "@item %s\n%s" % (e, events[e]),
+    print "@table @asis"
+    print string.join(map(lambda e, events=events: "@item @ocode{%s}\n%s" % (e, events[e]),
                           filter(lambda e: e != "EV_CODE", sorted_events)),
                       "\n\n")
     print ""
@@ -1225,13 +1225,13 @@ def cache_vars_to_texinfo():
             oneline = infile.readline()
 
     # Output a Texinfo table.
-    print "@table @ocode"
+    print "@table @asis"
     cachevars = name2desc.keys()
     cachevars.sort()
     for cvar in cachevars:
         if cvar != cachevars[0]:
             print
-        print "@item %s" % cvar
+        print "@item @ocode{%s}" % cvar
         print "%s" % name2desc[cvar]
     print "@end table"
 

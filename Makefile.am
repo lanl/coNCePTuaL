@@ -4,10 +4,10 @@
 #############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -56,11 +56,11 @@ MOSTLYCLEANFILES = ncptl.php.tmp
 CLEANFILES = empty.log $(STYLESHEETS) $(PACKAGE)_$(VERSION)	\
 	     ncptl_backends.pyc ncptl_config.pyc ncptl_ast.pyc	\
 	     ncptl_error.pyc ncptl_token.pyc lex.pyc yacc.pyc   \
-	     $(nodist_pkgpython_SCRIPTS) $(conceptual_TEXINFOS)
+	     $(nodist_pkgpython_DATA) $(conceptual_TEXINFOS)
 DISTCLEANFILES = ncptl.h.ni ncptl.h signalmap.c substitutions.dat.in \
 	         ncptl.pc.in extra_config.h ncptl-logextract 	     \
 		 ncptl-logextract_keywords libncptl.i.in 	     \
-		 $(nodist_pkgpython_SCRIPTS)
+		 $(nodist_pkgpython_DATA)
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
 bin_SCRIPTS = ncptl-logextract ncptl-logmerge ncptl-logunmerge
@@ -89,9 +89,9 @@ PYFILES = $(PYEXECS) $(PYCOMPILER) $(BACKENDS)
 
 # Because the following are generated into the build directory, we
 # can't install them from the source directory.  Hence, instead of
-# nodist_pkgpython_PYTHON we use nodist_pkgpython_SCRIPTS plus a line
+# nodist_pkgpython_PYTHON we use nodist_pkgpython_DATA plus a line
 # in install-exec-hook.
-nodist_pkgpython_SCRIPTS = ncptl_backends.py ncptl_config.py \
+nodist_pkgpython_DATA = ncptl_backends.py ncptl_config.py \
 			   ncptl_parse_table.py
 
 pkgpython_PYTHON = $(PYFILES)
@@ -120,6 +120,7 @@ ncptl_config.py: $(top_builddir)/config.h $(top_builddir)/substitutions.dat \
 # doesn't have to be regenerated every time the compiler is invoked.
 ncptl_parse_table.py: $(top_srcdir)/ncptl_parser.py $(top_builddir)/ncptl_config.py
 	env PYTHONPATH=$(top_builddir):$$PYTHONPATH $(PYTHON) $(top_srcdir)/ncptl_parser.py --compile
+	chmod -x ncptl_parse_table.py
 
 ###########################################################################
 
@@ -127,13 +128,13 @@ ncptl_parse_table.py: $(top_srcdir)/ncptl_parser.py $(top_builddir)/ncptl_config
 # install symbolic links in the bin directory for all of the
 # executable Python scripts.
 install-data-hook: $(top_srcdir)/makehelper.py
-	PYTHON=$(PYTHON) $(py_compile) --basedir $(DESTDIR)$(pkgpythondir) $(nodist_pkgpython_SCRIPTS)
+	PYTHON=$(PYTHON) $(py_compile) --basedir $(DESTDIR)$(pkgpythondir) $(nodist_pkgpython_DATA)
 	-ABS_TOP_SRCDIR=`cd $(top_srcdir) ; pwd` ; \
 	  cd $(DESTDIR)$(bindir) ; \
 	  for pyexec in $(PYEXECS) ; do \
 	    $(RM) `basename $${pyexec} .py` ; \
 	    chmod +x $(DESTDIR)$(pkgpythondir)/$${pyexec} ; \
-	    $(PYTHON) $${ABS_TOP_SRCDIR}/makehelper.py rsymlink $(LN_S) $(pkgpythondir)/$${pyexec} `basename $${pyexec} .py` ; \
+	    $(PYTHON) $${ABS_TOP_SRCDIR}/makehelper.py rsymlink $(LN_S) $(DESTDIR)$(pkgpythondir)/$${pyexec} `basename $${pyexec} .py` ; \
 	  done
 
 uninstall-hook:
@@ -417,7 +418,7 @@ doc/conceptual.pdf:
 	cd doc && $(MAKE) $(AM_MAKEFLAGS) pdf
 
 # Forward GUI-building requests to the gui subdirectory.
-gui: $(nodist_pkgpython_SCRIPTS)
+gui: $(nodist_pkgpython_DATA)
 	cd gui && $(MAKE) $(AM_MAKEFLAGS) $@
 
 .PHONY: pdf docbook gui
@@ -508,7 +509,7 @@ SWIG_OUTPUTS = libncptl_wrap.c pyncptl.py __init__.py
 # that's where "makehelper.py install" expects to find them.  Note that
 # we use "test -f" instead of "test -e" because the Bourne shell (at
 # least, on a Solaris 9 system I tried) doesn't honor "test -e".
-all-local: $(nodist_pkgpython_SCRIPTS) $(SWIG_OUTPUTS)
+all-local: $(nodist_pkgpython_DATA) $(SWIG_OUTPUTS)
 	for swout in libncptl_wrap.c pyncptl.py ; do \
 	  test -f $(top_builddir)/$$swout || $(LN_S) $(top_srcdir)/$$swout $(top_builddir)/$$swout ; \
 	done

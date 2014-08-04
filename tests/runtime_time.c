@@ -6,10 +6,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -75,9 +75,9 @@ int main (int argc, char *argv[])
 
     /* Complain if we're far off. */
     timing_error = 100.0 * fabs (((double)elapsedtime-1.0e+6) / 1.0e+6);
-    debug_printf ("\t   Starting time (usecs):  %25llu\n", starttime);
-    debug_printf ("\t   Ending time (usecs):    %25llu\n", stoptime);
-    debug_printf ("\t   Elapsed time (usecs):   %25llu\n", elapsedtime);
+    debug_printf ("\t   Starting time (usecs):  %25" PRIu64 "\n", starttime);
+    debug_printf ("\t   Ending time (usecs):    %25" PRIu64 "\n", stoptime);
+    debug_printf ("\t   Elapsed time (usecs):   %25" PRIu64 "\n", elapsedtime);
     debug_printf ("\t   Expected value (usecs): %25llu\n", 1000000ULL);
     debug_printf ("\t   Error:                  %27.1lf%%\n", timing_error);
     if (timing_error <= error_threshold)

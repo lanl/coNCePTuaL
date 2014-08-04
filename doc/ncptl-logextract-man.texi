@@ -2,10 +2,10 @@
 * ncptl-logextract manual page::   The result of running ``ncptl-logextract --man''
 @end menu
 
-@c Copyright (C) 2012, Los Alamos National Security, LLC
+@c Copyright (C) 2014, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2012).  Los Alamos National Security, LLC.  This software
+@c Copyright (2014).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -62,15 +62,15 @@ ncptl-logextract
 @noindent
 ncptl-logextract
 [@copt{extract}=[data|params|env|source|warnings]]
-[@copt{format}=@var{format}]
+[@coptargs{format, @var{format}}]
 [@var{format-specific options}...]
-[@copt{before}=@var{string}]
-[@copt{after}=@var{string}]
+[@coptargs{before, @var{string}}]
+[@coptargs{after, @var{string}}]
 [@copt{force-merge}[=@var{number}]]
-[@copt{procs}=@var{string}]
+[@coptargs{procs, @var{string}}]
 [@copt{quiet}]
 [@copt{verbose}]
-[@copt{output}=@var{filename}]
+[@coptargs{output, @var{filename}}]
 [@var{filename}...]
 
 @subsubheading DESCRIPTION
@@ -139,36 +139,36 @@ regardless of what data is extracted from the log file and what
 formatting occurs:
 
 @table @asis
-@item @copts{h}, @copt{help}
+@item @coptsIT{h}, @coptIT{help}
 Output the Synopsis section and the Options section then exit the program.
 
-@item @copts{m}, @copt{man}
+@item @coptsIT{m}, @coptIT{man}
 Output a complete Unix man (``manual'') page for @file{ncptl-logextract}
 then exit the program.
 
-@item @copts{e} @var{info}, @copt{extract}=@var{info}
+@item @coptsIT{e} @var{info}, @coptIT{extract}=@var{info}
 Specify what sort of data should be extracted from the log file.
 Acceptable values for @var{info} are listed and described in
 the Additional Options section and include @code{data}, @code{params}, @code{env}, and
 @code{source}.
 
-@item @copts{f} @var{format}, @copt{format}=@var{format}
+@item @coptsIT{f} @var{format}, @coptIT{format}=@var{format}
 Specify how the extracted data should be formatted.  Valid arguments
 depend upon the value passed to @copt{extract} and include such formats
 as @code{csv}, @code{html}, @code{latex}, @code{text}, and @code{bash}.  See the Additional Options section for details, explanations, and descriptions of
 applicability.
 
-@item @copts{b} @var{string}, @copt{before}=@var{string}
+@item @coptsIT{b} @var{string}, @coptIT{before}=@var{string}
 Output an arbitrary string of text before any other output.  @var{string}
 can contain escape characters such as @code{\n} for newline, @code{\t} for
 tab, and @code{\\} for backslash.
 
-@item @copts{a} @var{string}, @copt{after}=@var{string}
+@item @coptsIT{a} @var{string}, @coptIT{after}=@var{string}
 Output an arbitrary string of text after all other output.  @var{string}
 can contain escape characters such as @code{\n} for newline, @code{\t} for
 tab, and @code{\\} for backslash.
 
-@item @copts{F} [@var{number}], @copt{force-merge}[=@var{number}]
+@item @coptsIT{F} [@var{number}], @coptIT{force-merge}[=@var{number}]
 Try extra hard to merge multiple log files, even if they seem to have
 been produced by different programs or in different execution
 environments.  This generally implies padding empty rows and columns
@@ -178,27 +178,27 @@ empty locations.  Note that @copt{force-merge} is different from
 @coptargs{force-merge, 0} because data-merging functions (@code{mean}, @code{max},
 etc.) ignore blanks but consider zeroes.
 
-@item @copts{p} @var{string}, @copt{procs}=@var{string}
+@item @coptsIT{p} @var{string}, @coptIT{procs}=@var{string}
 When given a ``merged'' log file, unmerge only the data corresponding to
 the comma-separated processor ranges in @var{string}.  For example,
 @coptargs{procs, 0@comma{}16-20@comma{}25} unmerges the data for @w{processors 0}, 16, 17,
 18, 19, 20, @w{and 25}.  By default, @file{ncptl-logextract} uses all of
 the data from a merged log file.
 
-@item @copts{q}, @copt{quiet}
+@item @coptsIT{q}, @coptIT{quiet}
 Suppress progress output.  Normally, @file{ncptl-logextract} outputs
 status information regarding its operation.  The @copt{quiet} option
 instruct @file{ncptl-logextract} to output only warning and error
 messages.
 
-@item @copts{v}, @copt{verbose}
+@item @coptsIT{v}, @coptIT{verbose}
 Increase progress output.  Normally, @file{ncptl-logextract} outputs basic
 status information regarding its operation.  The @copt{verbose} option
 instruct @file{ncptl-logextract} to output more detailed information.
 Each time @copt{verbose} is specified, the program's verbosity increases
 (up to a maximum).
 
-@item @copts{o} @var{filename}, @copt{output}=@var{filename}
+@item @coptsIT{o} @var{filename}, @coptIT{output}=@var{filename}
 Redirect the output from @file{ncptl-logextract} to a file.  By default,
 @file{ncptl-logextract} writes to the standard output device.
 
@@ -231,738 +231,738 @@ format-specific options:
 
 
 @table @asis
-@item @coptargs{extract, data} [default]
+@item @coptargsIT{extract, data [default]}
 Extract measurement data
 
 @table @asis
-@item @coptargs{format, csv} [default]
+@item @coptargsIT{format, csv [default]}
 Output each table in comma-separated-value format
 
 @table @asis
-@item @copt{noheaders}
+@item @coptIT{noheaders}
 Do not output column headers
 
-@item @coptargs{colbegin, }@var{string}
+@item @coptargsIT{colbegin, @var{string}}
 Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{,}''}]
 
-@item @coptargs{colend, }@var{string}
+@item @coptargsIT{colend, @var{string}}
 Specify the text placed at the end of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{rowsep, }@var{string}
+@item @coptargsIT{rowsep, @var{string}}
 Specify the text used to separate data rows [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text placed at the end of each data row [default: @w{``@code{\\n}''}]
 
-@item @coptargs{hcolbegin, }@var{string}
+@item @coptargsIT{hcolbegin, @var{string}}
 Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
 
-@item @coptargs{hcolsep, }@var{string}
+@item @coptargsIT{hcolsep, @var{string}}
 Specify the text used to separate header columns [default: same as @code{colsep}]
 
-@item @coptargs{hcolend, }@var{string}
+@item @coptargsIT{hcolend, @var{string}}
 Specify the text placed at the end of each header column [default: same as @code{colend}]
 
-@item @coptargs{hrowbegin, }@var{string}
+@item @coptargsIT{hrowbegin, @var{string}}
 Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
 
-@item @coptargs{hrowsep, }@var{string}
+@item @coptargsIT{hrowsep, @var{string}}
 Specify the text used to separate header rows [default: same as @code{rowsep}]
 
-@item @coptargs{hrowend, }@var{string}
+@item @coptargsIT{hrowend, @var{string}}
 Specify the text placed at the end of each header row [default: same as @code{rowend}]
 
-@item @coptargs{tablebegin, }@var{string}
+@item @coptargsIT{tablebegin, @var{string}}
 Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
 
-@item @coptargs{tablesep, }@var{string}
+@item @coptargsIT{tablesep, @var{string}}
 Specify the text used to separate tables [default: @w{``@code{\\n}''}]
 
-@item @coptargs{tableend, }@var{string}
+@item @coptargsIT{tableend, @var{string}}
 Specify the text placed at the end of each table [default: @w{``@code{}''}]
 
-@item @coptargs{quote, }@var{string}
+@item @coptargsIT{quote, @var{string}}
 Specify the text used to begin quoted text [default: @w{``@code{"}''}]
 
-@item @coptargs{unquote, }@var{string}
+@item @coptargsIT{unquote, @var{string}}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
-@item @copt{excel}
+@item @coptIT{excel}
 Output strings in a format readable by Microsoft Excel
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
-@item @coptargs{format, tsv}
+@item @coptargsIT{format, tsv}
 Output each table in tab-separated-value format
 
 @table @asis
-@item @copt{noheaders}
+@item @coptIT{noheaders}
 Do not output column headers
 
-@item @coptargs{colbegin, }@var{string}
+@item @coptargsIT{colbegin, @var{string}}
 Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{\\t}''}]
 
-@item @coptargs{colend, }@var{string}
+@item @coptargsIT{colend, @var{string}}
 Specify the text placed at the end of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{rowsep, }@var{string}
+@item @coptargsIT{rowsep, @var{string}}
 Specify the text used to separate data rows [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text placed at the end of each data row [default: @w{``@code{\\n}''}]
 
-@item @coptargs{hcolbegin, }@var{string}
+@item @coptargsIT{hcolbegin, @var{string}}
 Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
 
-@item @coptargs{hcolsep, }@var{string}
+@item @coptargsIT{hcolsep, @var{string}}
 Specify the text used to separate header columns [default: same as @code{colsep}]
 
-@item @coptargs{hcolend, }@var{string}
+@item @coptargsIT{hcolend, @var{string}}
 Specify the text placed at the end of each header column [default: same as @code{colend}]
 
-@item @coptargs{hrowbegin, }@var{string}
+@item @coptargsIT{hrowbegin, @var{string}}
 Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
 
-@item @coptargs{hrowsep, }@var{string}
+@item @coptargsIT{hrowsep, @var{string}}
 Specify the text used to separate header rows [default: same as @code{rowsep}]
 
-@item @coptargs{hrowend, }@var{string}
+@item @coptargsIT{hrowend, @var{string}}
 Specify the text placed at the end of each header row [default: same as @code{rowend}]
 
-@item @coptargs{tablebegin, }@var{string}
+@item @coptargsIT{tablebegin, @var{string}}
 Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
 
-@item @coptargs{tablesep, }@var{string}
+@item @coptargsIT{tablesep, @var{string}}
 Specify the text used to separate tables [default: @w{``@code{\\n}''}]
 
-@item @coptargs{tableend, }@var{string}
+@item @coptargsIT{tableend, @var{string}}
 Specify the text placed at the end of each table [default: @w{``@code{}''}]
 
-@item @coptargs{quote, }@var{string}
+@item @coptargsIT{quote, @var{string}}
 Specify the text used to begin quoted text [default: @w{``@code{"}''}]
 
-@item @coptargs{unquote, }@var{string}
+@item @coptargsIT{unquote, @var{string}}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
-@item @copt{excel}
+@item @coptIT{excel}
 Output strings in a format readable by Microsoft Excel
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
-@item @coptargs{format, html}
+@item @coptargsIT{format, html}
 Output each table in HTML table format
 
 @table @asis
-@item @copt{noheaders}
+@item @coptIT{noheaders}
 Do not output column headers
 
-@item @coptargs{colbegin, }@var{string}
+@item @coptargsIT{colbegin, @var{string}}
 Specify the text placed at the beginning of each data column [default: @w{``@code{<td>}''}]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{ }''}]
 
-@item @coptargs{colend, }@var{string}
+@item @coptargsIT{colend, @var{string}}
 Specify the text placed at the end of each data column [default: @w{``@code{</td>}''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text placed at the beginning of each data row [default: @w{``@code{<tr>}''}]
 
-@item @coptargs{rowsep, }@var{string}
+@item @coptargsIT{rowsep, @var{string}}
 Specify the text used to separate data rows [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text placed at the end of each data row [default: @w{``@code{</tr>\\n}''}]
 
-@item @coptargs{hcolbegin, }@var{string}
+@item @coptargsIT{hcolbegin, @var{string}}
 Specify the text placed at the beginning of each header column [default: @w{``@code{<th>}''}]
 
-@item @coptargs{hcolsep, }@var{string}
+@item @coptargsIT{hcolsep, @var{string}}
 Specify the text used to separate header columns [default: same as @code{colsep}]
 
-@item @coptargs{hcolend, }@var{string}
+@item @coptargsIT{hcolend, @var{string}}
 Specify the text placed at the end of each header column [default: @w{``@code{</th>}''}]
 
-@item @coptargs{hrowbegin, }@var{string}
+@item @coptargsIT{hrowbegin, @var{string}}
 Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
 
-@item @coptargs{hrowsep, }@var{string}
+@item @coptargsIT{hrowsep, @var{string}}
 Specify the text used to separate header rows [default: same as @code{rowsep}]
 
-@item @coptargs{hrowend, }@var{string}
+@item @coptargsIT{hrowend, @var{string}}
 Specify the text placed at the end of each header row [default: same as @code{rowend}]
 
-@item @coptargs{tablebegin, }@var{string}
+@item @coptargsIT{tablebegin, @var{string}}
 Specify the text placed at the beginning of each table [default: @w{``@code{<table>\\n}''}]
 
-@item @coptargs{tablesep, }@var{string}
+@item @coptargsIT{tablesep, @var{string}}
 Specify the text used to separate tables [default: @w{``@code{}''}]
 
-@item @coptargs{tableend, }@var{string}
+@item @coptargsIT{tableend, @var{string}}
 Specify the text placed at the end of each table [default: @w{``@code{</table>\\n}''}]
 
-@item @coptargs{quote, }@var{string}
+@item @coptargsIT{quote, @var{string}}
 Specify the text used to begin quoted text [default: @w{``@code{}''}]
 
-@item @coptargs{unquote, }@var{string}
+@item @coptargsIT{unquote, @var{string}}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
-@item @coptargs{format, gnuplot}
+@item @coptargsIT{format, gnuplot}
 Output each table as a gnuplot data file
 
 @table @asis
-@item @copt{noheaders}
+@item @coptIT{noheaders}
 Do not output column headers
 
-@item @coptargs{colbegin, }@var{string}
+@item @coptargsIT{colbegin, @var{string}}
 Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{ }''}]
 
-@item @coptargs{colend, }@var{string}
+@item @coptargsIT{colend, @var{string}}
 Specify the text placed at the end of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{rowsep, }@var{string}
+@item @coptargsIT{rowsep, @var{string}}
 Specify the text used to separate data rows [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text placed at the end of each data row [default: @w{``@code{\\n}''}]
 
-@item @coptargs{hcolbegin, }@var{string}
+@item @coptargsIT{hcolbegin, @var{string}}
 Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
 
-@item @coptargs{hcolsep, }@var{string}
+@item @coptargsIT{hcolsep, @var{string}}
 Specify the text used to separate header columns [default: same as @code{colsep}]
 
-@item @coptargs{hcolend, }@var{string}
+@item @coptargsIT{hcolend, @var{string}}
 Specify the text placed at the end of each header column [default: same as @code{colend}]
 
-@item @coptargs{hrowbegin, }@var{string}
+@item @coptargsIT{hrowbegin, @var{string}}
 Specify the text placed at the beginning of each header row [default: @w{``@code{# }''}
 
-@item @coptargs{hrowsep, }@var{string}
+@item @coptargsIT{hrowsep, @var{string}}
 Specify the text used to separate header rows [default: same as @code{rowsep}]
 
-@item @coptargs{hrowend, }@var{string}
+@item @coptargsIT{hrowend, @var{string}}
 Specify the text placed at the end of each header row [default: same as @code{rowend}]
 
-@item @coptargs{tablebegin, }@var{string}
+@item @coptargsIT{tablebegin, @var{string}}
 Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
 
-@item @coptargs{tablesep, }@var{string}
+@item @coptargsIT{tablesep, @var{string}}
 Specify the text used to separate tables [default: @w{``@code{\\n\\n}''}]
 
-@item @coptargs{tableend, }@var{string}
+@item @coptargsIT{tableend, @var{string}}
 Specify the text placed at the end of each table [default: @w{``@code{}''}]
 
-@item @coptargs{quote, }@var{string}
+@item @coptargsIT{quote, @var{string}}
 Specify the text used to begin quoted text [default: @w{``@code{"}''}]
 
-@item @coptargs{unquote, }@var{string}
+@item @coptargsIT{unquote, @var{string}}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
-@item @coptargs{format, octave}
+@item @coptargsIT{format, octave}
 Output each table as an Octave text-format data file
 
 @table @asis
-@item @copt{noheaders}
+@item @coptIT{noheaders}
 Do not output column headers
 
-@item @coptargs{colbegin, }@var{string}
+@item @coptargsIT{colbegin, @var{string}}
 Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{}''}]
 
-@item @coptargs{colend, }@var{string}
+@item @coptargsIT{colend, @var{string}}
 Specify the text placed at the end of each data column [default: @w{``@code{\\n}''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text placed at the end of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{hcolbegin, }@var{string}
+@item @coptargsIT{hcolbegin, @var{string}}
 Specify the text placed at the beginning of each header column [default: @w{``@code{}''}]
 
-@item @coptargs{hcolsep, }@var{string}
+@item @coptargsIT{hcolsep, @var{string}}
 Specify the text used to separate header columns [default: @w{``@code{_}''}]
 
-@item @coptargs{hcolend, }@var{string}
+@item @coptargsIT{hcolend, @var{string}}
 Specify the text placed at the end of each header column [default: @w{``@code{}''}]
 
-@item @coptargs{hrowbegin, }@var{string}
+@item @coptargsIT{hrowbegin, @var{string}}
 Specify the text placed at the beginning of each header row [default: @w{``@code{# }''}]
 
-@item @coptargs{hrowsep, }@var{string}
+@item @coptargsIT{hrowsep, @var{string}}
 Specify the text used to separate header rows [default: @w{``@code{}''}]
 
-@item @coptargs{hrowend, }@var{string}
+@item @coptargsIT{hrowend, @var{string}}
 Specify the text placed at the end of each header row [default: @w{``@code{\\n}''}]
 
-@item @coptargs{tablebegin, }@var{string}
+@item @coptargsIT{tablebegin, @var{string}}
 Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
 
-@item @coptargs{tablesep, }@var{string}
+@item @coptargsIT{tablesep, @var{string}}
 Specify the text used to separate tables [default: @w{``@code{\\n}''}]
 
-@item @coptargs{tableend, }@var{string}
+@item @coptargsIT{tableend, @var{string}}
 Specify the text placed at the end of each table [default: @w{``@code{}''}]
 
-@item @coptargs{quote, }@var{string}
+@item @coptargsIT{quote, @var{string}}
 Specify the text used to begin quoted text [default: @w{``@code{}''}]
 
-@item @coptargs{unquote, }@var{string}
+@item @coptargsIT{unquote, @var{string}}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
-@item @coptargs{format, custom}
+@item @coptargsIT{format, custom}
 Output each table in a completely user-specified format
 
 @table @asis
-@item @copt{noheaders}
+@item @coptIT{noheaders}
 Do not output column headers
 
-@item @coptargs{colbegin, }@var{string}
+@item @coptargsIT{colbegin, @var{string}}
 Specify the text placed at the beginning of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{}''}]
 
-@item @coptargs{colend, }@var{string}
+@item @coptargsIT{colend, @var{string}}
 Specify the text placed at the end of each data column [default: @w{``@code{}''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text placed at the beginning of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{rowsep, }@var{string}
+@item @coptargsIT{rowsep, @var{string}}
 Specify the text used to separate data rows [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text placed at the end of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{hcolbegin, }@var{string}
+@item @coptargsIT{hcolbegin, @var{string}}
 Specify the text placed at the beginning of each header column [default: same as @code{colbegin}]
 
-@item @coptargs{hcolsep, }@var{string}
+@item @coptargsIT{hcolsep, @var{string}}
 Specify the text used to separate header columns [default: same as @code{colsep}]
 
-@item @coptargs{hcolend, }@var{string}
+@item @coptargsIT{hcolend, @var{string}}
 Specify the text placed at the end of each header column [default: same as @code{colend}]
 
-@item @coptargs{hrowbegin, }@var{string}
+@item @coptargsIT{hrowbegin, @var{string}}
 Specify the text placed at the beginning of each header row [default: same as @code{rowbegin}]
 
-@item @coptargs{hrowsep, }@var{string}
+@item @coptargsIT{hrowsep, @var{string}}
 Specify the text used to separate header rows [default: same as @code{rowsep}]
 
-@item @coptargs{hrowend, }@var{string}
+@item @coptargsIT{hrowend, @var{string}}
 Specify the text placed at the end of each header row [default: same as @code{rowend}]
 
-@item @coptargs{tablebegin, }@var{string}
+@item @coptargsIT{tablebegin, @var{string}}
 Specify the text placed at the beginning of each table [default: @w{``@code{}''}]
 
-@item @coptargs{tablesep, }@var{string}
+@item @coptargsIT{tablesep, @var{string}}
 Specify the text used to separate tables [default: @w{``@code{}''}]
 
-@item @coptargs{tableend, }@var{string}
+@item @coptargsIT{tableend, @var{string}}
 Specify the text placed at the end of each table [default: @w{``@code{}''}]
 
-@item @coptargs{quote, }@var{string}
+@item @coptargsIT{quote, @var{string}}
 Specify the text used to begin quoted text [default: @w{``@code{}''}]
 
-@item @coptargs{unquote, }@var{string}
+@item @coptargsIT{unquote, @var{string}}
 Specify the text used to end quoted text [default: same as @code{quote}]
 
-@item @copt{excel}
+@item @coptIT{excel}
 Output strings in a format readable by Microsoft Excel
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
-@item @coptargs{format, latex}
+@item @coptargsIT{format, latex}
 Output each table as a @latex{} tabular environment
 
 @table @asis
-@item @copt{dcolumn}
+@item @coptIT{dcolumn}
 Use the dcolumn package to align numbers on the decimal point
 
-@item @copt{booktabs}
+@item @coptIT{booktabs}
 Use the booktabs package for a more professionally typeset look
 
-@item @copt{longtable}
+@item @coptIT{longtable}
 Use the longtable package to enable multi-page tables
 
-@item @coptargs{keep-columns, }@var{string}
+@item @coptargsIT{keep-columns, @var{string}}
 Enumerate the columns that should be included in the output [default: all columns]
 
-@item @coptargs{merge, }@var{function}
+@item @coptargsIT{merge, @var{function}}
 Specify how to merge data from multiple files [default: @w{``@code{mean}''}]
 
-@item @coptargs{showfnames, }@var{option}
+@item @coptargsIT{showfnames, @var{option}}
 Add an extra header row showing the filename the data came from [default: @w{``@code{none}''}]
 
 @end table
 @end table
-@item @coptargs{extract, params}
+@item @coptargsIT{extract, params}
 Extract the program's run-time parameters and environment variables
 
 @table @asis
-@item @coptargs{format, text} [default]
+@item @coptargsIT{format, text [default]}
 Output the parameters in plain-text format
 
 @table @asis
-@item @coptargs{include, }@var{filename}
+@item @coptargsIT{include, @var{filename}}
 Read from a file the list of keys to output
 
-@item @coptargs{exclude, }@var{regexp}
+@item @coptargsIT{exclude, @var{regexp}}
 Ignore any keys whose name matches a regular expression
 
-@item @copt{sort}
+@item @coptIT{sort}
 Sort the list of parameters alphabetically by key
 
-@item @copt{noenv}
+@item @coptIT{noenv}
 Exclude environment variables
 
-@item @copt{noparams}
+@item @coptIT{noparams}
 Exclude run-time parameters
 
-@item @coptargs{envformat, }@var{template}
+@item @coptargsIT{envformat, @var{template}}
 Format environment variable names using the given template [default: @w{``@code{%s (environment variable)}''}]
 
-@item @coptargs{columns, }@var{number}
+@item @coptargsIT{columns, @var{number}}
 Output the parameters as a 1-, 2-, or 3-column table [default: 1]
 
-@item @coptargs{colsep, }@var{string}
+@item @coptargsIT{colsep, @var{string}}
 Specify the text used to separate data columns [default: @w{``@code{: }''}]
 
-@item @coptargs{rowbegin, }@var{string}
+@item @coptargsIT{rowbegin, @var{string}}
 Specify the text that's output at the start of each data row [default: @w{``@code{}''}]
 
-@item @coptargs{rowend, }@var{string}
+@item @coptargsIT{rowend, @var{string}}
 Specify the text that's output at the end of each data row [default: @w{``@code{\\n}''}]
 
 @end table
-@item @coptargs{format, dumpkeys}
+@item @coptargsIT{format, dumpkeys}
 Output a list of the keys only (i.e., no values)
 
 @table @asis
-@item @coptargs{include, }@var{filename}
+@item @coptargsIT{include, @var{filename}}
 Read the list of parameters to output from a given file
 
-@item @coptargs{exclude, }@var{regexp}
+@item @coptargsIT{exclude, @var{regexp}}
 Ignore any keys whose name matches a regular expression
 
-@item @coptargs{envformat, }@var{template}
+@item @coptargsIT{envformat, @var{template}}
 Format environment variable names using the given template [default: @w{``@code{%s (environment variable)}''}]
 
-@item @copt{sort}
+@item @coptIT{sort}
 Sort the list of parameters alphabetically by key
 
-@item @copt{noenv}
+@item @coptIT{noenv}
 Exclude environment variables
 
-@item @copt{noparams}
+@item @coptIT{noparams}
 Exclude run-time parameters
 
 @end table
-@item @coptargs{format, latex}
+@item @coptargsIT{format, latex}
 Output the parameters as a @latex{} tabular environment
 
 @table @asis
-@item @coptargs{include, }@var{filename}
+@item @coptargsIT{include, @var{filename}}
 Read from a file the list of keys to output
 
-@item @coptargs{exclude, }@var{regexp}
+@item @coptargsIT{exclude, @var{regexp}}
 Ignore any keys whose name matches a regular expression
 
-@item @coptargs{envformat, }@var{template}
+@item @coptargsIT{envformat, @var{template}}
 Format environment variable names using the given template [default: @w{``@code{%s (environment variable)}''}]
 
-@item @copt{sort}
+@item @coptIT{sort}
 Sort the list of parameters alphabetically by key
 
-@item @copt{booktabs}
+@item @coptIT{booktabs}
 Use the booktabs package for a more professionally typeset look
 
-@item @copt{tabularx}
+@item @coptIT{tabularx}
 Use the tabularx package to enable line wraps within the value column
 
-@item @copt{longtable}
+@item @coptIT{longtable}
 Use the longtable package to enable multi-page tables
 
-@item @copt{noenv}
+@item @coptIT{noenv}
 Exclude environment variables
 
-@item @copt{noparams}
+@item @coptIT{noparams}
 Exclude run-time parameters
 
 @end table
 @end table
-@item @coptargs{extract, env}
+@item @coptargsIT{extract, env}
 Extract the environment in which the program was run
 
 @table @asis
-@item @coptargs{format, sh} [default]
+@item @coptargsIT{format, sh [default]}
 Use Bourne shell syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
-@item @coptargs{format, bash}
+@item @coptargsIT{format, bash}
 Use Bourne Again shell syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
-@item @coptargs{format, ksh}
+@item @coptargsIT{format, ksh}
 Use Korn shell syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
-@item @coptargs{format, csh}
+@item @coptargsIT{format, csh}
 Use C shell syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
-@item @coptargs{format, zsh}
+@item @coptargsIT{format, zsh}
 Use Z shell syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
-@item @coptargs{format, tcsh}
+@item @coptargsIT{format, tcsh}
 Use tcsh syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
-@item @coptargs{format, ash}
+@item @coptargsIT{format, ash}
 Use ash syntax for setting environment variables
 
 @table @asis
-@item @copt{newlines}
+@item @coptIT{newlines}
 Separate commands with newlines instead of semicolons
 
-@item @copt{unset}
+@item @coptIT{unset}
 Unset all other environment variables
 
-@item @copt{chdir}
+@item @coptIT{chdir}
 Switch to the program's original working directory
 
 @end table
 @end table
-@item @coptargs{extract, source}
+@item @coptargsIT{extract, source}
 Extract @ncptl{} source code
 
 @table @asis
-@item @coptargs{format, text} [default]
+@item @coptargsIT{format, text [default]}
 Output the source code in plain-text format
 
 @table @asis
-@item @coptargs{linebegin, }@var{string}
+@item @coptargsIT{linebegin, @var{string}}
 Specify the text placed at the beginning of each line [default: @w{``@code{}''}]
 
-@item @coptargs{lineend, }@var{string}
+@item @coptargsIT{lineend, @var{string}}
 Specify the text placed at the end of each line [default: @w{``@code{\\n}''}]
 
-@item @coptargs{kwbegin, }@var{string}
+@item @coptargsIT{kwbegin, @var{string}}
 Specify the text placed before each keyword [default: @w{``@code{}''}]
 
-@item @coptargs{kwend, }@var{string}
+@item @coptargsIT{kwend, @var{string}}
 Specify the text placed after each keyword [default: @w{``@code{}''}]
 
-@item @coptargs{strbegin, }@var{string}
+@item @coptargsIT{strbegin, @var{string}}
 Specify the text placed before each string [default: @w{``@code{}''}]
 
-@item @coptargs{strend, }@var{string}
+@item @coptargsIT{strend, @var{string}}
 Specify the text placed after each string [default: @w{``@code{}''}]
 
-@item @coptargs{combegin, }@var{string}
+@item @coptargsIT{combegin, @var{string}}
 Specify the text placed before each comment [default: @w{``@code{}''}]
 
-@item @coptargs{comend, }@var{string}
+@item @coptargsIT{comend, @var{string}}
 Specify the text placed after each comment [default: @w{``@code{}''}]
 
-@item @coptargs{indent, }@var{number}
+@item @coptargsIT{indent, @var{number}}
 Indent each line by a given number of spaces
 
-@item @coptargs{wrap, }@var{number}
+@item @coptargsIT{wrap, @var{number}}
 Wrap the source code into a paragraph with a given character width
 
 @end table
 @end table
-@item @coptargs{extract, warnings}
+@item @coptargsIT{extract, warnings}
 Extract a list of warnings the program issued during initialization
 
 @table @asis
-@item @coptargs{format, text} [default]
+@item @coptargsIT{format, text [default]}
 Output warnings in plain-text format
 
 @table @asis
-@item @coptargs{listbegin, }@var{string}
+@item @coptargsIT{listbegin, @var{string}}
 Specify text to appear at the beginning of the list [default: @w{``@code{}''}]
 
-@item @coptargs{listend, }@var{string}
+@item @coptargsIT{listend, @var{string}}
 Specify text to appear at the end of the list [default: @w{``@code{}''}]
 
-@item @coptargs{itembegin, }@var{string}
+@item @coptargsIT{itembegin, @var{string}}
 Specify text to appear before each warning [default: @w{``@code{* }''}]
 
-@item @coptargs{itemend, }@var{string}
+@item @coptargsIT{itemend, @var{string}}
 Specify text to appear after each warning [default: @w{``@code{\\n}''}]
 
 @end table
-@item @coptargs{format, html}
+@item @coptargsIT{format, html}
 Output warnings as an HTML list
 
 @table @asis
-@item @coptargs{listbegin, }@var{string}
+@item @coptargsIT{listbegin, @var{string}}
 Specify text to appear at the beginning of the list [default: @w{``@code{<ul>\\n}''}]
 
-@item @coptargs{listend, }@var{string}
+@item @coptargsIT{listend, @var{string}}
 Specify text to appear at the end of the list [default: @w{``@code{</ul>\\n}''}]
 
-@item @coptargs{itembegin, }@var{string}
+@item @coptargsIT{itembegin, @var{string}}
 Specify text to appear before each warning [default: @w{``@code{  <li>}''}]
 
-@item @coptargs{itemend, }@var{string}
+@item @coptargsIT{itemend, @var{string}}
 Specify text to appear after each warning [default: @w{``@code{</li>\\n}''}]
 
 @end table
-@item @coptargs{format, latex}
+@item @coptargsIT{format, latex}
 Output warnings as a @latex{} list
 
 @table @asis
-@item @coptargs{listbegin, }@var{string}
+@item @coptargsIT{listbegin, @var{string}}
 Specify text to appear at the beginning of the list [default: @w{``@code{\begin@@@{itemize@@@}\\n}''}]
 
-@item @coptargs{listend, }@var{string}
+@item @coptargsIT{listend, @var{string}}
 Specify text to appear at the end of the list [default: @w{``@code{\end@@@{itemize@@@}\\n}''}]
 
-@item @coptargs{itembegin, }@var{string}
+@item @coptargsIT{itembegin, @var{string}}
 Specify text to appear before each warning [default: @w{``@code{  \item }''}]
 
-@item @coptargs{itemend, }@var{string}
+@item @coptargsIT{itemend, @var{string}}
 Specify text to appear after each warning [default: @w{``@code{\\n}''}]
 
 @end table
@@ -986,7 +986,7 @@ The following are examples of the different arguments to the
 @copt{columns} option:
 
 @table @asis
-@item @coptargs{columns, 1} (default)
+@item @coptargsIT{columns, 1 (default)}
 @example
   coNCePTuaL version: 1.0
   coNCePTuaL backend: c_mpi
@@ -995,7 +995,7 @@ The following are examples of the different arguments to the
   Log completion time: Thu Mar 27 19:22:48 2003
 @end example
 
-@item @coptargs{columns, 2}
+@item @coptargsIT{columns, 2}
 @example
   coNCePTuaL version:                      1.0
   coNCePTuaL backend:                      c_mpi
@@ -1004,7 +1004,7 @@ The following are examples of the different arguments to the
   Log completion time:                     Thu Mar 27 19:22:48 2003
 @end example
 
-@item @coptargs{columns, 3}
+@item @coptargsIT{columns, 3}
 @example
   coNCePTuaL version                     : 1.0
   coNCePTuaL backend                     : c_mpi
@@ -1155,13 +1155,13 @@ replaced by the file's contents.  To specify an non-filename argument
 that begins with an @w{at sign}, merely prepend an additional ``@code{@@}'':
 
 @table @asis
-@item @coptargs{this, that}
+@item @coptargsIT{this, that}
 The option @code{this} is given the value ``@code{that}''.
 
-@item @coptargs{this, @@that}
+@item @coptargsIT{this, @@that}
 The option @code{this} is set to the contents of the file called @file{that}.
 
-@item @coptargs{this, @@@@that}
+@item @coptargsIT{this, @@@@that}
 The option @code{this} is given the value ``@code{@@that}''.
 
 @end table

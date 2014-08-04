@@ -1,6 +1,6 @@
 # coNCePTuaL throughput benchmark
 
-Require language version "1.4".
+Require language version "1.5".
 
 reps is "Number of repetitions of each message size" and comes from
   "--reps" or "-r" with default 1000.

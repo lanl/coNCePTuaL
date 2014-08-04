@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Code generation module for the coNCePTuaL language:
@@ -9,10 +7,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -262,7 +260,7 @@ Help options:
 
     def string_to_dot(self, somestring):
         "Escape characters that are special to dot."
-        return re.sub(r'(["<>])', r'\\\1',
+        return re.sub(r'(["<>{}])', r'\\\1',
                       string.replace(somestring, '\\', '\\\\'))
 
     def write_dot_code(self, progfilename, codelines, outfilename, keepints):

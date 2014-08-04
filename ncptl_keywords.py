@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Keyword list for the coNCePTuaL language
@@ -8,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -109,6 +107,7 @@ class Keywords:
         "execute",
         "executes",
         "factor10",
+        "file_data",
         "final",
         "floor",
         "for",
@@ -176,8 +175,10 @@ class Keywords:
         "outputs",
         "page",
         "pages",
+        "percentile",
         "plus",
         "processor",
+        "processor_of",
         "processors",
         "quadword",
         "quadwords",
@@ -212,6 +213,7 @@ class Keywords:
         "sleeps",
         "sqrt",
         "standard",
+        "static_file_data",
         "store",
         "stores",
         "stride",
@@ -223,6 +225,7 @@ class Keywords:
         "synchronously",
         "tag",
         "task",
+        "task_of",
         "tasks",
         "than",
         "that",
@@ -236,8 +239,8 @@ class Keywords:
         "touch",
         "touches",
         "touching",
-        "tree_parent",
         "tree_child",
+        "tree_parent",
         "unaligned",
         "unique",
         "unsuspecting",

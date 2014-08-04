@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Lexer module for the coNCePTuaL language
@@ -8,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -242,6 +240,10 @@ class NCPTL_Lexer:
                 onechar = token.value[c]
                 if onechar == "n":
                     sanitized.append("\n")
+                elif onechar == "t":
+                    sanitized.append("\t")
+                elif onechar == "r":
+                    sanitized.append("\r")
                 elif onechar == "\n":
                     self.lineno = self.lineno + 1
                 elif onechar in ["\\", '"']:
@@ -275,11 +277,13 @@ class NCPTL_Lexer:
         token.lineno = self.lineno
         return token
 
-    # Store an integer as a tuple {long-expanded, original}.  Note that
-    # coNCePTuaL integers can contain a trailing multiplier.
+    # Store an integer as a tuple {long-expanded, original}.  Note
+    # that coNCePTuaL integers can contain a trailing multiplier, a
+    # trailing exponent, and a trailing "st", "nd", "rd", or "th".
     def t_integer(self, token):
-        r' \d+([KMGTkmgt]|([Ee]\d+))? '
-        parts = re.split(r'([kmgte])', string.lower(token.value))
+        r' \d+([KMGkmg]|([Ee]\d+))?([Ss][Tt]|[NnRr][Dd]|[Tt][Hh]?)? '
+        canon_token = re.sub(r'(st|nd|rd|th)$', "", string.lower(token.value))
+        parts = re.split(r'([kmgte])', canon_token, 1)
         if not parts[-1]:
             parts = parts[:-1]
         number = long(parts[0])

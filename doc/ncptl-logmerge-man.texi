@@ -2,10 +2,10 @@
 * ncptl-logmerge manual page::     The result of running ``ncptl-logmerge --man''
 @end menu
 
-@c Copyright (C) 2012, Los Alamos National Security, LLC
+@c Copyright (C) 2014, Los Alamos National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2012).  Los Alamos National Security, LLC.  This software
+@c Copyright (2014).  Los Alamos National Security, LLC.  This software
 @c was produced under U.S. Government contract DE-AC52-06NA25396
 @c for Los Alamos National Laboratory (LANL), which is operated by
 @c Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -61,7 +61,7 @@ ncptl-logmerge
 @sp 1
 @noindent
 ncptl-logmerge
-[@copt{output}=@var{filename}]
+[@coptargs{output, @var{filename}}]
 [@copt{simplify}]
 @var{filename}...
 
@@ -130,21 +130,21 @@ be used to help identify such outliers.
 @file{ncptl-logmerge} accepts the following command-line options:
 
 @table @asis
-@item @copts{u}, @copt{usage}
+@item @coptsIT{u}, @coptIT{usage}
 Output the Synopsis section then exit the program.
 
-@item @copts{h}, @copt{help}
+@item @coptsIT{h}, @coptIT{help}
 Output the Synopsis section and the Options section then exit the program.
 
-@item @copts{m}, @copt{man}
+@item @coptsIT{m}, @coptIT{man}
 Output a complete Unix man (``manual'') page for @file{ncptl-logmerge} then
 exit the program.
 
-@item @copts{o} @var{filename}, @copt{output}=@var{filename}
+@item @coptsIT{o} @var{filename}, @coptIT{output}=@var{filename}
 @file{ncptl-logmerge} normally writes to the standard output device.  The
 @copt{output} option redirects @file{ncptl-logmerge}'s output to a file.
 
-@item @copts{s}, @copt{simplify}
+@item @coptsIT{s}, @coptIT{simplify}
 Simplify the output by including only lines which differ across input
 files.  No data is output, only prologue and epilogue comments.
 @copt{simplify} can be specified up to four times on the command line:

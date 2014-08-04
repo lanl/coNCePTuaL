@@ -6,10 +6,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -53,16 +53,17 @@
 # ----------------------------------------------------------------------
 
 # Initialize Autoconf.
-AC_INIT([coNCePTuaL], [1.4], [pakin@lanl.gov], [conceptual])
+AC_INIT([coNCePTuaL], [1.5], [pakin@lanl.gov], [conceptual])
 
 # The following files are deleted by "make distclean" but checked
 # early in configure for their existence.  Hence, we create them right
 # away before we even know what they should contain.
 touch substitutions.dat.in
 touch ncptl.pc.in
+
 # Finish initializing Autoconf.
 AC_PREREQ([2.65])
-AC_REVISION($Revision: 3.228 $)
+AC_REVISION($Revision: 3.236 $)
 AC_CONFIG_SRCDIR([yacc.py])
 AC_COPYRIGHT([PUT_LICENSE_][TEXT_HERE])
 AC_CONFIG_MACRO_DIR([m4])
@@ -77,7 +78,8 @@ if test "$MAKE" = no ; then
 fi
 
 # Initialize Automake.
-AM_INIT_AUTOMAKE([1.6])dnl Later versions than this are needed to pass "make distcheck".
+dnl Later versions than Automake 1.6 are needed to pass "make distcheck".
+AM_INIT_AUTOMAKE([1.6])
 AM_CONFIG_HEADER(config.h)dnl Brackets screw up the "missing" script.
 AM_MAINTAINER_MODE
 dnl Automake 1.6 incorrectly generates *two* ncptl.h.ni targets if
@@ -150,9 +152,9 @@ if test `./libtool --features | grep -c 'enable shared'` -ge 1 ; then
 else
   ncptl_run_time_library_is_dynamic=no
 fi
-AC_SUBST([LIBTOOL_CURRENT],  [7])  dnl  Most recent library interface supported
+AC_SUBST([LIBTOOL_CURRENT],  [8])  dnl  Most recent library interface supported
 AC_SUBST([LIBTOOL_REVISION], [0])  dnl  Interface implementation number
-AC_SUBST([LIBTOOL_AGE],      [1])  dnl  Number of older interfaces supported
+AC_SUBST([LIBTOOL_AGE],      [2])  dnl  Number of older interfaces supported
 
 # Specify the RPM release number.
 AC_SUBST([RELEASE], [1])
@@ -376,6 +378,9 @@ AC_ARG_VAR([PYTHON], [name of the Python executable])
 AM_PATH_PYTHON([2.2])
 if test -z "$PYTHON" ; then
   AC_MSG_ERROR([The coNCePTuaL compiler requires Python])
+fi
+if test "`echo ${PYTHON_VERSION} | sed 's/\..*//'`" -gt 2 ; then
+  AC_MSG_ERROR([The coNCePTuaL compiler does not work with Python 3+])
 fi
 
 # Find a Perl interpreter that can handle the ncptl-logextract script.
@@ -761,7 +766,7 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
        ,
        [-ldevices.rts])])
 
-  # Check for Cray XT features.
+  # Check for Cray features.
   AC_CACHE_CHECK([if _my_pnid is defined],
     [ax_cv_var__my_pnid],
     [AC_TRY_LINK(,
@@ -770,7 +775,7 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
       [ax_cv_var__my_pnid=no])])
   if test "$ax_cv_var__my_pnid" = yes ; then
     AC_DEFINE([HAVE__MY_PNID], ,
-      [Define if the Cray XT node ID is available in _my_pnid.])
+      [Define if the Cray node ID is available in _my_pnid.])
   fi
   cray_xt_nid_file=/proc/cray_xt/nid
   AC_CACHE_CHECK([if _my_pnid is definable from a file],
@@ -783,20 +788,20 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
   if test "$ax_cv_file_cray_xt_nid" = yes ; then
     AC_DEFINE_UNQUOTED([CRAY_XT_NID_FILE],
       ["$cray_xt_nid_file"],
-      [Define as a special file containing a Cray XT node ID.])
+      [Define as a special file containing a Cray node ID.])
   fi
   if test "$ax_cv_var__my_pnid" = yes -o "$ax_cv_file_cray_xt_nid" = yes ; then
     AC_CHECK_HEADERS([rsms/rs_id.h],
       [AX_SEARCH_LIBS([rs_format_phys],
         [rsmsevent],
         [AC_DEFINE([HAVE_RSMSEVENT], ,
-           [Define if Cray XT event data is available.])])])
+           [Define if Cray event data is available.])])])
     AC_CHECK_HEADERS([rca_lib.h rsms/rs_meshcoord.h])
     if test "$ac_cv_header_rca_lib_h" = yes -a "$ac_cv_header_rsms_rs_meshcoord_h" = yes ; then
       AX_SEARCH_LIBS([rca_get_meshcoord],
         [rca],
         [AC_DEFINE([HAVE_RCAMESHCOORD], ,
-           [Define if Cray XT mesh coordinates are available.])])
+           [Define if Cray mesh coordinates are available.])])
     fi
     if test "$ac_cv_header_rca_lib_h" = yes ; then
       AX_SEARCH_LIBS([rca_get_meshtopology],
@@ -804,7 +809,7 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
         [AX_SEARCH_LIBS([rs_phys2str],
           [rsmsevent],
           [AC_DEFINE([HAVE_RCAMESHTOPOLOGY], ,
-             [Define if the Cray XT mesh topology is available.])])])
+             [Define if the Cray mesh topology is available.])])])
     fi
     AC_CACHE_CHECK([if __cpu_mhz is defined],
       [ax_cv_var___cpu_mhz],
@@ -814,7 +819,20 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
         [ax_cv_var___cpu_mhz=no])])
     if test "$ax_cv_var___cpu_mhz" = yes ; then
       AC_DEFINE([HAVE___CPU_MHZ], ,
-        [Define if the Cray XT clock frequency is available in __cpu_mhz.])
+        [Define if the Cray clock frequency is available in __cpu_mhz.])
+    fi
+    cray_xc_cname_file=/proc/cray_xt/cname
+    AC_CACHE_CHECK([if node coordinates appear in a file],
+      [ax_cv_file_cray_xc_cname],
+      [if test -e $cray_xc_cname_file ; then
+	 ax_cv_file_cray_xc_cname=yes
+       else
+	 ax_cv_file_cray_xc_cname=no
+       fi])
+    if test "$ax_cv_file_cray_xc_cname" = yes ; then
+      AC_DEFINE_UNQUOTED([CRAY_XC_CNAME_FILE],
+	["$cray_xc_cname_file"],
+	[Define as a special file containing a Cray node location.])
     fi
   fi
 
@@ -1244,9 +1262,13 @@ main (void)
   AC_CHECK_FUNCS([kill sleep getuid geteuid])
 
   # Figure out whether to use HOST_NAME_MAX or MAXHOSTNAMELEN and
-  # whether we can use gethostbyname().
+  # whether we can use getaddrinfo() and/or gethostbyname().
   AC_CHECK_HEADERS([netdb.h],
-    [AC_CHECK_MEMBERS([struct hostent.h_name],
+    [AC_CHECK_MEMBERS([struct addrinfo.ai_canonname],
+      [AC_CHECK_FUNCS([getaddrinfo])],
+      ,
+      [#include <netdb.h>])
+     AC_CHECK_MEMBERS([struct hostent.h_name],
       [AC_CHECK_FUNCS([gethostbyname])],
       ,
       [#include <netdb.h>])])

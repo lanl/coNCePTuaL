@@ -4,10 +4,10 @@
 ##############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -88,7 +88,8 @@ endif
 MOSTLYCLEANFILES = $(DOCFILES) $(BUILTIMAGES) $(CLEANTEXIS)             \
 		   $(IMAGEBYPRODUCTS) DB_File.pm                        \
 		   conceptual.{al,cps,ev,fi,fnd,kw,mn,nt,op,out,vr,vrs} \
-		   conceptual.{als,tmp,tmps}
+		   conceptual.{aux,cp,fn,fns,ky,log,ol,pg,toc,tp,tps}   \
+		   conceptual.{als,tmp,tmps} conceptual.info*
 CLEANFILES = $(GENERATED_TEXIS_NODIST)
 MAINTAINERCLEANFILES = conceptual.pdf gui.png gui.eps walrus.png walrus.eps
 
@@ -159,8 +160,8 @@ keywords.texi: $(top_srcdir)/ncptl_keywords.py
 
 # Produce an itemized list of variables.
 variables.texi: $(top_srcdir)/ncptl_variables.py
-	echo "@table @ocode" > $@
-	$(PYTHON) $(top_srcdir)/ncptl_variables.py "@item %s\n%s\n\n" >> $@
+	echo "@table @asis" > $@
+	$(PYTHON) $(top_srcdir)/ncptl_variables.py "@item @ocode{%s}\n%s\n\n" >> $@
 	echo "@end table" >> $@
 
 # Produce a list of methods that a backend must implement.
@@ -189,9 +190,9 @@ placeholders.texi: $(top_srcdir)/codegen_latex_vis.py $(top_srcdir)/makehelper.p
 
 # Produce a list of aggregate functions and their definition.
 aggregates.texi: $(top_srcdir)/ncptl.h.in
-	echo "@table @ocode" > $@
+	echo "@table @asis" > $@
 	cat $(top_srcdir)/ncptl.h.in | sed 's/[*\/]//g' | \
-	  $(AWK) '/NCPTL_FUNC_/ {fname=$$1; sub(/,$$/, "", fname); $$1=""; printf "@item %s\n%s\n\n", fname, substr($$0,2)}' >> $@
+	  $(AWK) '/NCPTL_FUNC_/ {fname=$$1; sub(/,$$/, "", fname); $$1=""; printf "@item @ocode{%s}\n%s\n\n", fname, substr($$0,2)}' >> $@
 	echo "@end table" >> $@
 
 # Produce a list of cache variables that are used by configure.

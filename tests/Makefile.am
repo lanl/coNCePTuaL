@@ -4,10 +4,10 @@
 ######################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -57,7 +57,7 @@ if BUILD_RUN_TIME_LIBRARY
 
 USERFUNC_TESTS = userfunc_sqrt userfunc_cbrt userfunc_bits userfunc_power  \
 		 userfunc_modulo userfunc_round userfunc_random		   \
-		 userfunc_factor10 userfunc_topologies
+		 userfunc_factor10 userfunc_topologies userfunc_file_data
 RUNTIME_TESTS = runtime_init runtime_time runtime_malloc runtime_verify    \
 		runtime_walk runtime_queue runtime_set runtime_cmdline     \
 		runtime_logfile runtime_random
@@ -90,6 +90,9 @@ userfunc_random_LDADD = $(top_builddir)/libncptl.la
 
 userfunc_topologies_SOURCES = userfunc_topologies.c ncptl_test.h
 userfunc_topologies_LDADD = $(top_builddir)/libncptl.la
+
+userfunc_file_data_SOURCES = userfunc_file_data.c ncptl_test.h
+userfunc_file_data_LDADD = $(top_builddir)/libncptl.la
 
 runtime_init_SOURCES = runtime_init.c ncptl_test.h
 runtime_init_LDADD = $(top_builddir)/libncptl.la

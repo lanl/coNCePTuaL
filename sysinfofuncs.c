@@ -7,10 +7,10 @@
  *
  * ----------------------------------------------------------------------
  *
- * Copyright (C) 2012, Los Alamos National Security, LLC
+ * Copyright (C) 2014, Los Alamos National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2012).  Los Alamos National Security, LLC.  This software
+ * Copyright (2014).  Los Alamos National Security, LLC.  This software
  * was produced under U.S. Government contract DE-AC52-06NA25396
  * for Los Alamos National Laboratory (LANL), which is operated by
  * Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -369,17 +369,29 @@ static void fill_in_sys_desc (SYSTEM_INFORMATION *info)
     ASSIGN (info->hostname, ncptl_strdup ("unknown"));
   }
 
-#ifdef HAVE_GETHOSTBYNAME
   /* Try to replace the host name with a more "official" host name. */
   if (info->hostname) {
+#ifdef HAVE_GETADDRINFO
+    struct addrinfo hints;
+    struct addrinfo *thishostinfo;
+
+    memset (&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_flags = AI_CANONNAME;
+    if (getaddrinfo(info->hostname, NULL, &hints, &thishostinfo) == 0 &&
+        thishostinfo->ai_canonname && thishostinfo->ai_canonname[0] != '\0') {
+      ncptl_free (info->hostname);
+      info->hostname = ncptl_strdup (thishostinfo->ai_canonname);
+    }
+#elif defined(HAVE_GETHOSTBYNAME)
     struct hostent *thishostinfo = gethostbyname (info->hostname);
 
-    if (thishostinfo && thishostinfo->h_name && thishostinfo->h_name != '\0') {
+    if (thishostinfo && thishostinfo->h_name && thishostinfo->h_name[0] != '\0') {
       ncptl_free (info->hostname);
       info->hostname = ncptl_strdup (thishostinfo->h_name);
     }
-  }
 #endif
+  }
 
 #ifdef HAVE_HAL
   fill_in_sys_desc_hal (info);
@@ -732,6 +744,7 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
   int have_ncpus = info->contexts_per_node!=0;  /* 1=already assigned the total number of CPU cores */
   int cpu_cores;      /* Number of CPU cores per socket */
   int physical_id;    /* Physical ID of the current socket */
+  int min_physical_id = 1<<30;   /* Minimum physical ID encountered (typically 0, sometimes 1, have yet to see anything else */
   char *cpu_family = NULL;    /* CPU family name */
   char *cpu_model = NULL;     /* CPU model number */
   char *cpu_revision = NULL;  /* CPU revision number */
@@ -767,12 +780,11 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
         ASSIGN (info->cpu_model, extract_value (oneline));
       /* IA-64 */
       else if (!strcmp (keyname, "family")) {
-        uint64_t cpu_family_number;   /* Numeric version of cpu_family */
         char *firstbad;               /* Pointer to first nonnumeric character */
 
         cpu_family = extract_value (oneline);
         errno = 0;
-        cpu_family_number = strtoull (cpu_family, &firstbad, 10);
+        (void) strtoull (cpu_family, &firstbad, 10);
         if (*firstbad == '\0') {
           /* Family is entirely numeric -- prefix with the word "Family". */
           char cpu_family_string[NCPTL_MAX_LINE_LEN];
@@ -832,9 +844,12 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
     /* Number of sockets and cores */
     if (sscanf (oneline, "cpu cores : %d", &cpu_cores))
       ASSIGN(info->cores_per_socket, cpu_cores);
-    if (sscanf (oneline, "physical id : %d", &physical_id)
-        && physical_id+1 > info->sockets_per_node)
-      info->sockets_per_node = physical_id + 1;
+    if (sscanf (oneline, "physical id : %d", &physical_id)) {
+      if (physical_id + 1 > info->sockets_per_node)
+        info->sockets_per_node = physical_id + 1;
+      if (physical_id < min_physical_id)
+        min_physical_id = physical_id;
+    }
 
     /* CPU flags */
     if (!strcmp (keyname, "flags"))
@@ -844,6 +859,10 @@ static void fill_in_cpu_info_cpuinfo (SYSTEM_INFORMATION *info)
     ncptl_free (keyname);
   }
   fclose (procinfo);
+
+  /* Adjust the socket count based on the minimum ID encountered. */
+  if (info->sockets_per_node)
+    info->sockets_per_node -= min_physical_id;
 
   /* Clean up any memory we may have allocated. */
   ncptl_free (cpu_family);

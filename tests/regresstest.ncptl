@@ -5,10 +5,10 @@
 #################################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -50,7 +50,7 @@
 # 
 # ----------------------------------------------------------------------
 
-Require language version "1.4".
+Require language version "1.5".
 
 reps is "Number of times to repeat a loop" and comes from "--reps" or "-r" with default 1.
 
@@ -191,6 +191,7 @@ For each zzz in {ooo*2 for each ooo in {0, 3, ..., 100} where ooo is odd}
   if not zzz/2 is odd then
     task 0 outputs "List comprehensions(4)... " and "FAIL".
 Task 0 outputs "List comprehensions(4)... " and "PASS".
+Tasks t such that t is in {z-z for each z in {10, ..., 20}} output "List comprehensions(5)... " and "PASS".
 
 #test task descriptions
 All tasks output "Task descriptions(1)... " and "PASS".
@@ -199,6 +200,7 @@ Task 99 mod 3 outputs "Task descriptions(3)... " and "PASS".
 Task zero such that zero=0 outputs "Task descriptions(4)... " and "PASS".
 Task 0 sends a 0 byte message to all other tasks then task 0 outputs "Task descriptions(5)... " and "PASS".
 All tasks i output "Task descriptions(6)..." and "PASS"
+Tasks {3, 1, 2} send a 57-byte message to tasks {7, 6, 4, 5} then task 0 outputs "Task descriptions(6)... " and "PASS".
 
 #test communication statements
 #sending
@@ -242,6 +244,17 @@ Task 0 touches message buffer num_tasks then task 0 outputs "Priming message buf
 Task 0 touches the current message buffer then task 0 outputs "Priming message buffers(3)... " and "PASS".
 Task 0 is assigned to a random processor then task 0 outputs "Reorder task IDs(1)... " and "PASS".
 Task 0 is assigned to processor 0 then task 0 outputs "Reorder task IDs(2)... " and "PASS".
+All tasks t are assigned to processor t.
+Task 0 outputs "Reorder task IDs(3)... " then
+all tasks t are assigned to processor (t + 1) mod num_tasks then
+if processor_of(1) = 2 /\ task_of(1) = 0 then {
+  all tasks t are assigned to processor t then
+  task processor_of(0) outputs "PASS"
+}
+otherwise {
+  all tasks t are assigned to processor t then
+  task processor_of(0) outputs "FAIL"
+}
 Task 0 backend executes "" then task 0 outputs "Backend executes... " and "PASS".
 
 #test complex statements
@@ -254,54 +267,57 @@ task 0 outputs "Complex stmnts(2)... " and "PASS".
 #3
 For 10 microseconds task 0 sends a 100 kilobyte message to task 1 then
 task 0 outputs "Complex stmnts(3)... " and "PASS".
-#4&5
-Let this be 0 while {{let this be 1 while task this outputs "Complex stmnts(4)... " and "PASS"}
-then task this outputs "Complex stmnts(5)... " and "PASS"}
-#6
+#4
+For 10 microseconds plus 1 warmup microsecond and a synchronization task 0 sends a 100 kilobyte message to task 1 then
+task 0 outputs "Complex stmnts(4)... " and "PASS".
+#5&6
+Let this be 0 while {{let this be 1 while task this outputs "Complex stmnts(5)... " and "PASS"}
+then task this outputs "Complex stmnts(6)... " and "PASS"}
+#7
 For each i in {1, ..., 10}
-        if i=10 then let foo be 0 while {if foo<1 then task foo outputs "Complex stmnts(6)... " and "PASS" otherwise {let bar be 1 while
-        task bar outputs "Complex stmnts(6)... " and "FAIL"}} otherwise
+        if i=10 then let foo be 0 while {if foo<1 then task foo outputs "Complex stmnts(7)... " and "PASS" otherwise {let bar be 1 while
+        task bar outputs "Complex stmnts(7)... " and "FAIL"}} otherwise
         for i+2 repetitions plus i warmup repetitions and a synchronization{
                 all tasks reset their counters then
                 task 0 sends a 0 byte message to task 1 then
                 task 1 sends a 0 byte message to task 0 then
                 for 1 millisecond task 0/i sends a 0 byte message to all other tasks
                 }
-#7
-Let what be 0 while {let what be 1 while {if what>0 then {let what be 0 while {if what<1 then {let what be 1 while
-{if what<>LOG10(what) then {let what be 0 while task what outputs "Complex stmnts(7)... " and "PASS"}
-otherwise task what outputs "Complex stmnts(7)... " and "FAIL"}} otherwise
-task what outputs "Complex stmnts(7)... " and "FAIL"}} otherwise task what outputs "Complex stmnts(7)... " and "FAIL"}}
 #8
+Let what be 0 while {let what be 1 while {if what>0 then {let what be 0 while {if what<1 then {let what be 1 while
+{if what<>LOG10(what) then {let what be 0 while task what outputs "Complex stmnts(8)... " and "PASS"}
+otherwise task what outputs "Complex stmnts(8)... " and "FAIL"}} otherwise
+task what outputs "Complex stmnts(7)... " and "FAIL"}} otherwise task what outputs "Complex stmnts(7)... " and "FAIL"}}
+#9
 Task 0 sends 10 2 byte message to task 1 then
 task 0 asynchronously sends 10 unique 2 byte -1 byte misaligned messages with verification to unsuspecting task 1 then
 task 1 receives 10 2 byte halfword aligned messages with data touching into buffer num_tasks/2 from task 0 then
-task 0 outputs "Complex stmnts(8)... " and "PASS".
-#9
+task 0 outputs "Complex stmnts(9)... " and "PASS".
+#10
 Let black_squares be tasks d such that mesh_coordinate((4, 4), d, 0) + mesh_coordinate((4, 4), d, 1) is odd while {
   task group black_squares asynchronously sends a doubleword-sized message to tasks red_square such that abs(mesh_distance((4, 4), black_squares, red_square)) = 1 then
   all tasks await completion then
   task 0 asynchronously sends a doubleword-sized message to task group black_squares then
   all tasks await completion
 } then
-task 0 outputs "Complex stmnts(9)... " and "PASS".
-#10
+task 0 outputs "Complex stmnts(10)... " and "PASS".
+#11
 Let confusing be tasks confusing such that confusing mod 3 = 1
 and confusing be task group confusing while
   task group confusing sends 2 128-byte messages to tasks confusing+1 then
-task 0 outputs "Complex stmnts(10)... " and "PASS".
-#11
-Let left_half be tasks t such that t < num_tasks/2 while
-  task group left_half multicasts a page-sized message to task group left_half then
 task 0 outputs "Complex stmnts(11)... " and "PASS".
 #12
+Let left_half be tasks t such that t < num_tasks/2 while
+  task group left_half multicasts a page-sized message to task group left_half then
+task 0 outputs "Complex stmnts(12)... " and "PASS".
+#13
 For 1 repetition plus 0 warmup repetitions {
   {} then
   { {} } then
   { {} then {} } then
   { {} then {} then {} }
 } then
-task 0 outputs "Complex stmnts(12)... " and "PASS".
+task 0 outputs "Complex stmnts(13)... " and "PASS".
 
 #Logs
 For reps repetitions {
@@ -324,7 +340,9 @@ For reps repetitions {
         task 0 logs the sum of msgs_sent as "Sum of sent messages" then task 0 outputs "Log sum of msgs_sent... " and "PASS" then
         task 0 logs the minimum of elapsed_usecs as "Minimum of elapsed time (usecs)" then task 0 outputs "Log minimum of elapsed_usecs... " and "PASS" then
         task 0 logs the maximum of elapsed_usecs as "Maximum of elapsed time (usecs)" then task 0 outputs "Log maximum of elapsed_usecs... " and "PASS" then
-        task 0 logs the final of bit_errors as "Last bit error measurement" then task 0 outputs "Log final of bit_errors... " and "PASS" then
+        task 0 logs the minimum and the maximum of elapsed_usecs as "Minimum and maximum of elapsed time (usecs)" then task 0 outputs "Log minimum and maximum of elapsed_usecs... " and "PASS" then
+        task 0 logs the final bit_errors as "Last bit error measurement" then task 0 outputs "Log final of bit_errors... " and "PASS" then
+        task 0 logs the 90th percentile of msgs_received as "90th percentile of messages received" then task 0 outputs "Log 95th percentile of msgs_received... " and "PASS" then
         task 0 logs total_bytes as "Total bytes" then task 0 outputs "Log total_bytes... " and "PASS" then
         task 0 logs total_msgs as "Total messages" then task 0 outputs "Log total_msgs... " and "PASS" then
         task 0 logs a histogram of elapsed_usecs as "Elapsed time (usecs)" then task 0 outputs "Log histogram of elapsed_usecs... " and "PASS" then

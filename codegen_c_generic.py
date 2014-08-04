@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 ########################################################################
 #
 # Code generation module for the coNCePTuaL language:
@@ -9,10 +7,10 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2012, Los Alamos National Security, LLC
+# Copyright (C) 2014, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2012).  Los Alamos National Security, LLC.  This software
+# Copyright (2014).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -843,13 +841,25 @@ class NCPTL_CodeGen:
             identlist.extend(self.find_child_ident_nodes(kid))
         return identlist
 
+    def find_variables_defined(self, node):
+        "Return a list of all variables defined by a given node."
+        var_nodes = self.find_child_ident_nodes(node)
+        try:
+            # If we have a reference to a list-comprehension
+            # expression node, pretend that it's a child of ours.
+            var_nodes.extend(self.find_child_ident_nodes(node.sem["lc_expr_node"]))
+        except KeyError:
+            pass
+        defined_nodes = filter(lambda n: n.sem.has_key("definition"), var_nodes)
+        return map(lambda v: "var_" + v.attr, defined_nodes)
+
     def find_variables_used(self, node):
-        "Return a list of all variables used but not defined by a given node."
+        "Return a list of all variables used but not defined by a given node and not predefined."
         variables_used = {}
         var_nodes = self.find_child_ident_nodes(node)
         try:
             # If we have a reference to a list-comprehension
-            # expression node, pretend that its a child of ours.
+            # expression node, pretend that it's a child of ours.
             var_nodes.extend(self.find_child_ident_nodes(node.sem["lc_expr_node"]))
         except KeyError:
             pass
@@ -857,9 +867,13 @@ class NCPTL_CodeGen:
         defined_nodes = filter(lambda n: n.sem.has_key("definition"), var_nodes)
         for used_node in var_nodes:
             varname = used_node.attr
-            varnode = used_node.sem["varscope"][varname]
-            if varnode not in defined_nodes:
-                variables_used["var_" + varname] = 1
+            try:
+                varnode = used_node.sem["varscope"][varname]
+                if varnode not in defined_nodes:
+                    variables_used["var_" + varname] = 1
+            except KeyError:
+                # Predefined variable
+                pass
         variables_used = variables_used.keys()
         return variables_used
 
@@ -1039,12 +1053,16 @@ class NCPTL_CodeGen:
                   stack)
         self.events_used[event_type] = 1
 
-    def code_allocate_code_event(self, source_task, expressions, stack=None):
+    def code_allocate_code_event(self, source_task, expressions, need_procmap, stack=None):
         "Push the code to allocate and fill in a code event."
         self.code_begin_source_scope(source_task, stack)
         self.code_allocate_event("EV_CODE", stack)
-        self.push("thisev->s.code.number = %d;" % len(self.arbitrary_code),
-                  stack)
+        self.push("thisev->s.code.number = %d;" % len(self.arbitrary_code), stack)
+        if need_procmap:
+            self.push("thisev->s.code.procmap = ncptl_point_to_task_map (procmap);", stack)
+        else:
+            # Not strictly required but can be useful for debugging.
+            self.push("thisev->s.code.procmap = NULL;", stack)
 
         # Make all local variables point within the event structure.
         exprvars = {}
@@ -1202,65 +1220,48 @@ class NCPTL_CodeGen:
         # Acquire a list of variables used in the expression or range list.
         variables_used = self.find_variables_used(node)
 
-        # Map the given arguments to a function name.
-        must_define_helper = 0
-        arguments = repr((expr, expr_type, ident, rangelist, cond_expr))
-        try:
-            # Look for an existing name for this expression.
-            funcname = self.for_each_to_func_name[arguments]
-        except AttributeError:
-            # First function used -- create and populate the hash table.
-            funcname = self.newvar(prefix="conc_FOR_EACH")
-            self.for_each_to_func_name = {arguments: funcname}
-            must_define_helper = 1
-        except KeyError:
-            # First time this function is used -- add it to the hash table.
-            funcname = self.newvar(prefix="conc_FOR_EACH")
-            self.for_each_to_func_name[arguments] = funcname
-            must_define_helper = 1
-
         # Generate code for the helper function.
-        if must_define_helper:
-            helper_code = []
-            wrapper_main, wrapper_after = self.range_list_wrapper(rangelist)
-            wrapper_before = []
-            self.push_marker(wrapper_before)
-            arglist = string.join(map(lambda v: "ncptl_int " + v, variables_used), ", ")
-            if arglist == "":
-                arglist = "void"
-            self.pushmany([
-                    "/* Define a function that returns a list of %s for each %s in %s. */" % (expr, ident, rangelist),
-                    "static NCPTL_QUEUE *%s (%s)" % (funcname, arglist),
-                    "{"],
-                          stack=wrapper_before)
-            self.code_declare_var("NCPTL_QUEUE *", name="list_values",
-                                  rhs="ncptl_queue_init(sizeof(ncptl_int))",
-                                  stack=wrapper_before)
-            self.pushmany(wrapper_main, stack=wrapper_before)
-            self.code_declare_var(name=ident,
-                                  rhs="thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar)",
-                                  stack=wrapper_before)
-            self.combine_to_marker(wrapper_before)
-            self.pushmany(wrapper_before[0], stack=helper_code)
-            if expr_type == "list_expr":
-                self.code_declare_var("NCPTL_QUEUE *", name="multiple_values",
-                                      rhs=expr, stack=helper_code)
-                self.pushmany(["ncptl_queue_push_all(list_values, multiple_values);",
-                               "ncptl_queue_empty(multiple_values);",
-                               "ncptl_free(multiple_values);"],
-                              stack=helper_code)
-            elif cond_expr == None:
-                self.code_declare_var(name="one_value", rhs=expr, stack=helper_code)
-                self.push("ncptl_queue_push(list_values, &one_value);", helper_code)
-            else:
-                self.push("if (%s) {" % cond_expr, helper_code)
-                self.code_declare_var(name="one_value", rhs=expr, stack=helper_code)
-                self.push("ncptl_queue_push(list_values, &one_value);", helper_code)
-                self.push("}", helper_code)
-            self.pushmany(wrapper_after, stack=helper_code)
-            self.push("return list_values;", helper_code)
+        funcname = self.newvar(prefix="conc_FOR_EACH")
+        helper_code = []
+        wrapper_main, wrapper_after = self.range_list_wrapper(rangelist)
+        wrapper_before = []
+        self.push_marker(wrapper_before)
+        arglist = string.join(map(lambda v: "ncptl_int " + v, variables_used), ", ")
+        if arglist == "":
+            arglist = "void"
+        self.pushmany([
+                "/* Define a function that returns a list of %s for each %s in %s. */" % (expr, ident, rangelist),
+                "static NCPTL_QUEUE *%s (%s)" % (funcname, arglist),
+                "{"],
+                      stack=wrapper_before)
+        self.code_declare_var("NCPTL_QUEUE *", name="list_values",
+                              rhs="ncptl_queue_init(sizeof(ncptl_int))",
+                              stack=wrapper_before)
+        self.pushmany(wrapper_main, stack=wrapper_before)
+        self.code_declare_var(name=ident,
+                              rhs="thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar)",
+                              stack=wrapper_before)
+        self.combine_to_marker(wrapper_before)
+        self.pushmany(wrapper_before[0], stack=helper_code)
+        if expr_type == "list_expr":
+            self.code_declare_var("NCPTL_QUEUE *", name="multiple_values",
+                                  rhs=expr, stack=helper_code)
+            self.pushmany(["ncptl_queue_push_all(list_values, multiple_values);",
+                           "ncptl_queue_empty(multiple_values);",
+                           "ncptl_free(multiple_values);"],
+                          stack=helper_code)
+        elif cond_expr == None:
+            self.code_declare_var(name="one_value", rhs=expr, stack=helper_code)
+            self.push("ncptl_queue_push(list_values, &one_value);", helper_code)
+        else:
+            self.push("if (%s) {" % cond_expr, helper_code)
+            self.code_declare_var(name="one_value", rhs=expr, stack=helper_code)
+            self.push("ncptl_queue_push(list_values, &one_value);", helper_code)
             self.push("}", helper_code)
-            self.extra_func_decls.append(helper_code)
+        self.pushmany(wrapper_after, stack=helper_code)
+        self.push("return list_values;", helper_code)
+        self.push("}", helper_code)
+        self.extra_func_decls.append(helper_code)
 
         # Return an invocation of the helper function.
         if variables_used == []:
@@ -1275,50 +1276,36 @@ class NCPTL_CodeGen:
         variables_used = self.find_variables_used(node)
 
         # Map the printable version of the IS IN expression to a function name.
-        must_define_helper = 0
-        try:
-            # Look for an existing name for this expression.
-            funcname = self.is_in_to_func_name[node.printable]
-        except AttributeError:
-            # First function used -- create and populate the hash table.
-            funcname = self.newvar(prefix="conc_IS_IN")
-            self.is_in_to_func_name = {node.printable: funcname}
-            must_define_helper = 1
-        except KeyError:
-            # First time this function is used -- add it to the hash table.
-            funcname = self.newvar(prefix="conc_IS_IN")
-            self.is_in_to_func_name[node.printable] = funcname
-            must_define_helper = 1
+        funcname = self.newvar(prefix="conc_IS_IN")
 
         # Generate code for the helper function.
-        if must_define_helper:
-            helper_code = []
-            self.push_marker(helper_code)
-            if variables_used == []:
-                formal_args = "void"
-            else:
-                formal_args = string.join(map(lambda vn: "ncptl_int " + vn, variables_used), ", ")
-            self.push("/* Return 1 if %s; 0 if not. */" % node.printable, helper_code)
-            self.push("static int %s (%s)" % (funcname, formal_args), helper_code)
-            self.push("{", helper_code)
-            helper_main, helper_after = self.range_list_wrapper(rangelist)
-            self.pushmany(helper_main, helper_code)
-            self.code_declare_var(name="value", stack=helper_code)
-            self.pushmany(["if (thisrange->list_comp == NULL)",
-                           " /* The loopvar field contains the value to compare against. */",
-                           "value = thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar);",
-                           "else",
-                           " /* The queue of list-comprehension values provides the value to compare against. */",
-                           "value = *(ncptl_int *)ncptl_queue_pop(thisrange->list_comp);",
-                           "if ((%s) == value)" % expression,
-                           "return 1;"],
-                          stack=helper_code)
-            self.pushmany(helper_after, helper_code)
-            self.pushmany(["return 0;",
-                           "}"],
-                          stack=helper_code)
-            self.combine_to_marker(helper_code)
-            self.extra_func_decls.append(helper_code[0])
+        helper_code = []
+        self.push_marker(helper_code)
+        if variables_used == []:
+            formal_args = "void"
+        else:
+            formal_args = string.join(map(lambda vn: "ncptl_int " + vn, variables_used), ", ")
+        self.push("/* Return 1 if %s; 0 if not. */" % node.printable, helper_code)
+        self.push("static int %s (%s)" % (funcname, formal_args), helper_code)
+        self.push("{", helper_code)
+        helper_main, helper_after = self.range_list_wrapper(rangelist)
+        self.pushmany(helper_main, helper_code)
+        self.code_declare_var(name="value", stack=helper_code)
+        self.pushmany(["if (thisrange->list_comp == NULL)",
+                       " /* The loopvar field contains the value to compare against. */",
+                       "value = thisrange->integral ? thisrange->u.i.loopvar : CONC_DBL2INT(thisrange->u.d.loopvar);",
+                       "else",
+                       " /* The queue of list-comprehension values provides the value to compare against. */",
+                       "value = *(ncptl_int *)ncptl_queue_pop(thisrange->list_comp);",
+                       "if ((%s) == value)" % expression,
+                       "return 1;"],
+                      stack=helper_code)
+        self.pushmany(helper_after, helper_code)
+        self.pushmany(["return 0;",
+                       "}"],
+                      stack=helper_code)
+        self.combine_to_marker(helper_code)
+        self.extra_func_decls.append(helper_code[0])
 
         # Return an invocation of the helper function.
         if variables_used == []:
@@ -1610,20 +1597,25 @@ class NCPTL_CodeGen:
 
     def n_time_unit(self, node):
         # Push a multiplier that converts to microseconds.
+        terms = [24, 60, 60, 1000, 1000]   # Maximum is units of days
+        pop_num = 0                        # Number of terms to pop
         if node.attr == "microseconds":
-            self.push("1")
+            terms = [1]
+            pop_num = 0
         elif node.attr == "milliseconds":
-            self.push("1000")
+            pop_num = 4
         elif node.attr == "seconds":
-            self.push("1000*1000")
+            pop_num = 3
         elif node.attr == "minutes":
-            self.push("60*1000*1000")
+            pop_num = 2
         elif node.attr == "hours":
-            self.push("60*60*1000*1000")
+            pop_num = 1
         elif node.attr == "days":
-            self.push("24*60*60*1000*1000")
+            pop_num = 0
         else:
             self.errmsg.error_internal('unknown time unit "%s"' % node.attr)
+        suffix = self.ncptl_int_suffix
+        self.push(string.join(map(str, terms[pop_num:]), suffix + "*") + suffix)
 
     def n_string_or_log_comment(self, node):
         "Push either a literal string or a call to ncptl_log_lookup_string()."
@@ -1658,8 +1650,12 @@ class NCPTL_CodeGen:
         "Push a {description, expression, aggregate} tuple."
         description = self.pop()
         expression = self.pop()
-        aggregate = self.pop()
-        self.push((description, expression, aggregate))
+        aggregate_name = self.pop()
+        if aggregate_name == "percentile":
+            aggregate_arg = self.code_make_expression_fp(self.pop())
+        else:
+            aggregate_arg = "0.0"
+        self.push((description, expression, aggregate_name, aggregate_arg))
 
     def n_aggregate_func(self, node):
         self.push(node.attr)
@@ -1840,6 +1836,12 @@ class NCPTL_CodeGen:
             tasknum = self.pop()
             dimens = self.pop()
             arguments = [dimens, tasknum, other]
+        if funcname[-9:] == "FILE_DATA":
+            # The FILE_DATA and STATIC_FILE_DATA functions take 1-5
+            # separate stack arguments.
+            arguments = []
+            for i in range(len(node.kids)):
+                arguments.insert(0, self.pop())
         else:
             # All other functions take a single list argument.
             arguments = self.pop()
@@ -1857,28 +1859,32 @@ class NCPTL_CodeGen:
 
         # Ensure we have the correct number of arguments.
         function_arguments = {
-            "ABS":              [1],
-            "BITS":             [1],
-            "CBRT":             [1],
-            "CEILING":          [1],
-            "FACTOR10":         [1],
-            "FLOOR":            [1],
-            "KNOMIAL_CHILD":    [2, 3, 4],
-            "KNOMIAL_CHILDREN": [1, 2, 3],
-            "KNOMIAL_PARENT":   [1, 2, 3],
-            "LOG10":            [1],
-            "MESH_COORDINATE":  [3],
-            "MESH_DISTANCE":    [3],
-            "MESH_NEIGHBOR":    [3],
-            "RANDOM_GAUSSIAN":  [2],
-            "RANDOM_PARETO":    [2, 3],
-            "RANDOM_POISSON":   [1],
-            "RANDOM_UNIFORM":   [2],
-            "ROOT":             [2],
-            "ROUND":            [1],
-            "SQRT":             [1],
-            "TREE_CHILD":       [2, 3],
-            "TREE_PARENT":      [1, 2]
+            "ABS":               [1],
+            "BITS":              [1],
+            "CBRT":              [1],
+            "CEILING":           [1],
+            "FACTOR10":          [1],
+            "FILE_DATA":         [1, 2, 3, 4, 5],
+            "FLOOR":             [1],
+            "KNOMIAL_CHILD":     [2, 3, 4],
+            "KNOMIAL_CHILDREN":  [1, 2, 3],
+            "KNOMIAL_PARENT":    [1, 2, 3],
+            "LOG10":             [1],
+            "MESH_COORDINATE":   [3],
+            "MESH_DISTANCE":     [3],
+            "MESH_NEIGHBOR":     [3],
+            "PROCESSOR_OF":      [1],
+            "RANDOM_GAUSSIAN":   [2],
+            "RANDOM_PARETO":     [2, 3],
+            "RANDOM_POISSON":    [1],
+            "RANDOM_UNIFORM":    [2],
+            "ROOT":              [2],
+            "ROUND":             [1],
+            "SQRT":              [1],
+            "STATIC_FILE_DATA":  [1, 2, 3, 4, 5],
+            "TASK_OF":           [1],
+            "TREE_CHILD":        [2, 3],
+            "TREE_PARENT":       [1, 2]
         }
         try:
             valid_num_args = function_arguments[funcname]
@@ -1957,6 +1963,14 @@ class NCPTL_CodeGen:
             self.program_uses_randomness = max(self.program_uses_randomness, 1)
             if funcname == "RANDOM_PARETO" and num_args == 2:
                 arguments.append(arguments[1])
+        # Fill in all of the optional arguments for FILE_DATA and
+        # STATIC_FILE_DATA.
+        elif funcname[-9:] == "FILE_DATA":
+            funcname = "FILE_DATA"   # Treated the same except for semantic analysis.
+            default_args = ["DUMMY_ARG", "1"+nis, "1"+nis, '" \\t"', '"\\n"']
+            args_needed = len(default_args) - len(arguments)
+            if args_needed > 0:
+                arguments.extend(default_args[-args_needed:])
 
         # Return a C function call.
         self.push("ncptl_func_%s(%s)" %
@@ -2061,16 +2075,24 @@ class NCPTL_CodeGen:
             "/* Define the maximum loop trip count that we're willing to unroll fully. */",
             "#define CONC_MAX_UNROLL 5",
             "",
-            "/* Specify the number of trial iterations in each FOR <time> loop and the",
-            " * minimum number of microseconds for which the trials need to run. */",
+            "/* Specify the minimum number of trial iterations in each FOR <time> loop. */",
             "#define CONC_FOR_TIME_TRIALS 1",
-            "#define CONC_FOR_TIME_MIN_USECS 1000000",
             "",
             "/* Define a macro that rounds a double to a ncptl_int. */",
             "#define CONC_DBL2INT(D) ((ncptl_int)((D)+0.5))",
             "",
             "/* Define a macro that increments a buffer pointer by a byte offset. */",
-            "#define CONC_GETBUFPTR(S) ((void *)((char *)thisev->s.S.buffer + thisev->s.S.bufferofs))"])
+            "#define CONC_GETBUFPTR(S) ((void *)((char *)thisev->s.S.buffer + thisev->s.S.bufferofs))",
+            "",
+            "/* Implement ncptl_func_task_of in terms of ncptl_physical_to_virtual. */",
+            "#define ncptl_func_task_of(P) ((ncptl_int)(P) < 0%s || (ncptl_int)(P) >= var_num_tasks ? -1%s : ncptl_physical_to_virtual (procmap, (ncptl_int)(P)))" %
+            (self.ncptl_int_suffix, self.ncptl_int_suffix),
+            "#define ncptl_dfunc_task_of(P) ((double) ncptl_func_task_of(P))",
+            "",
+            "/* Implement ncptl_func_processor_of in terms of ncptl_virtual_to_physical. */",
+            "#define ncptl_func_processor_of(V) ((ncptl_int)(V) < 0%s || (ncptl_int)(V) >= var_num_tasks ? -1%s : ncptl_virtual_to_physical (procmap, (ncptl_int)(V)))" %
+            (self.ncptl_int_suffix, self.ncptl_int_suffix),
+            "#define ncptl_dfunc_processor_of(V) ((double) ncptl_func_processor_of(V))"])
         self.pushmany(self.invoke_hook("code_define_macros_POST", locals(),
                                        before=[""]))
 
@@ -2229,6 +2251,7 @@ class NCPTL_CodeGen:
             "/* Describe an event representing the beginning of a timed loop. */",
             "typedef struct {",
             "uint64_t usecs;         /* Requested loop duration */",
+            "uint64_t warmup_usecs;  /* Requested duration of warmup loops */",
             "uint64_t starttime;     /* Time at which the loop state last changed */",
             "uint64_t itersleft;     /* # of iterations remaining */",
             "uint64_t previters;     /* # of iterations we performed last time */",
@@ -2269,7 +2292,8 @@ class NCPTL_CodeGen:
             "",
             "/* Describe an event representing arbitrary code to execute at run time. */",
             "typedef struct {",
-            "ncptl_int number;       /* Unique number corresponding to a specific piece of code */"])
+            "ncptl_int number;       /* Unique number corresponding to a specific piece of code */"
+            "NCPTL_VIRT_PHYS_MAP *procmap;  /* Current mapping between tasks and processors */"])
         for var in self.referenced_vars.keys():
             self.push("ncptl_int %s;   /* Copy of %s to use within a piece of code */" %
                       (var, var))
@@ -3545,7 +3569,7 @@ class NCPTL_CodeGen:
                 "beginev->itersleft = 1;",
                 "",
                 " /* Determine if we need to perform another set of trial iterations. */",
-                "if ((minelapsedtime < beginev->usecs/10 && minelapsedtime < CONC_FOR_TIME_MIN_USECS) || beginev->previters == CONC_FOR_TIME_TRIALS) {",
+                "if ((minelapsedtime < beginev->usecs/10 && minelapsedtime < beginev->warmup_usecs) || beginev->previters == CONC_FOR_TIME_TRIALS) {",
                 " /* itersleft doesn't correspond to at least 10% of the desired execution",
                 "  * time or 100% of the minimum trial time, or this was just a warmup",
                 "  * set of trial iterations.  We therefore try again using 10X the",
@@ -4108,6 +4132,15 @@ class NCPTL_CodeGen:
 
     def n_for_time(self, node):
         "Repeat a statement for a given length of time."
+        synchronize_afterwards = 0
+        if len(node.kids) > 3:
+            if node.attr == "synchronized":
+                synchronize_afterwards = 1
+            warmup_mult = self.pop()
+            warmup_expr = self.pop()
+        else:
+            warmup_mult = None
+            warmup_expr = None
         multiplier = self.pop()
         expression = self.pop()
         if node.lineno0 == node.lineno1:
@@ -4118,8 +4151,13 @@ class NCPTL_CodeGen:
         # Prepare the loop header.
         bwrap_code = []
         self.push_marker(bwrap_code)
+        comment = " FOR %s*%s MICROSECONDS" % (expression, multiplier)
+        if warmup_expr != None:
+            comment += " PLUS %s*%s WARMUP MICROSECONDS" % (warmup_expr, warmup_mult)
+            if synchronize_afterwards == 1:
+                comment += " AND A SYNCHRONIZATION"
         self.pushmany([
-            " /* FOR %s*%s MICROSECONDS... */" % (expression, multiplier),
+            " /* %s... */" % comment,
             "if (within_time_loop)",
             'ncptl_fatal ("FOR <time> loops cannot be nested (source-code %s)");' % lineno_msg,
             "else {"],
@@ -4140,11 +4178,15 @@ class NCPTL_CodeGen:
                               comment="Store the offset of the following EV_BTIME event.",
                               stack=bwrap_code)
         self.code_allocate_event("EV_BTIME", bwrap_code)
+        if warmup_expr == None:
+            # Define the default warmup time as 1 second.
+            warmup_expr = 1L
+            warmup_mult = 1000000L
         self.pushmany([
-            "thisev->s.btime.usecs = (uint64_t)(%s) * (uint64_t)%s;" %
-            (expression, multiplier),
-            'within_time_loop = 1;   /* Trick various compilers into suppressing a "variable not used" warning. */',
-            ""],
+                "thisev->s.btime.usecs = (uint64_t)(%s) * (uint64_t)(%s);" % (expression, multiplier),
+                "thisev->s.btime.warmup_usecs = (uint64_t)(%s) * (uint64_t)(%s);" % (warmup_expr, warmup_mult),
+                'within_time_loop = 1;   /* Trick various compilers into suppressing a "variable not used" warning. */',
+                ""],
                       bwrap_code)
         self.combine_to_marker(bwrap_code)
 
@@ -4483,6 +4525,7 @@ class NCPTL_CodeGen:
         self.push(header_comment, istack)
         self.code_allocate_code_event(source_task,
                                       string.join(outputvalues),
+                                      node.sem.has_key("needs_procmap"),
                                       istack)
         self.combine_to_marker(istack)
 
@@ -4508,6 +4551,7 @@ class NCPTL_CodeGen:
         self.push('printf ("%s\\n", %s);' % (string.join(formatlist, ""),
                                              string.join(valuelist, ", ")),
                   astack)
+        self.push("fflush (stdout);", astack)
         self.code_clock_control("RESTART", astack)
         self.push("}", astack)
         self.combine_to_marker(astack)
@@ -4522,7 +4566,10 @@ class NCPTL_CodeGen:
         header_comment = " /* %s BACKEND EXECUTES %s */" % (self.tasks_to_text(source_task),
                                                             self.clean_comments(repr(execvalues)))
         self.push(header_comment, istack)
-        self.code_allocate_code_event(source_task, string.join(execvalues), istack)
+        self.code_allocate_code_event(source_task,
+                                      string.join(execvalues),
+                                      node.sem.has_key("needs_procmap"),
+                                      istack)
         self.combine_to_marker(istack)
 
         # Build up one large command to store as arbitrary code.
@@ -4780,6 +4827,7 @@ class NCPTL_CodeGen:
         self.push(comment, istack)
         self.code_allocate_code_event(source_task,
                                       string.join(map(lambda e: e[1], entrylist)),
+                                      node.sem.has_key("needs_procmap"),
                                       istack)
         self.combine_to_marker(istack)
 
@@ -4793,14 +4841,14 @@ class NCPTL_CodeGen:
 
         self.code_clock_control("DECLARE", astack)
         self.code_clock_control("STOP", astack)
-        for description, expression, aggregate in entrylist:
+        for description, expression, aggregate, agg_arg in entrylist:
             clean_desc = string.replace(description, "\\n", " ")
             if aggregate:
                 aggregate_enum = "NCPTL_FUNC_" + string.upper(aggregate)
             else:
                 aggregate_enum = "NCPTL_FUNC_NO_AGGREGATE"
-            self.push('ncptl_log_write (logstate, %s, %s, %s, %s);' %
-                       (self.logcolumn, clean_desc, aggregate_enum,
+            self.push('ncptl_log_write (logstate, %s, %s, %s, %s, %s);' %
+                       (self.logcolumn, clean_desc, aggregate_enum, agg_arg,
                         self.code_make_expression_fp(expression)),
                       astack)
             self.logcolumn = self.logcolumn + 1
@@ -5194,6 +5242,7 @@ class NCPTL_CodeGen:
         self.code_declare_var(name=virtrankvar, rhs=virtrankvalue,
                               comment="Task ID",
                               stack=istack)
+        self.push("procmap = ncptl_conditionally_copy_task_map (procmap);", istack)
         if source_task[0] in ["task_all", "task_restricted"]:
             if source_task[0] == "task_all":
                 self.push("for (%s=0; %s<var_num_tasks; %s++) {" %

@@ -2,7 +2,7 @@
 #
 # By Scott Pakin <pakin@lanl.gov>
 
-Require language version "1.4".
+Require language version "1.5".
 
 xdim is "Torus x dimension (tasks)" and comes from "--xdim" or "-x" with default 1.
 ydim is "Torus y dimension (tasks)" and comes from "--ydim" or "-y" with default 1.

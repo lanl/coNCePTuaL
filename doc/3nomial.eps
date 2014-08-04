@@ -1,14 +1,14 @@
 %!PS-Adobe-2.0 EPSF-2.0
-%%Creator: dvips(k) 5.991 Copyright 2011 Radical Eye Software
+%%Creator: dvips(k) 5.994 Copyright 2014 Radical Eye Software
 %%Title: 3nomial.dvi
-%%CreationDate: Tue Jan 10 14:34:00 2012
+%%CreationDate: Fri Aug  1 19:00:09 2014
 %%BoundingBox: 66 609 675 726
 %%DocumentFonts: CMR10
 %%EndComments
 %DVIPSWebPage: (www.radicaleye.com)
 %DVIPSCommandLine: dvips -E -Ppdf -Pcmz -o - 3nomial.dvi
 %DVIPSParameters: dpi=8000
-%DVIPSSource:  TeX output 2012.01.10:1434
+%DVIPSSource:  TeX output 2014.08.01:1900
 %%BeginProcSet: tex.pro 0 0
 %!
 /TeXDict 300 dict def TeXDict begin/N{def}def/B{bind def}N/S{exch}N/X{S
@@ -78,10 +78,10 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pstricks.pro 0 0
-% $Id: pstricks.pro 622 2012-01-01 15:36:14Z herbert $
+% $Id: pstricks.pro 919 2014-05-19 18:42:47Z herbert $
 %
 %% PostScript prologue for pstricks.tex.
-%% Version 1.09, 2011/10/31
+%% Version 1.23, 2014/05/15
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -96,7 +96,7 @@ systemdict /.setshapealpha known not {/.setshapealpha { pop } def } if
 %
 /tx@Dict 200 dict def 				% the main PSTricks dictionary
 tx@Dict begin
-/ADict 25 dict def				% The arrow dictionaray
+/ADict 25 dict def				% The arrow dictionary
 /CM { matrix currentmatrix } bind def
 /SLW /setlinewidth load def
 /CLW /currentlinewidth load def
@@ -110,6 +110,7 @@ tx@Dict begin
 /Atan { /atan load stopped { pop pop 0 } if } def % return 0 if atan not known
 /ATAN1 {neg -1 atan 180 sub } def		% atan(x) (only one parameter)
 /Div { dup 0 eq { pop } { div } ifelse } def  	% control the division
+/Log { dup 1e-20 lt { pop -1e30 }{ log } ifelse } def % control the log
 /tan { dup cos abs 1.e-10 lt 
   { pop 1.e10 } 				% return 1.e10 as infinit
   { dup sin exch cos div } ifelse 		% default sin/cos
@@ -117,6 +118,14 @@ tx@Dict begin
 /Tan { dup sin exch cos Div } def 		% sin(x)/cos(x) x in degrees
 /Acos {dup dup mul neg 1 add dup 0 lt {		% arc cos, returns 0 when negative root
   pop pop 0 }{ sqrt exch atan} ifelse } def
+/Acos2 { 2 dict begin 
+  /x ED /y ED
+  y abs 1.0e-20 lt { 1.0e30 } if
+  x y div 
+  dup dup mul neg 1 add dup 0 lt {		% arc cos needs two values x,y
+  pop pop 0 }{ sqrt exch atan} ifelse 
+  y 0 lt { 180 add } if
+} def
 /NET { neg exch neg exch T } def	      	% change coordinate system to the negative one		
 /Pyth { dup mul exch dup mul add sqrt } def   	% Pythagoras, expects 2 parameter
 /Pyth2 {					% Pythagoras, xA yA xB yB
@@ -125,8 +134,10 @@ tx@Dict begin
   3 1 roll 		% yB-yA xA xB
   sub			% yB-yA xA-xB
   Pyth } def
-/PtoC { 2 copy cos mul 3 1 roll sin mul } def 	% Polar to Cartesian
-/Rand { rand 4294967295 div } def		% a real random number
+/PtoC { 2 copy cos mul 3 1 roll sin mul } def % Polar to Cartesian
+/PtoCab { dup cos 4 -1 roll mul 3 1 roll sin mul } def % Polar to Cartesian (Ellipse) a b phi-> x y 
+%/Rand { rand 4294967295 div } def		% a real random number
+/Rand { rand 2147483447 div } def		% a real random number between 0 and 1
 %----------------- hv added 20050516 ---------------
 /PiDiv2 1.57079632680 def
 /Pi 3.14159265359 def 
@@ -136,6 +147,13 @@ tx@Dict begin
 %
 /RadtoDeg { 180 mul Pi div } bind def 		% convert from radian to degrees
 /DegtoRad { Pi mul 180 div } bind def 		% viceversa
+%
+/startGlobal { true setglobal globaldict begin } bind def
+/endGlobal { end false setglobal } bind def
+/pssetRGBcolor /setrgbcolor load def
+/pssetCMYKcolor /setcmykcolor load def
+/pssetGraycolor /setgray load def
+%
 %----------------- hv end---------------------------
 /PathLength@ { /z z y y1 sub x x1 sub Pyth add def /y1 y def /x1 x def } def
 %
@@ -203,22 +221,55 @@ tx@Dict begin
     /YLength YB YA sub def
     /PAngle YLength XLength Atan def
     /XYLength XLength YLength Pyth def
-    /nSym XYLength SymStep div cvi def
+    %% for negative SymStep we calculate the distance 
+    SymStep 0 lt 
+      { %XYLength SymStep div abs cvi 
+        /nSym SymStep abs cvi def } 
+      { /nSym XYLength SymStep div cvi def }
+    ifelse
+    0.5 setflat
     /Shift Symbol stringwidth pop 2 div def 
     /deltaX XLength nSym div def
     /deltaY YLength nSym div def
-    XA Shift sub YA Shift sub moveto 
+    curveticks 
+      { XA YA moveto }
+      { XA Shift sub YA Shift sub moveto }
+    ifelse 
     nSym { 
-      gsave rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
-      Symbol show 
+      gsave 
+      curveticks 
+        { PAngle 180 sub CorrAngle sub tickAngle add /rotAngle ED  
+          currentpoint translate rotAngle rotate 
+          0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+          SymbolLinewidth setlinewidth stroke
+        }
+        { 
+          rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
+          Symbol show 
+        }
+      ifelse 
       grestore 
       deltaX deltaY rmoveto
     } repeat
     /YA YB def /XA XB def
   } repeat 
-  XA Shift sub YA Shift sub moveto 
-  gsave rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
-  Symbol show grestore
+  curveticks 
+    { XA YA moveto }
+    { XA Shift sub YA Shift sub moveto }
+  ifelse 
+  gsave 
+  curveticks 
+    { PAngle 180 sub CorrAngle sub tickAngle add /rotAngle ED  
+      XA YA translate rotAngle rotate 
+      0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+      SymbolLinewidth setlinewidth stroke
+    }
+    { 
+      rotateSymbol { PAngle 180 sub CorrAngle sub rotate } if
+      Symbol show 
+    }
+  ifelse 
+  grestore
   pop 				% delete the mark symbol
 } def
 %
@@ -235,7 +286,7 @@ tx@Dict begin
   /y2 ED 
   a Div ceiling cvi /x2 ED /y1 ED 
   a Div cvi /x1 ED /y2 y2 y1 sub def 
-  clip 
+  clipType   % must be defined in pstricks.tex: clip -- eoclip 
   newpath 
   2 setlinecap 
   systemdict
@@ -265,7 +316,7 @@ tx@Dict begin
   /y2 ED /x2 ED /y1 ED /x1 ED 
   y2 y1 sub a div 2 add cvi /Ny ED
   x2 x1 sub a div 2 add cvi /Nx ED
-  clip 
+  clipType   % must be defined in pstricks.tex: clip -- eoclip 
   newpath 
   /yA y1 dotRadius add CLW add def
   /xA0 x1 dotRadius add CLW add def
@@ -284,28 +335,69 @@ tx@Dict begin
 } def
 %
 /PenroseFill {%	 on stack: scaling factor
-  dup dup scale
-  1 exch div round /penroseFactor ED 
-  a 0 dtransform round exch round exch
-  2 copy idtransform 
-  exch Atan rotate 
-  idtransform pop /a ED 
-  .25 .25 itransform pathbbox 
-  /y2 ED 
-  a Div ceiling cvi /x2 ED /y1 ED 
-  a Div cvi /x1 ED /y2 y2 y1 sub def 
+  /Scale ED
+%  1 exch div round /penroseFactor ED 
+%  a 0 dtransform round exch round exch
+%  2 copy idtransform 
+%  exch Atan rotate 
+%  idtransform pop /a ED 
+%  .25 .25 itransform pathbbox 
+%  /y2 ED 
+%  a Div ceiling cvi /x2 ED /y1 ED 
+%  a Div cvi /x1 ED /y2 y2 y1 sub def 
   clip 
   newpath 
-  systemdict
-  /setstrokeadjust known { true setstrokeadjust } if 
+gsave
+  220 150 translate
+  Scale dup scale
+  systemdict /setstrokeadjust known { true setstrokeadjust } if 
   /I/S/L/W/G/+/Z/F/E/D[/def/exch/for{E D}/add{s E get mul}
  { Z -36.2001 1 33 }{25 E S rlineto}{/q Z dup q G E q 1 + G}{Z 2 2}]{cvx def}forall
   [0 72 1008 {dup sin E cos }F ]1 setlinejoin/s W{/a W{/b I 10{/i I 4{/m I moveto
   i m +/j I 10{/l Z b m l + G a l G sub s m get div .2 + floor .3 + 25
   mul j l + S rmoveto}F i L j L stroke }F}F}F}F 
   grestore 
-  pop pop 
+%  pop pop 
 } def
+%
+/PenroseFillA {%  on stack: scaling factor, border color, kite color, dart color
+  /Scale ED
+  Scale dup scale
+  /border_colour ED 
+  /kite_colour ED 
+  /dart_colour ED
+  clip 
+  newpath 
+  gsave
+  100 100 translate
+  6 
+  Scale 1 lt { 1 Scale dup add div mul cvi } if %%%%   Number of iterations
+  10					%%%%   Long side length in millimeters
+  /border_width { L 0.06 mul }def		%%%%   Choose the scalefactor for the borders
+  /L exch 25.4 div 72 mul def		%%%%   Conversion: mm -> inches -> points
+  /f{-1 5 sqrt add 2 div}bind def		%%%%   The reciprocal of the golden ratio
+  /l{L f mul}bind def			%%%%   Short side length l = L*f
+  /Ll{L l add}bind def			%%%%   Ll =  L + l
+  /c{36 cos L mul}bind def		%%%%   c  =  L*cos(36)
+  /s{36 sin L mul}bind def		%%%%   s  =  L*sin(36)
+  /draw_tile { 0 0 moveto c s lineto 0 lineto gsave closepath gsave fill grestore
+	     0 setlinewidth stroke grestore border_colour stroke } bind def
+  /half_kite { dup dup 0 gt{ 1 sub gsave f f neg scale -36 rotate half_dart
+			   Ll 0 translate 144 rotate kite grestore }
+	      		 { kite_colour L draw_tile }ifelse
+	     pop } bind def
+  /half_dart { dup dup 0 gt{ 1 sub gsave f f scale half_kite
+			   -144 rotate Ll neg 0 translate half_dart grestore }
+	      		 { dart_colour l draw_tile }ifelse
+  	     pop } bind def
+  /kite{ gsave half_kite 1 -1 scale half_kite grestore }bind def
+  border_width setlinewidth  1 setlinejoin  1 setlinecap
+%  450 0 translate  
+  dup f exch neg exp dup scale
+  5 {kite 72 rotate } repeat stroke 
+  grestore
+} def
+%
 %
 /TruchetFill { %	 on stack: scaling factor
   10 dict begin
@@ -622,28 +714,62 @@ tx@Dict begin
 } def
 %
 /CurvePath { 
+  %% for negative SymStep we calculate the distance 
+  SymStep 0 lt { gsave PathLength SymStep div abs /SymStep ED grestore } if
+  0.5 setflat
   flattenpath /z 0 def /z0 0 def
   { /y1 ED /x1 ED /y2 y1 def /x2 x1 def 
     x1 Shift sub y1 Shift sub moveto 
     gsave 
-    startAngle rotate Symbol show 
+    curveticks 
+      { x1 y1 translate startAngle rotate 
+        0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+        SymbolLinewidth setlinewidth stroke      
+      }
+      { startAngle rotate Symbol show }
+    ifelse 
     grestore /z0 z def }
   { /y ED /x ED PathLength@ z z0 sub SymStep ge {
       x Shift sub y Shift sub moveto 
       gsave 
-      rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if
-      Symbol show 
+      curveticks 
+        { y yOld sub x xOld sub Atan 180 sub CorrAngle sub /rotAngle ED  
+          x y translate rotAngle rotate 
+          0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+          SymbolLinewidth setlinewidth stroke
+        }
+        { 
+          rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if        
+          Symbol show 
+        }
+      ifelse 
       grestore /z0 z def } if 
     /yOld y def /xOld x def } 
-  {} 
+  {} %% the lineto part
   { /y y2 def /x x2 def PathLength@ 
     x Shift sub y Shift sub moveto 
     gsave
-    rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if
-    Symbol show 
+    curveticks 
+      { y yOld sub x xOld sub Atan 180 sub /rotAngle ED  
+        x y translate rotAngle rotate 
+        0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+        SymbolLinewidth setlinewidth stroke
+      }
+      { 
+        x Shift sub y Shift sub moveto 
+        rotateSymbol { y yOld sub x xOld sub Atan 180 sub CorrAngle sub rotate } if        
+        Symbol show 
+      }
+    ifelse 
     grestore
   }
   pathforall 
+%  curveticks 
+%   { gsave 
+%     x y translate rotAngle rotate 
+%     0 SymbolWidth 2 div moveto 0 SymbolWidth 2 div neg lineto 
+%     SymbolLinewidth setlinewidth stroke grestore
+%   } if
   z 
 } def
 %
@@ -686,6 +812,100 @@ tx@Dict begin
   /Shift Symbol stringwidth pop 2 div def 
   CurvePath 
 } def
+%
+/CalcBezierSpline {%  Christoph Bersch
+  10 dict begin
+  /getX { Points exch 2 mul get } def
+  /getY { Points exch 2 mul 1 add get } def
+  /n Points length 1 sub 2 idiv def
+  /GetFirstControlPoints {
+    /x n array def
+    /tmp n array def
+    /b 2 def
+    x 0 rhs 0 get b div put
+    1 1 n 1 sub {
+      /i exch def
+      tmp i 1 b div dup 4 1 roll put
+      i n 1 sub lt { 4 }{ 3.5 } ifelse exch sub /b exch def
+      x i rhs i get x i 1 sub get sub b div put
+    } for
+    1 1 n 1 sub {
+      n exch sub
+      dup dup x exch 1 sub 2 copy 6 2 roll
+      get 3 1 roll tmp exch get
+      exch x exch get mul sub
+      put	
+    } for
+    x
+  } def
+  % 
+  n 1 eq {
+    0 getX 2 mul 1 getX add 3 div
+    0 getY 2 mul 1 getY add 3 div
+    exch dup 3 1 roll 2 mul 0 getX sub
+    exch dup 3 1 roll 2 mul 0 getY sub
+    [ 0 getX 0 getY 7 3 roll 1 getX 1 getY ] /outPoints exch def
+  } {
+    /outPoints 6 n mul 2 add array def
+    0 1 n {
+      dup dup 6 mul dup 1 add
+      outPoints exch 5 -1 roll getY put
+      outPoints exch 3 -1 roll getX put
+    } for
+    /rhs n array def
+    1 1 n 2 sub {
+      rhs exch dup dup getX 4 mul exch 1 add getX 2 mul add put
+    } for
+    rhs 0 0 getX 1 getX 2 mul add put
+    rhs n 1 sub dup getX 8 mul n getX add 2 div put
+    GetFirstControlPoints
+    1 1 n 2 sub {
+      rhs exch dup dup getY 4 mul exch 1 add getY 2 mul add put
+    } for
+    rhs 0 0 getY 1 getY 2 mul add put
+    rhs n 1 sub dup getY 8 mul n getY add 2 div put
+    GetFirstControlPoints
+    0 1 n 1 sub {
+      /i exch def
+      2 copy
+      i get outPoints 6 i mul 3 add 3 -1 roll put
+      i get outPoints 6 i mul 2 add 3 -1 roll put
+      2 copy
+      i n 1 sub lt {
+        i 1 add get i 1 add getY 2 mul exch sub outPoints 6 i mul 5 add 3 -1 roll put
+        i 1 add get i 1 add getX 2 mul exch sub outPoints 6 i mul 4 add 3 -1 roll put
+      }{
+        n 1 sub get n getY add 2 div outPoints 6 n 1 sub mul 5 add 3 -1 roll put
+        n 1 sub get n getX add 2 div outPoints 6 n 1 sub mul 4 add 3 -1 roll put
+      } ifelse
+    } for
+    pop pop
+  } ifelse
+  outPoints
+  end
+} def
+/Spline {
+  /showpoints ED
+  counttomark 2 div dup cvi /n ED
+  n eq not { exch pop } if
+  ] /Points ED
+  n 1 gt {
+    CalcBezierSpline
+    mark exch aload pop
+    ArrowA
+    n 2 sub {
+      6 2 roll 4 2 roll curveto
+    } repeat
+    6 2 roll 4 2 roll ArrowB curveto
+  } if
+} def
+/OpenSymbolSpline {
+  Spline
+  0.1 setflat
+  /Shift Symbol stringwidth pop 2 div def 
+  CurvePath 
+} def
+
 %
 /SQ { /r ED r r moveto r r neg L r neg r neg L r neg r L fill } def
 /ST { /y ED /x ED x y moveto x neg y L 0 x L fill } def
@@ -902,7 +1122,9 @@ tx@Dict begin
   /mtrx CM def 
   T 
   rotAngle rotate
-  scale 0 0 1 5 3 roll arc 
+  scale 
+  0 0 moveto 1 0 rmoveto  % move to the start position
+  0 0 1 5 3 roll arc 
   mtrx setmatrix 
 } def
 %
@@ -1024,7 +1246,7 @@ dup angle0 sub dup abs 180 gt { 180 add 360 div floor 360 mul sub } { pop } ifel
 /PutBegin { /TMatrix [ TMatrix CM ] cvx def CP 4 2 roll T moveto } def
 /PutEnd { CP /TMatrix [ TMatrix setmatrix ] cvx def moveto } def
 %
-/Uput { 
+/Uput {
   /a ED 
   add 2 div /h ED 2 
   div /w ED 
@@ -1039,6 +1261,7 @@ dup angle0 sub dup abs 180 gt { 180 add 360 div floor 360 mul sub } { pop } ifel
 } def
 %
 /UUput { 
+  5 dict begin
   /z ED 
   abs /y ED 
   /x ED 
@@ -1049,73 +1272,6 @@ dup angle0 sub dup abs 180 gt { 180 add 360 div floor 360 mul sub } { pop } ifel
   a PtoC 
   h1 add exch 
   w1 add exch 
-} def
-%
-/BeginOL { 
-  dup (all) eq exch TheOL eq or 
-    { IfVisible not { Visible /IfVisible true def } if } 
-    { IfVisible { Invisible /IfVisible false def } if } ifelse 
-} def
-%
-/InitOL { 
-  /OLUnit [ 3000 3000 matrix defaultmatrix dtransform ] cvx def
-  /Visible { CP OLUnit idtransform T moveto } def 
-  /Invisible { CP OLUnit neg exch neg exch idtransform T moveto } def 
-  /BOL { BeginOL } def
-  /IfVisible true def 
-} def
-%
-%%%%%%%%%%%%%%%%% tools %%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%% ### bubblesort ###
-%% syntax : array bubblesort --> array2 trie par ordre croissant
-%% code de Bill Casselman
-%% http://www.math.ubc.ca/people/faculty/cass/graphics/text/www/
-/bubblesort {
-4 dict begin
-   /a exch def
-   /n a length 1 sub def
-   n 0 gt {
-      % at this point only the n+1 items in the bottom of a remain to
-      % the sorted largest item in that blocks is to be moved up into
-      % position n
-      n {
-         0 1 n 1 sub {
-            /i exch def
-            a i get a i 1 add get gt {
-               % if a[i] > a[i+1] swap a[i] and a[i+1]
-               a i 1 add
-               a i get
-               a i a i 1 add get
-               % set new a[i] = old a[i+1]
-               put
-               % set new a[i+1] = old a[i]
-               put
-            } if
-         } for
-         /n n 1 sub def
-      } repeat
-   } if
-   a
-end
-} def
-%
-%
-/concatstringarray{  %  [(a) (b) ... (z)] --> (ab...z)  20100422
-  0 1 index { length add } forall 
-  string     
-  0 3 2 roll      
-  { 3 copy putinterval length add }forall 
-  pop  
-} bind def
-%
-/dot2comma {% on stack a string (...) 
-  2 dict begin
-  /Output exch def
-  0 1 Output length 1 sub { 
-    /Index exch def 
-    Output Index get 46 eq { Output Index 44 put } if 
-  } for
-  Output
   end
 } def
 %
@@ -1126,16 +1282,18 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-algparser.pro 0 0
-% $Id: pst-algparser.pro 594 2011-10-31 18:13:18Z herbert $
+% $Id: pst-algparser.pro 919 2014-05-19 18:42:47Z herbert $
 %%
 %% PostScript prologue for PSTricks algorithm parser
-%% Version 0.04, 2011/10/21
+%% Version 0.06, 2014/05/19
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
 %% in directory macros/latex/base/lppl.txt.
 %%
 %%-----------------------------------------------------------------------------%
+%
+%currentdict /Pi known not { /Pi 3.14159265359 def } if
 %
 /AlgParser { tx@AlgToPs begin AlgToPs end } def  % Dominique Rodriguez
 %
@@ -1432,7 +1590,7 @@ end
 %% (name) ->
 /TrigoFunc {
   dup (cos) eq 1 index (sin) eq or exch (tan) eq or
-  { /ExpressionVector ExpressionVector aload length Pi /div cvx 180 /mul cvx 5 -1 roll 4 add
+  { /ExpressionVector ExpressionVector aload length 3.1415926 /div cvx 180 /mul cvx 5 -1 roll 4 add
     array astore def
   } if
 } def
@@ -1479,7 +1637,7 @@ end   %tx@CoreAnalyzerDict
 %%increase ^^ for each function added
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% algExpr variable -> PSVector
-/Derive {%
+/Derive {
   10240 string 3 1 roll 0 3 1 roll
   /Variable exch def
   tx@CoreAnalyzerDict begin InitParser AnalyzeListOfE end
@@ -1696,6 +1854,10 @@ end   %tx@CoreAnalyzerDict
   PreCommonFunc
   { (1/\(1+\() StrConcat 5 index StrConcat (\)^2\)\)) StrConcat } if
   PostCommonFunc } def
+/EvalFunc_floor {%
+  PreCommonFunc
+  {  dup 0 eq { (1) StrConcat } { 1 sub } ifelse (/\() StrConcat 5 index StrConcat AddClPar } if
+  PostCommonFunc } def
 /EvalFunc_ln {%
   PreCommonFunc
   {  dup 0 eq { (1) StrConcat } { 1 sub } ifelse (/\() StrConcat 5 index StrConcat AddClPar } if
@@ -1895,10 +2057,10 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-tools.pro 0 0
-% $Id: pst-tools.pro 622 2012-01-01 15:36:14Z herbert $
+% $Id: pst-tools.pro 842 2013-10-26 10:25:41Z herbert $
 %
 %% PostScript tools prologue for pstricks.tex.
-%% Version 0.02, 2012/01/01
+%% Version 0.04, 2013/10/26
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -1920,6 +2082,15 @@ end
   end
 } def
 %
+/ps@ReverseOrderOfPoints { % on stack [P1 P2 P3 ...Pn]=>[Pn,Pn-1,...,P2,P1]
+  5 dict begin       % all local
+  aload length /n ED % number of coors
+  n 2 div cvi /m ED  % number of Points
+  /n1 n def
+  m { n1 2 roll /n1 n1 2 sub def } repeat
+  n array astore
+  end
+} def
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % subroutines for complex numbers, given as an array [a b] 
 % which is a+bi = Real+i Imag
@@ -2109,12 +2280,56 @@ end
   end
 } def
 %
+/rightTrim { % on stack the string and the character number to be stripped  
+  /charNo exch def
+  dup
+  length 1 sub -1 0 { 
+    /i exch def dup i get charNo ne { exit } if 
+  } for
+  0 i 1 add getinterval
+  dup length string copy
+} bind def  % leaves the stripped string on the stack
+
+/psStringwidth /stringwidth load def
+/psShow /show load def
+
+%/stringwidth{ 32 rightTrim psStringwidth } bind def
+
+%/show { 32 rightTrim psShow } bind def
+%-----------------------------------------------------------------------------%
+
+/pgffunctions {
+    /pgfsc{}bind def% stroke color is empty by default
+    /pgffc{}bind def% fill color is empty by default
+    /pgfstr{stroke}bind def%
+    /pgffill{fill}bind def%
+    /pgfeofill{eofill}bind def%
+    /pgfe{a dup 0 rlineto exch 0 exch rlineto neg 0 rlineto closepath}bind def% rectangle
+    /pgfw{setlinewidth}bind def% setlinewidth
+    /pgfs{save pgfpd 72 Resolution div 72 VResolution div neg scale 
+      magscale{1 DVImag div dup scale}if 
+      pgfx neg pgfy neg translate pgffoa .setopacityalpha}bind def% save
+    /pgfr{pgfsd restore}bind def %restore
+    userdict begin%
+    /pgfo{pgfsd /pgfx currentpoint /pgfy exch def def @beginspecial}bind def %open
+    /pgfc{newpath @endspecial pgfpd}bind def %close
+    /pgfsd{globaldict /pgfdelta /delta where {pop delta} {0} ifelse put}bind def% save delta
+    /pgfpd{/delta globaldict /pgfdelta get def}bind def % put delta
+    /.setopacityalpha where {pop} {/.setopacityalpha{pop}def} ifelse % install .setopacityalpha 
+    /.pgfsetfillopacityalpha{/pgffoa exch def
+      /pgffill{gsave pgffoa .setopacityalpha fill 1 .setopacityalpha newpath fill grestore newpath}bind def
+      /pgfeofill{gsave pgffoa .setopacityalpha eofill 1 .setopacityalpha newpath eofill grestore newpath}bind def}bind def
+    /.pgfsetstrokeopacityalpha{/pgfsoa exch def /pgfstr{gsave pgfsoa .setopacityalpha stroke grestore newpath}bind def}bind def
+    /pgffoa 1 def
+    /pgfsoa 1 def
+    end
+} def
 %-----------------------------------------------------------------------------%
 % END pst-tools.pro
 
 %%EndProcSet
 %%BeginProcSet: pst-dots.pro 0 0
-% $Id: pst-dots.pro 130 2009-08-27 08:55:03Z herbert $
+% $Id: pst-dots.pro 801 2013-07-09 18:10:41Z herbert $
 %
 %% PostScript prologue for pstricks.tex.
 %% Version 2.02,  2009/06/16
@@ -2290,20 +2505,25 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-node.pro 0 0
-% $Id: pst-node.pro 440 2010-12-28 21:06:39Z herbert $
+% $Id: pst-node.pro 876 2014-01-28 15:03:13Z herbert $
 %%
 %% PostScript prologue for pst-node.tex.
-%% Version 1.13, 2011/11/21.
+%% Version 1.15, 2014/01/27.
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
 %% in directory macros/latex/base/lppl.txt.
 %
-/tx@NodeDict 400 dict def tx@NodeDict begin
+%%%%  EMPTY lines are not aload!!! Problem with pst-eps -> \par
+%
+%
 tx@Dict begin 			% from main pstricks dict
  /T /translate load def 
  /CP /currentpoint load def 
+% /startGlobal { true setglobal globaldict begin } bind def
+% /endGlobal { end false setglobal } bind def
 end
+/tx@NodeDict 400 dict def tx@NodeDict begin
 /NewNode { % on stack: { x y } boolean N@name type InitXnode 
   gsave 
   NodeScale                     % a bugfix for xelatex, it's empty for dvips
@@ -2497,15 +2717,26 @@ end
 %
 /HPosBegin { yB yA ge { /t 1 t sub def } if /Y yB yA sub t mul yA add def
 } def
+%
 /HPosEnd { /X Y yyA sub yyB yyA sub Div xxB xxA sub mul xxA add def
-/NAngle yyB yyA sub xxB xxA sub Atan def } def
+           /NAngle yyB yyA sub xxB xxA sub Atan def 
+} def
 /HPutLine { HPosBegin /yyA ED /xxA ED /yyB ED /xxB ED HPosEnd  } def
-/HPutLines { HPosBegin yB yA ge { /check { le } def } { /check { ge } def
-} ifelse /xxA xA def /yyA yA def mark xB yB LPutVar { dup Y check { exit
-} { /yyA ED /xxA ED } ifelse } loop /yyB ED /xxB ED cleartomark HPosEnd 
+%
+/HPutLines { HPosBegin yB yA ge 
+  { /check { le } def } { /check { ge } def } ifelse 
+  /xxA xA def 
+  /yyA yA def 
+  mark xB yB LPutVar 
+    { dup Y check { exit } { /yyA ED /xxA ED } ifelse } 
+  loop 
+  /yyB ED /xxB ED cleartomark HPosEnd 
 } def
-/VPosBegin { xB xA lt { /t 1 t sub def } if /X xB xA sub t mul xA add def
+%
+/VPosBegin { 
+  xB xA lt { /t 1 t sub def } if /X xB xA sub t mul xA add def
 } def
+%
 /VPosEnd { /Y X xxA sub xxB xxA sub Div yyB yyA sub mul yyA add def
 /NAngle yyB yyA sub xxB xxA sub Atan def } def
 /VPutLine { VPosBegin /yyA ED /xxA ED /yyB ED /xxB ED VPosEnd  } def
@@ -2515,11 +2746,19 @@ exit } { /yyA ED /xxA ED } ifelse } loop /yyB ED /xxB ED cleartomark
 VPosEnd  } def
 /HPutCurve { gsave newpath /SaveLPutVar /LPutVar load def LPutVar 8 -2
 roll moveto curveto flattenpath /LPutVar [ {} {} {} {} pathforall ] cvx
-def grestore exec /LPutVar /SaveLPutVar load def } def
-/NCCoor { /AngleA yB yA sub xB xA sub Atan def /AngleB AngleA 180 add def
-GetEdgeA GetEdgeB /LPutVar [ xB1 yB1 xA1 yA1 ] cvx def /LPutPos {
-LPutVar LPutLine } def /HPutPos { LPutVar HPutLine } def /VPutPos {
-LPutVar VPutLine } def LPutVar } def
+def grestore exec /LPutVar /SaveLPutVar load def 
+} def
+%
+/NCCoor { 
+  /AngleA yB yA sub xB xA sub Atan def 
+  /AngleB AngleA 180 add def
+  GetEdgeA GetEdgeB 
+  /LPutVar [ xB1 yB1 xA1 yA1 ] cvx def 
+  /LPutPos { LPutVar LPutLine } def 
+  /HPutPos { LPutVar HPutLine } def 
+  /VPutPos { LPutVar VPutLine } def 
+  LPutVar 
+} def
 %
 /NCLine { 
   NCCoor 
@@ -2974,7 +3213,6 @@ FontDirectory/CMR10 known{/CMR10 findfont dup/UniqueID known{dup
 /FontMatrix [0.001 0 0 0.001 0 0 ]readonly def
 /FontName /CMR10 def
 /FontBBox {-40 -250 1009 750 }readonly def
-/UniqueID 5000793 def
 /PaintType 0 def
 /FontInfo 9 dict dup begin
 /version (003.002) readonly def
@@ -3286,33 +3524,36 @@ TeXDict begin
  end
 %%EndSetup
 TeXDict begin 1 0 bop 0 1090 a
-tx@Dict begin  gsave STV CP T /ps@rot 0 def grestore  end
+ /pssetRGBcolor /setrgbcolor load def /pssetCMYKcolor /setcmykcolor
+load def /pssetGraycolor /setgray load def
  0 1090 a 0 1090 a
-tx@Dict begin  gsave STV CP T /ps@refangle 0.  def grestore  end
+tx@Dict begin  gsave STV CP T /ps@rot 0 def grestore  end
  0 1090
 a 0 1090 a
+tx@Dict begin  gsave STV CP T /ps@refangle 0.  def grestore  end
+ 0 1090 a 0 1090 a
 tx@Dict begin  gsave STV CP T /ps@rot 0 def grestore  end
  0 1090 a 0 1090 a
 tx@Dict begin gsave CM STV CP newpath moveto 3.0 neg 0 rmoveto clip
 setmatrix end
- 0 1090 a 0 11629 66383 11629
-v 66383 1090 a
+ 0 1090
+a 0 11629 66383 11629 v 66383 1090 a
 currentpoint grestore moveto
- 66383 1090 a 36208 1447 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+ 66383 1090 a 36208
+1447 a
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0 11
 {InitCnode } /NodeScale {} def NewNode end  end
- 36208 1447 a
-@beginspecial @setspecial
+ 36208 1447 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
  0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath gsave
 0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
  
-@endspecial 277 w Fa(0)9924
-4596 y
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+@endspecial
+277 w Fa(0)9924 4596 y
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  9924 4596 a @beginspecial @setspecial
@@ -3321,38 +3562,57 @@ tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath gsave
 0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
- 
-@endspecial
-277 w Fa(1)10477 4240 y
+
+
+@endspecial 277 w Fa(1)10477 4240 y
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { }
 def  0.8 SLW 0. setgray  /ArrowA { moveto } def /ArrowB { } def  /NCLW
 CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-0 InitNC
 { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha 
  0  setlinejoin 0  setlinecap stroke  grestore  grestore end
- 10477 4240 a 2414 7746 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+ 10477 4240 a 2414
+7746 a
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 2414
-7746 a @beginspecial @setspecial
+ 2414 7746 a @beginspecial @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
  0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
 0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath gsave
 0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
  
-@endspecial 277 w Fa(4)2968
-7389 y
+@endspecial
+277 w Fa(4)2968 7389 y
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { }
 def  0.8 SLW 0. setgray  /ArrowA { moveto } def /ArrowB { } def  /NCLW
 CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0 /N@T-0-0-0
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  2968 7389 a 537 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
- 537 10896 a @beginspecial
+ 537 10896
+a @beginspecial @setspecial
+  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
+ 0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
+0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath gsave
+0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
+stroke  grestore end
+ 
+@endspecial Fa(13)1090 10539
+y
+tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { }
+def  0.8 SLW 0. setgray  /ArrowA { moveto } def /ArrowB { } def  /NCLW
+CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0-0 /N@T-0-0-0-0
+InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
+  0  setlinejoin 0  setlinecap stroke  grestore  grestore end
+ 1090 10539 a 4292 10896 a
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0-1
+11 {InitCnode } /NodeScale {} def NewNode end  end
+ 4292 10896 a @beginspecial
 @setspecial
   tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
  0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
@@ -3360,34 +3620,15 @@ tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
 stroke  grestore end
  
-@endspecial Fa(13)1090 10539 y
-tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { }
-def  0.8 SLW 0. setgray  /ArrowA { moveto } def /ArrowB { } def  /NCLW
-CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0-0 /N@T-0-0-0-0
-InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
-  0  setlinejoin 0  setlinecap stroke  grestore  grestore end
- 1090 10539
-a 4292 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
-2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0-1
-11 {InitCnode } /NodeScale {} def NewNode end  end
- 4292 10896 a @beginspecial @setspecial
-  tx@Dict begin STP newpath /ArrowA { moveto } def /ArrowB { } def
- 0.8 SLW 0. setgray    10.00003  2 div 6.44444  0.0  add 2 div 2 copy
-0.0  sub 4 2 roll Pyth 3.0 add  CLW 2 div add 0 360 arc closepath gsave
-0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0  setlinecap
-stroke  grestore end
-
-
 @endspecial Fa(22)4845 10539 y
 tx@Dict begin gsave STV newpath /ArrowA { moveto } def /ArrowB { }
 def  0.8 SLW 0. setgray  /ArrowA { moveto } def /ArrowB { } def  /NCLW
 CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0-0 /N@T-0-0-0-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
- 4845 10539 a 9924 7746
-a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+ 4845 10539
+a 9924 7746 a
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  9924 7746 a @beginspecial @setspecial
@@ -3405,7 +3646,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0 /N@T-0-0-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  10477 7389 a 8046 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-1-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  8046
@@ -3424,7 +3665,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0-1 /N@T-0-0-1-0
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  8600 10539 a 11801 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-1-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  11801 10896 a @beginspecial
@@ -3443,7 +3684,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  12355 10539
 a 15556 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  15556 10896 a @beginspecial @setspecial
@@ -3462,7 +3703,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  16110 10539 a 19311
 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  19311 10896 a @beginspecial @setspecial
@@ -3480,7 +3721,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0 /N@T-0-0-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  19865 10539 a 32453 4596 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  32453
@@ -3499,7 +3740,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-1 InitNC
 { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha 
  0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  33007 4240 a 24944 7746 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  24944 7746 a @beginspecial
@@ -3518,7 +3759,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  25497
 7389 a 23066 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  23066 10896 a @beginspecial @setspecial
@@ -3537,7 +3778,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  23620 10539 a 26821
 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  26821 10896 a @beginspecial @setspecial
@@ -3555,7 +3796,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-1-0 /N@T-0-1-0-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  27375 10539 a 32454 7746 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  32454
@@ -3574,7 +3815,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-1 /N@T-0-1-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  33007 7389 a 30576 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-1-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  30576 10896 a @beginspecial
@@ -3593,7 +3834,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  31129 10539
 a 34331 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-1-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  34331 10896 a @beginspecial @setspecial
@@ -3612,7 +3853,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  34884 10539 a 38086
 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  38086 10896 a @beginspecial @setspecial
@@ -3630,7 +3871,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-1 /N@T-0-1-0
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  38639 10539 a 41841 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  41841
@@ -3649,7 +3890,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-1 /N@T-0-1-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  42394 10539 a 47473 7746 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  47473 7746 a @beginspecial
@@ -3668,7 +3909,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-0 InitNC
  0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  48027
 7389 a 45596 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  45596 10896 a @beginspecial @setspecial
@@ -3687,7 +3928,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  46149 10539 a 49351
 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  49351 10896 a @beginspecial @setspecial
@@ -3705,7 +3946,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0-0 /N@T-0-0-1
 InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  49904 10539 a 54983 7746 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  54983
@@ -3724,7 +3965,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-1 InitNC
 { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha 
  0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  55536 7389 a 53105 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  53105 10896 a @beginspecial
@@ -3743,7 +3984,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  53659 10539
 a 56860 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
  56860 10896 a @beginspecial @setspecial
@@ -3762,7 +4003,7 @@ InitNC { NCLine  } if end  gsave 0.8 SLW 0. setgray  1. .setopacityalpha
   0  setlinejoin 0  setlinecap stroke  grestore  grestore end
  57414 10539 a 60615
 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-0
 11 {InitCnode } /NodeScale {} def NewNode end  end
  60615 10896 a @beginspecial @setspecial
@@ -3781,7 +4022,7 @@ CLW def tx@NodeDict begin 0.0 0.0 neg 0.0 0.0 0 0 /N@T-0 /N@T-0-0 InitNC
  gsave 0.8 SLW 0. setgray  1. .setopacityalpha   0  setlinejoin 0 
 setlinecap stroke  grestore  grestore end
  61169 10539 a 64370 10896 a
-tx@Dict begin tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
+tx@Dict begin  tx@NodeDict begin { 10.00003  2 div 6.44444  0.0  add
 2 div 2 copy 0.0  sub 4 2 roll Pyth 3.0 add 0.8 add} false /N@T-0-1
 11 {InitCnode } /NodeScale {} def NewNode end  end
 
