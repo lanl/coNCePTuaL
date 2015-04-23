@@ -1,19 +1,19 @@
 This is conceptual.info, produced by makeinfo version 5.2 from
 conceptual.texi.
 
-This document describes coNCePTuaL version 1.5.
+This document describes coNCePTuaL version 1.5.1.
 
 
-   Copyright (C) 2014, Los Alamos National Security, LLC
+   Copyright (C) 2015, Los Alamos National Security, LLC
 INFO-DIR-SECTION Programming
 START-INFO-DIR-ENTRY
 * coNCePTuaL: (conceptual).   A domain-specific language for network benchmarks
 END-INFO-DIR-ENTRY
 
-   This document describes coNCePTuaL version 1.5.
+   This document describes coNCePTuaL version 1.5.1.
 
 
-   Copyright (C) 2014, Los Alamos National Security, LLC
+   Copyright (C) 2015, Los Alamos National Security, LLC
 
 
 File: conceptual.info,  Node: Tag matching,  Next: Buffer control,  Prev: Data touching,  Up: Message specifications
@@ -1640,7 +1640,7 @@ them:
      ALL TASKS AWAIT COMPLETION
 
 (*note Buffer control::, explains why the preceding statement requires
-10 buffers.)  One caveat is that in coNCePTuaL version 1.5, messages
+10 buffers.)  One caveat is that in coNCePTuaL version 1.5.1, messages
 sent or received with the 'UNIQUE' keyword (*note Unique messages::) are
 not touched.  This limitation may be lifted in a later release of
 coNCePTuaL.
@@ -4984,7 +4984,7 @@ following an invocation of the 'missing' script:
      cd . && /bin/sh ./config.status ncptl.h
      config.status: creating ncptl.h
      config.status: ncptl.h is unchanged
-     cd . && /bin/sh /home/me/conceptual-1.5/missing --run autoheader
+     cd . && /bin/sh /home/me/conceptual-1.5.1/missing --run autoheader
                      [Error message appears here.]
 
    The source of the problem is usually an incongruous timestamp on some
@@ -9224,8 +9224,8 @@ Index
 * CC <3>:                                configure.          (line  132)
 * cc <1>:                                Installation.       (line   50)
 * cc <2>:                                Installation.       (line   54)
-* CC <4>:                                The c_mpi backend.  (line   26)
 * cc <3>:                                Installation.       (line   58)
+* CC <4>:                                The c_mpi backend.  (line   26)
 * cc <4>:                                Installation.       (line   64)
 * CC <5>:                                The c_udgram backend.
                                                              (line   23)
@@ -9919,7 +9919,7 @@ Index
 * coNCePTuaL GUI <19>:                   Components.         (line   84)
 * coNCePTuaL GUI <20>:                   Components.         (line   84)
 * coNCePTuaL GUI <21>:                   Menu bar.           (line    6)
-* conceptual-1.5.tar.gz:                 make.               (line  150)
+* conceptual-1.5.1.tar.gz:               make.               (line  150)
 * conceptual.info*:                      make.               (line   74)
 * conceptual.pdf:                        Typesetting conventions.
                                                              (line   24)
@@ -9927,8 +9927,8 @@ Index
 * conceptual.texi:                       Too many columns in multitable item.
                                                              (line    6)
 * conceptual.xml:                        make.               (line   75)
-* conceptual_1.5:                        make.               (line  125)
-* conceptual_1.5 <1>:                    make.               (line  135)
+* conceptual_1.5.1:                      make.               (line  125)
+* conceptual_1.5.1 <1>:                  make.               (line  135)
 * CONC_SEND_EVENT:                       Generated code.     (line   81)
 * CONC_SEND_EVENT <1>:                   Generated code.     (line   91)
 * conditionals:                          Conditional execution.
@@ -10032,9 +10032,9 @@ Index
                                                              (line   18)
 * configure <40>:                        Running without installing.
                                                              (line   23)
-* configure <41>:                        Interpreting configure warnings.
+* configure <41>:                        pkg-config.         (line    8)
+* configure <42>:                        Interpreting configure warnings.
                                                              (line    9)
-* configure <42>:                        pkg-config.         (line    8)
 * configure <43>:                        Interpreting configure warnings.
                                                              (line   12)
 * configure <44>:                        Interpreting configure warnings.
@@ -13257,8 +13257,8 @@ Index
                                                              (line   51)
 * ncptl.vim <2>:                         Installing stylesheets.
                                                              (line   53)
-* ncptlGUI-1.5.jar:                      make.               (line  168)
-* ncptlGUI-1.5.jar <1>:                  The coNCePTuaL GUI. (line   21)
+* ncptlGUI-1.5.1.jar:                    make.               (line  168)
+* ncptlGUI-1.5.1.jar <1>:                The coNCePTuaL GUI. (line   21)
 * ncptl_allocate_task_map:               Task-mapping functions.
                                                              (line    8)
 * ncptl_allocate_task_map <1>:           Task-mapping functions.

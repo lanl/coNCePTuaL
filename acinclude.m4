@@ -6,10 +6,11 @@ dnl By Scott Pakin <pakin@lanl.gov>
 dnl
 dnl ----------------------------------------------------------------------
 dnl
-dnl Copyright (C) 2014, Los Alamos National Security, LLC
+dnl 
+dnl Copyright (C) 2015, Los Alamos National Security, LLC
 dnl All rights reserved.
 dnl 
-dnl Copyright (2014).  Los Alamos National Security, LLC.  This software
+dnl Copyright (2015).  Los Alamos National Security, LLC.  This software
 dnl was produced under U.S. Government contract DE-AC52-06NA25396
 dnl for Los Alamos National Laboratory (LANL), which is operated by
 dnl Los Alamos National Security, LLC (LANS) for the U.S. Department

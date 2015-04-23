@@ -4,10 +4,11 @@
 #############################################
 
 # ----------------------------------------------------------------------
-# Copyright (C) 2014, Los Alamos National Security, LLC
+# 
+# Copyright (C) 2015, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2014).  Los Alamos National Security, LLC.  This software
+# Copyright (2015).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -74,7 +75,7 @@ EXTRA_DIST = $(STYLESHEETS_IN) $(EXTRA_PYTHON) $(ncptl_examples_DATA)    \
 	     Makefile.simple.in	conceptual.spec.in doc/conceptual.pdf    \
 	     ncptl-logextract.in ncptl-logmerge ncptl-logunmerge	 \
 	     Pod2NCPTLTexi.pm README INSTALL LICENSE doc/license.html    \
-	     doc/mdate-sh conceptual.apspec.in conceptual.ebuild.in
+	     doc/mdate-sh conceptual.apspec.in
 SUBDIRS = tests doc gui
 
 ###########################################################################
@@ -334,7 +335,7 @@ dpkg: smart-distcheck $(top_srcdir)/debian
 	  $(RM) -r debian ; \
 	  cp -r ../debian debian ; \
 	  $(RM) -r debian/CVS ; \
-	  debuild $(DEBUILD_OPTS) --no-tgz-check --lintian-opts -i
+	  debuild $(DEBUILD_OPTS) --no-tgz-check --lintian-opts -i --profile debian
 	$(RM) -r $(distdir)
 
 # Build an Autopackage package.  For now we assume that "make
@@ -348,12 +349,6 @@ autopackage: smart-distcheck $(top_srcdir)/conceptual.apspec
 	  $(MAKEPACKAGE) $${ABS_TOP_SRCDIR}/conceptual.apspec
 	mv $(distdir)/coNCePTuaL_$(VERSION).package .
 	$(RM) -r $(distdir)
-
-# Build a Gentoo ebuild file.
-
-ebuild: $(top_srcdir)/conceptual.ebuild.in  $(top_builddir)/config.status
-	$(SHELL) $(top_builddir)/config.status \
-	  --file=@PACKAGE@-@PACKAGE_VERSION@.ebuild:$(top_srcdir)/conceptual.ebuild.in
 
 if HAVE_MSGDIGEST
 

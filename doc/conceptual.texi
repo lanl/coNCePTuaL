@@ -59,7 +59,7 @@ This document describes @ncptl{} @w{version @value{VERSION}.}
 
 @sp 1
 
-Copyright @copyright{} 2014, Los Alamos National Security, LLC
+Copyright @copyright{} 2015, Los Alamos National Security, LLC
 @end copying
 
 @ifinfo
@@ -4376,7 +4376,7 @@ by the lexer but can make the @keyw{PERCENTILE} aggregate function
 (@pxref{Aggregate functions}) look more English-like (as in, @samp{THE
 95TH PERCENTILE}).
 
-Some examples of valid integers include @samp{2014}, @samp{-42},
+Some examples of valid integers include @samp{2015}, @samp{-42},
 @samp{64K} @w{(@math{=} 65,536),} @samp{8E3} @w{(@math{=} 8,000)}, and
 @samp{38TH}.
 

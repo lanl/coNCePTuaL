@@ -1,14 +1,14 @@
 %!PS-Adobe-2.0 EPSF-2.0
 %%Creator: dvips(k) 5.994 Copyright 2014 Radical Eye Software
 %%Title: tree3.dvi
-%%CreationDate: Fri Aug  1 19:00:08 2014
+%%CreationDate: Thu Apr 23 13:58:00 2015
 %%BoundingBox: 66 638 428 726
 %%DocumentFonts: CMR10
 %%EndComments
 %DVIPSWebPage: (www.radicaleye.com)
 %DVIPSCommandLine: dvips -E -Ppdf -Pcmz -o - tree3.dvi
 %DVIPSParameters: dpi=8000
-%DVIPSSource:  TeX output 2014.08.01:1900
+%DVIPSSource:  TeX output 2015.04.23:1357
 %%BeginProcSet: tex.pro 0 0
 %!
 /TeXDict 300 dict def TeXDict begin/N{def}def/B{bind def}N/S{exch}N/X{S
@@ -81,7 +81,7 @@ end
 % $Id: pstricks.pro 919 2014-05-19 18:42:47Z herbert $
 %
 %% PostScript prologue for pstricks.tex.
-%% Version 1.23, 2014/05/15
+%% Version 1.23, 2014/07/31
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -1117,13 +1117,17 @@ gsave
   mul neg d 
 } def
 %
+%
+/isbool { type (booleantype) cvn eq } def
+%
 /Ellipse { 
+  dup isbool { /MoveToStart ED }{ /MoveToStart false def }ifelse  % false or true
   /rotAngle ED
   /mtrx CM def 
   T 
   rotAngle rotate
   scale 
-  0 0 moveto 1 0 rmoveto  % move to the start position
+  MoveToStart { 0 0 moveto 1 0 rmoveto } if  % move to the start position
   0 0 1 5 3 roll arc 
   mtrx setmatrix 
 } def
@@ -1285,7 +1289,7 @@ end
 % $Id: pst-algparser.pro 919 2014-05-19 18:42:47Z herbert $
 %%
 %% PostScript prologue for PSTricks algorithm parser
-%% Version 0.06, 2014/05/19
+%% Version 0.07, 2014/08/01
 %%
 %% This program can be redistributed and/or modified under the terms
 %% of the LaTeX Project Public License Distributed from CTAN archives
@@ -1296,6 +1300,7 @@ end
 %currentdict /Pi known not { /Pi 3.14159265359 def } if
 %
 /AlgParser { tx@AlgToPs begin AlgToPs end } def  % Dominique Rodriguez
+/I2P { AlgParser cvx exec } def  % Infix to Postfix
 %
 /tx@CoreAnalyzerDict 100 dict def tx@CoreAnalyzerDict begin
 %
@@ -2505,7 +2510,7 @@ end
 
 %%EndProcSet
 %%BeginProcSet: pst-node.pro 0 0
-% $Id: pst-node.pro 876 2014-01-28 15:03:13Z herbert $
+% $Id: pst-node.pro 40 2014-07-25 06:46:27Z herbert $
 %%
 %% PostScript prologue for pst-node.tex.
 %% Version 1.15, 2014/01/27.

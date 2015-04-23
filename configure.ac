@@ -6,10 +6,11 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2014, Los Alamos National Security, LLC
+# 
+# Copyright (C) 2015, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2014).  Los Alamos National Security, LLC.  This software
+# Copyright (2015).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -53,7 +54,7 @@
 # ----------------------------------------------------------------------
 
 # Initialize Autoconf.
-AC_INIT([coNCePTuaL], [1.5], [pakin@lanl.gov], [conceptual])
+AC_INIT([coNCePTuaL], [1.5.1], [pakin@lanl.gov], [conceptual])
 
 # The following files are deleted by "make distclean" but checked
 # early in configure for their existence.  Hence, we create them right
@@ -63,7 +64,7 @@ touch ncptl.pc.in
 
 # Finish initializing Autoconf.
 AC_PREREQ([2.65])
-AC_REVISION($Revision: 3.236 $)
+AC_REVISION($Revision: 3.238 $)
 AC_CONFIG_SRCDIR([yacc.py])
 AC_COPYRIGHT([PUT_LICENSE_][TEXT_HERE])
 AC_CONFIG_MACRO_DIR([m4])

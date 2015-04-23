@@ -7,10 +7,11 @@
 #
 # ----------------------------------------------------------------------
 #
-# Copyright (C) 2014, Los Alamos National Security, LLC
+# 
+# Copyright (C) 2015, Los Alamos National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2014).  Los Alamos National Security, LLC.  This software
+# Copyright (2015).  Los Alamos National Security, LLC.  This software
 # was produced under U.S. Government contract DE-AC52-06NA25396
 # for Los Alamos National Laboratory (LANL), which is operated by
 # Los Alamos National Security, LLC (LANS) for the U.S. Department
@@ -1836,7 +1837,7 @@ class NCPTL_CodeGen:
             tasknum = self.pop()
             dimens = self.pop()
             arguments = [dimens, tasknum, other]
-        if funcname[-9:] == "FILE_DATA":
+        elif funcname[-9:] == "FILE_DATA":
             # The FILE_DATA and STATIC_FILE_DATA functions take 1-5
             # separate stack arguments.
             arguments = []
@@ -1890,7 +1891,7 @@ class NCPTL_CodeGen:
             valid_num_args = function_arguments[funcname]
             if num_args not in valid_num_args:
                 if len(valid_num_args) == 1:
-                    expected_args = "%d argument(s)" % valid_num_args
+                    expected_args = "%d argument(s)" % valid_num_args[0]
                 else:
                     expected_args = string.join(map(str, valid_num_args[:-1]), ", ") + \
                                     " or %d arguments" % valid_num_args[-1]

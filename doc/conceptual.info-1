@@ -1,19 +1,19 @@
 This is conceptual.info, produced by makeinfo version 5.2 from
 conceptual.texi.
 
-This document describes coNCePTuaL version 1.5.
+This document describes coNCePTuaL version 1.5.1.
 
 
-   Copyright (C) 2014, Los Alamos National Security, LLC
+   Copyright (C) 2015, Los Alamos National Security, LLC
 INFO-DIR-SECTION Programming
 START-INFO-DIR-ENTRY
 * coNCePTuaL: (conceptual).   A domain-specific language for network benchmarks
 END-INFO-DIR-ENTRY
 
-   This document describes coNCePTuaL version 1.5.
+   This document describes coNCePTuaL version 1.5.1.
 
 
-   Copyright (C) 2014, Los Alamos National Security, LLC
+   Copyright (C) 2015, Los Alamos National Security, LLC
 
 
 File: conceptual.info,  Node: Top,  Next: Introduction,  Prev: (dir),  Up: (dir)
@@ -28,10 +28,10 @@ network protocol layers.  A few lines of coNCePTuaL code can produce
 programs that would take significantly more effort to write in a
 conventional programming language.
 
-   This document describes coNCePTuaL version 1.5.
+   This document describes coNCePTuaL version 1.5.1.
 
 
-   Copyright (C) 2014, Los Alamos National Security, LLC
+   Copyright (C) 2015, Los Alamos National Security, LLC
 
 * Menu:
 
@@ -309,9 +309,9 @@ useful ones:
      'make install' normally installs coNCePTuaL into the '/usr/local'
      directory.  The '--prefix' option instructs 'configure' to write a 'Makefile'
      with a different installation directory.  For example,
-     '--prefix=/local/encap/conceptual-1.5' will cause coNCePTuaL's
-     files to be installed in '/local/encap/conceptual-1.5/bin',
-     '/local/encap/conceptual-1.5/include', etc.
+     '--prefix=/local/encap/conceptual-1.5.1' will cause coNCePTuaL's
+     files to be installed in '/local/encap/conceptual-1.5.1/bin',
+     '/local/encap/conceptual-1.5.1/include', etc.
 
 '--with-ignored-libs=LIB1,LIB2,...'
      In some circumstances it may be necessary to prevent coNCePTuaL
@@ -539,13 +539,13 @@ of other actions, as well:
 'make modulefile'
      The Environment Modules package facilitates configuring the
      operating-system shell for a given application.  The 'make modulefile'
-     command creates a 'conceptual_1.5' modulefile that checks for
+     command creates a 'conceptual_1.5.1' modulefile that checks for
      conflicts with previously loaded coNCePTuaL modulefiles then sets
      the 'PATH', 'MANPATH', and 'LD_LIBRARY_PATH' environment variables
      to values appropriate values as determined by 'configure' (*note
      configure::).
 
-     Normally, 'conceptual_1.5' should be installed in the system's
+     Normally, 'conceptual_1.5.1' should be installed in the system's
      module path (as described by the 'MODULEPATH' environment
      variable).  However, users without administrator access can still
      use the coNCePTuaL modulefile as a convenient mechanism for
@@ -553,13 +553,13 @@ of other actions, as well:
      coNCePTuaL:
 
           make modulefile
-          module load ./conceptual_1.5
+          module load ./conceptual_1.5.1
 
      See the 'module' man page for more information about modules.
 
 'make dist'
      Package together all of the files needed to rebuild coNCePTuaL.
-     The resulting file is called 'conceptual-1.5.tar.gz' (for this
+     The resulting file is called 'conceptual-1.5.1.tar.gz' (for this
      version of coNCePTuaL).
 
 'make all'
@@ -576,7 +576,7 @@ of other actions, as well:
      documentation for 'M-x find-tag' for more information.
 
 'make gui'
-     Compile the coNCePTuaL GUI, producing 'ncptlGUI-1.5.jar'.  Note
+     Compile the coNCePTuaL GUI, producing 'ncptlGUI-1.5.1.jar'.  Note
      that compilation requires both a Java compiler (e.g., 'javac') and
      the Jython Python-to-Java compiler ('jythonc').  Unfortunately, at
      the time of this writing (January 2009), 'jythonc''s future is
@@ -867,7 +867,7 @@ portable and should run identically on every platform for which a JVM
 exists.  The following is a typical command for launching the coNCePTuaL
 GUI from the command line:
 
-     java -jar ncptlGUI-1.5.jar
+     java -jar ncptlGUI-1.5.1.jar
 
    The coNCePTuaL GUI is split into two main panels.  The _program
 panel_ displays the components that make up the program and how they
@@ -1232,7 +1232,7 @@ File: conceptual.info,  Node: Supplied backends,  Next: Running coNCePTuaL progr
 3.3 Supplied backends
 =====================
 
-The coNCePTuaL 1.5 distribution includes the following compiler
+The coNCePTuaL 1.5.1 distribution includes the following compiler
 backends:
 
 'c_seq'
@@ -5220,7 +5220,7 @@ newline characters.
 a tab character, '\r' for a carriage-return character, and '\n' for a
 newline character.  All other escape sequences produce a warning message
 and are discarded.  As examples of valid escape-sequence usage, the
-string '"August 2014"' represents the text "August 2014" and '"I store
+string '"April 2015"' represents the text "April 2015" and '"I store
 \"stuff\" in C:\\MyStuff."' represents the text "I store "stuff" in
 C:\MyStuff."
 
@@ -5249,7 +5249,7 @@ or 'TH' suffix.  These suffixes are ignored by the lexer but can make
 the 'PERCENTILE' aggregate function (*note Aggregate functions::) look
 more English-like (as in, 'THE 95TH PERCENTILE').
 
-   Some examples of valid integers include '2014', '-42', '64K' (= 65,536),
+   Some examples of valid integers include '2015', '-42', '64K' (= 65,536),
 '8E3' (= 8,000), and '38TH'.
 
    ---------- Footnotes ----------
