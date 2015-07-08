@@ -72,3 +72,19 @@ backend (which runs locally on a workstation):
 
 See the coNCePTuaL user's guide (doc/conceptual.pdf) for a thorough
 description of coNCePTuaL usage.
+
+
+Copyright and License
+=====================
+
+coNCePTuaL is provided under a BSD-ish license.  See the LICENSE file
+for the full text.
+
+Los Alamos National Security, LLC (LANS) owns the copyright to
+coNCePTuaL (identified internally as LA-CC-03-099).
+
+
+Author
+======
+
+Scott Pakin, pakin@lanl.gov
