@@ -7,15 +7,15 @@ dnl
 dnl ----------------------------------------------------------------------
 dnl
 dnl 
-dnl Copyright (C) 2015, Los Alamos National Security, LLC
+dnl Copyright (C) 2003, Triad National Security, LLC
 dnl All rights reserved.
 dnl 
-dnl Copyright (2015).  Los Alamos National Security, LLC.  This software
-dnl was produced under U.S. Government contract DE-AC52-06NA25396
-dnl for Los Alamos National Laboratory (LANL), which is operated by
-dnl Los Alamos National Security, LLC (LANS) for the U.S. Department
+dnl Copyright (2003).  Triad National Security, LLC.  This software
+dnl was produced under U.S. Government contract 89233218CNA000001 for
+dnl Los Alamos National Laboratory (LANL), which is operated by Los
+dnl Alamos National Security, LLC (Triad) for the U.S. Department
 dnl of Energy. The U.S. Government has rights to use, reproduce,
-dnl and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+dnl and distribute this software.  NEITHER THE GOVERNMENT NOR TRIAD
 dnl MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
 dnl FOR THE USE OF THIS SOFTWARE. If software is modified to produce
 dnl derivative works, such modified software should be clearly marked,
@@ -33,15 +33,15 @@ dnl     notice, this list of conditions and the following disclaimer
 dnl     in the documentation and/or other materials provided with the
 dnl     distribution.
 dnl 
-dnl   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+dnl   * Neither the name of Triad National Security, LLC, Los Alamos
 dnl     National Laboratory, the U.S. Government, nor the names of its
 dnl     contributors may be used to endorse or promote products derived
 dnl     from this software without specific prior written permission.
 dnl 
-dnl THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+dnl THIS SOFTWARE IS PROVIDED BY TRIAD AND CONTRIBUTORS "AS IS" AND ANY
 dnl EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 dnl IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-dnl PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+dnl PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL TRIAD OR CONTRIBUTORS BE
 dnl LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
 dnl OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
 dnl OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR

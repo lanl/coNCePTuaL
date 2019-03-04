@@ -59,7 +59,7 @@ This document describes @ncptl{} @w{version @value{VERSION}.}
 
 @sp 1
 
-Copyright @copyright{} 2015, Los Alamos National Security, LLC
+Copyright @copyright{} 2003, Triad National Security, LLC
 @end copying
 
 @ifinfo
@@ -90,9 +90,11 @@ LaTeX
 ,
 @end macro
 @end ifnottex
+@ifnottex
 @macro hashchar
 #@c
 @end macro
+@end ifnottex
 
 @c Define macros for typesetting command-line options.
 @macro copt {option}
@@ -459,6 +461,9 @@ coNCePTuaL GUI
 
 % List the author using the default author font.
 \vbox{}\vfill
+\expandafter\ifx\csname authorfont\endcsname\relax
+  \let\authorfont=\secrm
+\fi
 \hfill \authorfont Scott Pakin, \email{pakin@@lanl.gov}
 \finishedtitlepagetrue
 
@@ -1564,8 +1569,10 @@ program panel.
 @c operates differently in DVI and PDF modes.
 @iftex
 @tex
+\newdimen\imagewidth
 \ifpdf
-  @center @image{gui, 0.8@pagewidth}
+  \imagewidth=0.8\pagewidth
+  @center @image{gui, @the@imagewidth}
 \else
   @center @image{gui, 4.8in}
 \fi
@@ -3553,7 +3560,7 @@ over 6000 lines of @ncptl{} code.}
 @iftex
 @tex
 \ifpdf
-  @center @image{walrus, @pagewidth}
+  @center @image{walrus, @the@pagewidth}
 \else
   @center @image{walrus, 6in}
 \fi
@@ -4376,7 +4383,7 @@ by the lexer but can make the @keyw{PERCENTILE} aggregate function
 (@pxref{Aggregate functions}) look more English-like (as in, @samp{THE
 95TH PERCENTILE}).
 
-Some examples of valid integers include @samp{2015}, @samp{-42},
+Some examples of valid integers include @samp{2016}, @samp{-42},
 @samp{64K} @w{(@math{=} 65,536),} @samp{8E3} @w{(@math{=} 8,000)}, and
 @samp{38TH}.
 
@@ -9599,7 +9606,7 @@ ncptl --backend=c_seq \
 attractive formatting to the Unix @filespec{indent} utility.)
 
 One sequential construct the @backend{c_seq} backend does not support
-is randomness, as needed by@keyw{A RANDOM PROCESSOR}
+is randomness, as needed by @keyw{A RANDOM PROCESSOR}
 (@pxref{Reordering task IDs}) and @keyw{A RANDOM TASK} (@pxref{Binding
 variables}).  @backendpy{c_generic} cannot support
 randomness itself because doing so requires broadcasting the seed for

@@ -8,15 +8,15 @@
  * ----------------------------------------------------------------------
  *
  * 
- * Copyright (C) 2015, Los Alamos National Security, LLC
+ * Copyright (C) 2003, Triad National Security, LLC
  * All rights reserved.
  * 
- * Copyright (2015).  Los Alamos National Security, LLC.  This software
- * was produced under U.S. Government contract DE-AC52-06NA25396
- * for Los Alamos National Laboratory (LANL), which is operated by
- * Los Alamos National Security, LLC (LANS) for the U.S. Department
+ * Copyright (2003).  Triad National Security, LLC.  This software
+ * was produced under U.S. Government contract 89233218CNA000001 for
+ * Los Alamos National Laboratory (LANL), which is operated by Los
+ * Alamos National Security, LLC (Triad) for the U.S. Department
  * of Energy. The U.S. Government has rights to use, reproduce,
- * and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+ * and distribute this software.  NEITHER THE GOVERNMENT NOR TRIAD
  * MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
  * FOR THE USE OF THIS SOFTWARE. If software is modified to produce
  * derivative works, such modified software should be clearly marked,
@@ -34,15 +34,15 @@
  *     in the documentation and/or other materials provided with the
  *     distribution.
  * 
- *   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+ *   * Neither the name of Triad National Security, LLC, Los Alamos
  *     National Laboratory, the U.S. Government, nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  * 
- * THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+ * THIS SOFTWARE IS PROVIDED BY TRIAD AND CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL TRIAD OR CONTRIBUTORS BE
  * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
  * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
  * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
@@ -423,10 +423,9 @@ int ncptl_envvar_to_uint64 (const char *envvar, uint64_t *value)
 /* Wrap a non-inlined ncptl_time_no_hpet() function around the inlined
  * version to ensure that ncptl_time_no_hpet() can be called
  * externally. */
+static uint64_t inlined_time_no_hpet (void);
 uint64_t ncptl_time_no_hpet (void)
 {
-  extern inline uint64_t inlined_time_no_hpet (void);
-
   return inlined_time_no_hpet();
 }
 
@@ -913,7 +912,7 @@ static void calibrate_spins_per_usec (void)
 /* Return the current time in microseconds without using HPET.
  * NOTE: This function must be kept up-to-date with
  * log_write_prologue_timer(). */
-inline uint64_t inlined_time_no_hpet (void)
+static uint64_t inlined_time_no_hpet (void)
 {
 #if NCPTL_TIMER_TYPE == 1
   /* Use gettimeofday() if we were forced to or if nothing else is

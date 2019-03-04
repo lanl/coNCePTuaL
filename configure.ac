@@ -7,15 +7,15 @@
 # ----------------------------------------------------------------------
 #
 # 
-# Copyright (C) 2015, Los Alamos National Security, LLC
+# Copyright (C) 2003, Triad National Security, LLC
 # All rights reserved.
 # 
-# Copyright (2015).  Los Alamos National Security, LLC.  This software
-# was produced under U.S. Government contract DE-AC52-06NA25396
-# for Los Alamos National Laboratory (LANL), which is operated by
-# Los Alamos National Security, LLC (LANS) for the U.S. Department
+# Copyright (2003).  Triad National Security, LLC.  This software
+# was produced under U.S. Government contract 89233218CNA000001 for
+# Los Alamos National Laboratory (LANL), which is operated by Los
+# Alamos National Security, LLC (Triad) for the U.S. Department
 # of Energy. The U.S. Government has rights to use, reproduce,
-# and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+# and distribute this software.  NEITHER THE GOVERNMENT NOR TRIAD
 # MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
 # FOR THE USE OF THIS SOFTWARE. If software is modified to produce
 # derivative works, such modified software should be clearly marked,
@@ -33,15 +33,15 @@
 #     in the documentation and/or other materials provided with the
 #     distribution.
 # 
-#   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+#   * Neither the name of Triad National Security, LLC, Los Alamos
 #     National Laboratory, the U.S. Government, nor the names of its
 #     contributors may be used to endorse or promote products derived
 #     from this software without specific prior written permission.
 # 
-# THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+# THIS SOFTWARE IS PROVIDED BY TRIAD AND CONTRIBUTORS "AS IS" AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL TRIAD OR CONTRIBUTORS BE
 # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
 # OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
 # OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
@@ -54,7 +54,7 @@
 # ----------------------------------------------------------------------
 
 # Initialize Autoconf.
-AC_INIT([coNCePTuaL], [1.5.1], [pakin@lanl.gov], [conceptual])
+AC_INIT([coNCePTuaL], [1.5.1b], [pakin@lanl.gov], [conceptual])
 
 # The following files are deleted by "make distclean" but checked
 # early in configure for their existence.  Hence, we create them right
@@ -64,7 +64,7 @@ touch ncptl.pc.in
 
 # Finish initializing Autoconf.
 AC_PREREQ([2.65])
-AC_REVISION($Revision: 3.238 $)
+AC_REVISION($Revision: 3.242 $)
 AC_CONFIG_SRCDIR([yacc.py])
 AC_COPYRIGHT([PUT_LICENSE_][TEXT_HERE])
 AC_CONFIG_MACRO_DIR([m4])
@@ -826,14 +826,14 @@ volatile void *try_to_kill = kill_pre_ansi_c ("Die, old" " C compilers!", 123);
     AC_CACHE_CHECK([if node coordinates appear in a file],
       [ax_cv_file_cray_xc_cname],
       [if test -e $cray_xc_cname_file ; then
-	 ax_cv_file_cray_xc_cname=yes
+         ax_cv_file_cray_xc_cname=yes
        else
-	 ax_cv_file_cray_xc_cname=no
+         ax_cv_file_cray_xc_cname=no
        fi])
     if test "$ax_cv_file_cray_xc_cname" = yes ; then
       AC_DEFINE_UNQUOTED([CRAY_XC_CNAME_FILE],
-	["$cray_xc_cname_file"],
-	[Define as a special file containing a Cray node location.])
+        ["$cray_xc_cname_file"],
+        [Define as a special file containing a Cray node location.])
     fi
   fi
 
@@ -1851,7 +1851,11 @@ AC_CONFIG_COMMANDS([config.status],
 AC_CONFIG_FILES([Makefile tests/Makefile doc/Makefile Makefile.simple      \
                  gui/Makefile ncptl.h.ni:ncptl.h.in doc/ncptl.1            \
                  doc/ncptl-replaytrace.1 conceptual.spec substitutions.dat \
-                 ncptl.pc conceptual.apspec gui/ncptlGUI.html])
+                 ncptl.pc conceptual.apspec gui/ncptlGUI.html],
+  [sed -i \
+    -e 's,$(srcdir)/substitutions.dat.in,$(top_builddir)/substitutions.dat.in,g' \
+    -e 's,$(srcdir)/ncptl.pc.in,$(top_builddir)/ncptl.pc.in,g' \
+    Makefile])
 AC_CONFIG_FILES([tests/backend_dot_ast],
   [chmod +x tests/backend_dot_ast])
 AC_CONFIG_FILES([tests/backend_interpret],

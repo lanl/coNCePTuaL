@@ -1,19 +1,19 @@
-This is conceptual.info, produced by makeinfo version 5.2 from
+This is conceptual.info, produced by makeinfo version 6.5 from
 conceptual.texi.
 
-This document describes coNCePTuaL version 1.5.1.
+This document describes coNCePTuaL version 1.5.1b.
 
 
-   Copyright (C) 2015, Los Alamos National Security, LLC
+   Copyright (C) 2003, Triad National Security, LLC
 INFO-DIR-SECTION Programming
 START-INFO-DIR-ENTRY
 * coNCePTuaL: (conceptual).   A domain-specific language for network benchmarks
 END-INFO-DIR-ENTRY
 
-   This document describes coNCePTuaL version 1.5.1.
+   This document describes coNCePTuaL version 1.5.1b.
 
 
-   Copyright (C) 2015, Los Alamos National Security, LLC
+   Copyright (C) 2003, Triad National Security, LLC
 
 
 File: conceptual.info,  Node: Top,  Next: Introduction,  Prev: (dir),  Up: (dir)
@@ -28,10 +28,10 @@ network protocol layers.  A few lines of coNCePTuaL code can produce
 programs that would take significantly more effort to write in a
 conventional programming language.
 
-   This document describes coNCePTuaL version 1.5.1.
+   This document describes coNCePTuaL version 1.5.1b.
 
 
-   Copyright (C) 2015, Los Alamos National Security, LLC
+   Copyright (C) 2003, Triad National Security, LLC
 
 * Menu:
 
@@ -298,20 +298,21 @@ useful ones:
      coNCePTuaL normally installs both static and dynamic libraries.
      While dynamic libraries have a number of advantages they do need to
      be installed on all nodes that run the compiled coNCePTuaL
-     programs.  If global installation is not convenient/feasible, '--disable-shared'
-     can be used to force static linking of executables.  Note, however,
-     that 'libncptlmodule.so', the Python interface to the coNCePTuaL
-     run-time library, needs to be built as a shared object so that it
-     can be loaded dynamically into a running Python interpreter.  '--disable-shared'
-     inhibits the compilation and installation of 'libncptlmodule.so'.
+     programs.  If global installation is not convenient/feasible,
+     '--disable-shared' can be used to force static linking of
+     executables.  Note, however, that 'libncptlmodule.so', the Python
+     interface to the coNCePTuaL run-time library, needs to be built as
+     a shared object so that it can be loaded dynamically into a running
+     Python interpreter.  '--disable-shared' inhibits the compilation
+     and installation of 'libncptlmodule.so'.
 
 '--prefix=DIRECTORY'
      'make install' normally installs coNCePTuaL into the '/usr/local'
-     directory.  The '--prefix' option instructs 'configure' to write a 'Makefile'
-     with a different installation directory.  For example,
-     '--prefix=/local/encap/conceptual-1.5.1' will cause coNCePTuaL's
-     files to be installed in '/local/encap/conceptual-1.5.1/bin',
-     '/local/encap/conceptual-1.5.1/include', etc.
+     directory.  The '--prefix' option instructs 'configure' to write a
+     'Makefile' with a different installation directory.  For example,
+     '--prefix=/local/encap/conceptual-1.5.1b' will cause coNCePTuaL's
+     files to be installed in '/local/encap/conceptual-1.5.1b/bin',
+     '/local/encap/conceptual-1.5.1b/include', etc.
 
 '--with-ignored-libs=LIB1,LIB2,...'
      In some circumstances it may be necessary to prevent coNCePTuaL
@@ -329,28 +330,28 @@ useful ones:
      working 'fork()' function.  However, it cannot detect if 'fork()'
      correctly spawns a child process but corrupts the parent's memory
      map while doing so, as is the case when using some InfiniBand
-     software stacks.  The '--without-fork' option inhibits the use of 'fork()'
-     and well as functions that implicitly invoke 'fork()' such as 'system()'
-     and 'popen()'.
+     software stacks.  The '--without-fork' option inhibits the use of
+     'fork()' and well as functions that implicitly invoke 'fork()' such
+     as 'system()' and 'popen()'.
 
 '--with-gettimeofday'
      The coNCePTuaL run-time library is able to use any of a variety of
      platform-specific microsecond timers to take timing measurements.
-     (*Note Time-related functions::, for a complete list.)  The '--with-gettimeofday'
-     option forces the run-time library to utilize instead the generic C
-     'gettimeofday()' function.  This can be useful in the rare, but not
-     impossible, case that a quirk in some particular platform misleads
-     one of coNCePTuaL's other timers.  The 'validatetimer' utility
-     (*note Validating the coNCePTuaL timer::) can help determine
-     whether '--with-gettimeofday' is necessary.
+     (*Note Time-related functions::, for a complete list.)  The
+     '--with-gettimeofday' option forces the run-time library to utilize
+     instead the generic C 'gettimeofday()' function.  This can be
+     useful in the rare, but not impossible, case that a quirk in some
+     particular platform misleads one of coNCePTuaL's other timers.  The
+     'validatetimer' utility (*note Validating the coNCePTuaL timer::)
+     can help determine whether '--with-gettimeofday' is necessary.
 
 '--with-mpi-wtime'
      On some systems the most accurate timer available is provided by
-     the 'MPI_Wtime()' function in the MPI library.  The '--with-mpi-wtime'
-     option forces the run-time library to measure elapsed time using 'MPI_Wtime()'
-     instead of any of the other available timers.  (*Note Time-related
-     functions::, for a complete list).  The ramifications of '--with-mpi-wtime'
-     are threefold:
+     the 'MPI_Wtime()' function in the MPI library.  The
+     '--with-mpi-wtime' option forces the run-time library to measure
+     elapsed time using 'MPI_Wtime()' instead of any of the other
+     available timers.  (*Note Time-related functions::, for a complete
+     list).  The ramifications of '--with-mpi-wtime' are threefold:
 
        1. The option requires that you link all coNCePTuaL programs
           against an MPI library and run them like any other MPI
@@ -358,14 +359,15 @@ useful ones:
           or some of the other command-line variables described below.)
 
        2. 'MPI_Wtime()' may be _less_ accurate than some of the other
-          timers available to coNCePTuaL.  In many MPI implementations, 'MPI_Wtime()'
-          simply invokes 'gettimeofday()', for instance.
+          timers available to coNCePTuaL.  In many MPI implementations,
+          'MPI_Wtime()' simply invokes 'gettimeofday()', for instance.
 
-       3. Although this is a rare problem, it may not be safe to invoke 'MPI_Wtime()'
-          without first invoking 'MPI_Init()'.  Fortunately, proper
-          juxtaposition of the two functions is not a concern for the
-          coNCePTuaL C+MPI backend (*note The c_mpi backend::), which
-          ensures that 'MPI_Init()' is invoked before 'MPI_Wtime()'.
+       3. Although this is a rare problem, it may not be safe to invoke
+          'MPI_Wtime()' without first invoking 'MPI_Init()'.
+          Fortunately, proper juxtaposition of the two functions is not
+          a concern for the coNCePTuaL C+MPI backend (*note The c_mpi
+          backend::), which ensures that 'MPI_Init()' is invoked before
+          'MPI_Wtime()'.
 
      In short, you should specify '--with-mpi-wtime' only if you have
      good reason to believe that 'MPI_Wtime()' is likely to produce the
@@ -382,10 +384,10 @@ useful ones:
 'CPPFLAGS=C PREPROCESSOR FLAGS'
 'LIBS=EXTRA LIBRARIES'
      Like 'CC', these variables override the values determined
-     automatically by 'configure'.  As an illustration, './configure CPPFLAGS="-DSPECIAL
-     -I/home/pakin/include/special -I." CFLAGS="-O3 -g -Wall -W" LDFLAGS=--static
-     LIBS="-lz /usr/lib/libstuff.a"' assigns values to all four
-     variables.
+     automatically by 'configure'.  As an illustration, './configure
+     CPPFLAGS="-DSPECIAL -I/home/pakin/include/special -I." CFLAGS="-O3
+     -g -Wall -W" LDFLAGS=--static LIBS="-lz /usr/lib/libstuff.a"'
+     assigns values to all four variables.
 
 'MPICC=C COMPILER'
 'MPICPPFLAGS=C PREPROCESSOR FLAGS'
@@ -396,27 +398,29 @@ useful ones:
      build the coNCePTuaL run-time library but rather to build user
      programs targeted to the C+MPI compiler backend.  For example, if
      your MPI installation lacks an 'mpicc' script, you may need to
-     specify extra header files and libraries explicitly: './configure MPICPPFLAGS="-I/usr/lib/mpi/include"
-     MPILIBS="-lmpich"'.
+     specify extra header files and libraries explicitly: './configure
+     MPICPPFLAGS="-I/usr/lib/mpi/include" MPILIBS="-lmpich"'.
 
    As a rather complex illustration of how some of the preceding options
 (as well as a few mentioned by './configure --help') might be combined,
 the following is how coNCePTuaL was once configured to cross-compile
 from a Linux/PowerPC build machine to a prototype of the BlueGene/L
 supercomputer (containing, at the time, 2048 embedded PowerPC
-processors, each executing a minimal run-time system, BLRTS). IBM's 'xlc'
-compiler was accessed via a wrapper script called 'mpcc'.
+processors, each executing a minimal run-time system, BLRTS). IBM's
+'xlc' compiler was accessed via a wrapper script called 'mpcc'.
 
      './configure CFLAGS="-g -O -qmaxmem=64000" CC=/bgl/local/bin/mpcc
-     CPP="gcc -E" --host=powerpc-ibm-linux-gnu --build=powerpc-unknown-linux-gnu
-     --with-alignment=8 --with-gettimeofday --prefix=/bgl/bgguest/LANL/ncptl
+     CPP="gcc -E" --host=powerpc-ibm-linux-gnu
+     --build=powerpc-unknown-linux-gnu --with-alignment=8
+     --with-gettimeofday --prefix=/bgl/bgguest/LANL/ncptl
      MPICC=/bgl/local/bin/mpcc
      CPPFLAGS=-I/BlueLight/floor/bglsys/include'
 
    It's always best to specify environment variables as arguments to
 './configure' because the 'configure' script writes its entire command
-line as a comment to 'config.log' and as a shell command to 'config.status'
-to enable re-running './configure' with exactly the same parameters.
+line as a comment to 'config.log' and as a shell command to
+'config.status' to enable re-running './configure' with exactly the same
+parameters.
 
 
    When './configure' finishes running it outputs a list of the warning
@@ -439,9 +443,9 @@ of other actions, as well:
 'make check'
      Perform a series of regression tests on the coNCePTuaL run-time
      library.  This is a good thing to do after a 'make' to ensure that
-     the run-time library built properly on your system.  When 'make check'
-     finishes it summarizes the test results.  The following output
-     signifies a successful completion of 'make check':
+     the run-time library built properly on your system.  When
+     'make check' finishes it summarizes the test results.  The
+     following output signifies a successful completion of 'make check':
 
           ===================
           All 21 tests passed
@@ -465,12 +469,13 @@ of other actions, as well:
 'make maintainer-clean'
      'make clean' deletes all files generated by a preceding 'make'
      command.  'make distclean' deletes all files generated by a
-     preceding './configure' command.  'make maintainer-clean' delete
-     all generated files.  Run 'make maintainer-clean' only if you have
-     not-too-ancient versions of the GNU Autotools (Autoconf 2.53, Automake 1.6,
-     and Libtool 1.4) because those are needed to regenerate some of the
-     generated files.  The sequence of operations to regenerate all of
-     the configuration files needed by coNCePTuaL is shown below.
+     preceding './configure' command. 'make maintainer-clean' delete all
+     generated files.  Run 'make maintainer-clean' only if you have
+     not-too-ancient versions of the GNU Autotools (Autoconf 2.53,
+     Automake 1.6, and Libtool 1.4) because those are needed to
+     regenerate some of the generated files.  The sequence of operations
+     to regenerate all of the configuration files needed by coNCePTuaL
+     is shown below.
 
           libtoolize --force --copy
           aclocal
@@ -523,29 +528,29 @@ of other actions, as well:
      coNCePTuaL can automatically produce stylesheets for a variety of
      programs.  These stylesheets make keywords, comments, strings, and
      other terms in the language visually distinct from each other for a
-     more aesthetically appealing appearance.  Currently, 'make stylesheets'
-     produces a LaTeX2e package ('ncptl.sty'), an a2ps style sheet
-     ('ncptl.ssh'), an Emacs major mode ('ncptl-mode.el' and
-     'ncptl-mode.elc'), a Vim syntax file ('ncptl.vim'), a
-     Source-highlight language definition ('ncptl.lang'), and a GeSHi
-     language file ('ncptl.php').  Each of these can be built
-     individually if desired.  (For example, 'make ncptl-mode.vim' will
-     create only 'ncptl-mode.vim'.)  Note that the 'Makefile' currently
-     lacks provisions for installing these files so whichever
-     stylesheets are desired will need to be installed manually.
-     Stylesheet installation is detailed in *note Installing
-     stylesheets::.
+     more aesthetically appealing appearance.  Currently,
+     'make stylesheets' produces a LaTeX2e package ('ncptl.sty'), an
+     a2ps style sheet ('ncptl.ssh'), an Emacs major mode
+     ('ncptl-mode.el' and 'ncptl-mode.elc'), a Vim syntax file
+     ('ncptl.vim'), a Source-highlight language definition
+     ('ncptl.lang'), and a GeSHi language file ('ncptl.php').  Each of
+     these can be built individually if desired.  (For example,
+     'make ncptl-mode.vim' will create only 'ncptl-mode.vim'.)  Note
+     that the 'Makefile' currently lacks provisions for installing these
+     files so whichever stylesheets are desired will need to be
+     installed manually.  Stylesheet installation is detailed in *note
+     Installing stylesheets::.
 
 'make modulefile'
      The Environment Modules package facilitates configuring the
-     operating-system shell for a given application.  The 'make modulefile'
-     command creates a 'conceptual_1.5.1' modulefile that checks for
-     conflicts with previously loaded coNCePTuaL modulefiles then sets
-     the 'PATH', 'MANPATH', and 'LD_LIBRARY_PATH' environment variables
-     to values appropriate values as determined by 'configure' (*note
-     configure::).
+     operating-system shell for a given application.  The
+     'make modulefile' command creates a 'conceptual_1.5.1b' modulefile
+     that checks for conflicts with previously loaded coNCePTuaL
+     modulefiles then sets the 'PATH', 'MANPATH', and 'LD_LIBRARY_PATH'
+     environment variables to values appropriate values as determined by
+     'configure' (*note configure::).
 
-     Normally, 'conceptual_1.5.1' should be installed in the system's
+     Normally, 'conceptual_1.5.1b' should be installed in the system's
      module path (as described by the 'MODULEPATH' environment
      variable).  However, users without administrator access can still
      use the coNCePTuaL modulefile as a convenient mechanism for
@@ -553,13 +558,13 @@ of other actions, as well:
      coNCePTuaL:
 
           make modulefile
-          module load ./conceptual_1.5.1
+          module load ./conceptual_1.5.1b
 
      See the 'module' man page for more information about modules.
 
 'make dist'
      Package together all of the files needed to rebuild coNCePTuaL.
-     The resulting file is called 'conceptual-1.5.1.tar.gz' (for this
+     The resulting file is called 'conceptual-1.5.1b.tar.gz' (for this
      version of coNCePTuaL).
 
 'make all'
@@ -576,7 +581,7 @@ of other actions, as well:
      documentation for 'M-x find-tag' for more information.
 
 'make gui'
-     Compile the coNCePTuaL GUI, producing 'ncptlGUI-1.5.1.jar'.  Note
+     Compile the coNCePTuaL GUI, producing 'ncptlGUI-1.5.1b.jar'.  Note
      that compilation requires both a Java compiler (e.g., 'javac') and
      the Jython Python-to-Java compiler ('jythonc').  Unfortunately, at
      the time of this writing (January 2009), 'jythonc''s future is
@@ -594,11 +599,11 @@ File: conceptual.info,  Node: Validating the coNCePTuaL timer,  Prev: make,  Up:
 Validating the coNCePTuaL timer
 -------------------------------
 
-'make' automatically builds a program called 'validatetimer'.  'validatetimer'
-helps validate that the real-time clock used by the coNCePTuaL run-time
-library accurately measures wall-clock time.  The idea is to compare
-coNCePTuaL's timer to an external clock (i.e., one not associated with
-the computer).  Simply follow the program's prompts:
+'make' automatically builds a program called 'validatetimer'.
+'validatetimer' helps validate that the real-time clock used by the
+coNCePTuaL run-time library accurately measures wall-clock time.  The
+idea is to compare coNCePTuaL's timer to an external clock (i.e., one
+not associated with the computer).  Simply follow the program's prompts:
 
      % validatetimer
      Press <Enter> to start the clock ...
@@ -612,8 +617,9 @@ significant, then performance results from coNCePTuaL--and possibly from
 other programs, as well--should not be trusted.  Note that only extreme
 differences in timings are significant; there will always be _some_
 error caused by human response time and by system I/O speed.  In the
-case that there _is_ an extreme performance difference,(1) the '--with-gettimeofday'
-option to 'configure' (*note configure::) may be a viable workaround.
+case that there _is_ an extreme performance difference,(1) the
+'--with-gettimeofday' option to 'configure' (*note configure::) may be a
+viable workaround.
 
    'validatetimer' takes an optional command-line argument, which is the
 number of seconds of wall-clock time to expect.  The default is '60'.
@@ -638,25 +644,25 @@ File: conceptual.info,  Node: make install,  Prev: make,  Up: Installation
 
 The coNCePTuaL compiler and run-time library are installed with
 'make install'.  Although 'configure' can specify the default
-installation directory (*note configure::), this can be overridden at 'make install'
-time in one of two ways.  'make DESTDIR=PREFIX install' prepends PREFIX
-to every directory when installing.  However, the files are installed
-believing that 'DESTDIR' was not specified.  For example, 'make DESTDIR=/mnt install'
-would cause executables to be installed into '/mnt/usr/local/bin', but
-if any of these are symbolic links, the link will omit the '/mnt'
-prefix.
+installation directory (*note configure::), this can be overridden at
+'make install' time in one of two ways. 'make DESTDIR=PREFIX install'
+prepends PREFIX to every directory when installing.  However, the files
+are installed believing that 'DESTDIR' was not specified.  For example,
+'make DESTDIR=/mnt install' would cause executables to be installed into
+'/mnt/usr/local/bin', but if any of these are symbolic links, the link
+will omit the '/mnt' prefix.
 
    The second technique for overriding installation directories is to
-specify a new value for 'prefix' on the command line.  That is, 'make prefix=/opt/ncptl install'
-will install into '/opt/ncptl/bin', '/opt/ncptl/include',
-'/opt/ncptl/man', etc., regardless of the '--prefix' value given to
-'configure'.  coNCePTuaL's 'Makefile' provides even finer-grained
-control than that.  Instead of--or in addition to--specifying a 'prefix'
-option on the command line, individual installation directories can be
-named explicitly.  These include 'bindir', 'datadir', 'libdir',
-'includedir', 'infodir', 'mandir', 'pkgdatadir', 'pythondir', and many
-others.  Scrutinize the 'Makefile' to find a particular directory that
-should be overridden.
+specify a new value for 'prefix' on the command line.  That is,
+'make prefix=/opt/ncptl install' will install into '/opt/ncptl/bin',
+'/opt/ncptl/include', '/opt/ncptl/man', etc., regardless of the
+'--prefix' value given to 'configure'.  coNCePTuaL's 'Makefile' provides
+even finer-grained control than that.  Instead of--or in addition
+to--specifying a 'prefix' option on the command line, individual
+installation directories can be named explicitly.  These include
+'bindir', 'datadir', 'libdir', 'includedir', 'infodir', 'mandir',
+'pkgdatadir', 'pythondir', and many others.  Scrutinize the 'Makefile'
+to find a particular directory that should be overridden.
 
    The remainder of this section presents a number of optional
 installation steps that add coNCePTuaL support to a variety of
@@ -688,15 +694,17 @@ installed manually as per the following instructions:
      filename database needs to be refreshed after a new package is
      installed.  See
      <http://www.tex.ac.uk/cgi-bin/texfaq2html?label=instpackages> for
-     more information.  'ncptl.sty' is merely a customization of the 'listings'
-     package that defines a new language called 'ncptl'.  See the 'listings'
-     documentation for instructions on typesetting source code.
+     more information.  'ncptl.sty' is merely a customization of the
+     'listings' package that defines a new language called 'ncptl'.  See
+     the 'listings' documentation for instructions on typesetting source
+     code.
 
 'ncptl.ssh'
 
      Running 'a2ps --list=defaults' outputs (among other things) the
-     a2ps library path.  'ncptl.ssh' should be installed in one of the 'sheets'
-     directories listed there, typically '/usr/share/a2ps/sheets'.
+     a2ps library path.  'ncptl.ssh' should be installed in one of the
+     'sheets' directories listed there, typically
+     '/usr/share/a2ps/sheets'.
 
 'ncptl-mode.el'
 'ncptl-mode.elc'
@@ -731,10 +739,10 @@ installed manually as per the following instructions:
 'ncptl.lang'
 
      Source-highlight stores all of its helper files in a single
-     directory, typically '/usr/share/source-highlight'.  Put 'ncptl.lang'
-     there.  To associate '.ncptl' files with coNCePTuaL code you will
-     also need to add the following line to the 'lang.map' file in the
-     same directory:
+     directory, typically '/usr/share/source-highlight'.  Put
+     'ncptl.lang' there.  To associate '.ncptl' files with coNCePTuaL
+     code you will also need to add the following line to the 'lang.map'
+     file in the same directory:
 
           ncptl = ncptl.lang
 
@@ -766,8 +774,8 @@ installed manually as per the following instructions:
      file as its sole argument.
 
      A GeSHi extension for Mediawiki introduces a '<syntaxhighlight>'
-     tag for presenting color-coded program listings on a wiki.  'ncptl.php'
-     makes it easy to use coNCePTuaL code in this context.
+     tag for presenting color-coded program listings on a wiki.
+     'ncptl.php' makes it easy to use coNCePTuaL code in this context.
 
 
 File: conceptual.info,  Node: SLOCCount,  Next: pkg-config,  Prev: Installing stylesheets,  Up: make install
@@ -867,7 +875,7 @@ portable and should run identically on every platform for which a JVM
 exists.  The following is a typical command for launching the coNCePTuaL
 GUI from the command line:
 
-     java -jar ncptlGUI-1.5.1.jar
+     java -jar ncptlGUI-1.5.1b.jar
 
    The coNCePTuaL GUI is split into two main panels.  The _program
 panel_ displays the components that make up the program and how they
@@ -1105,15 +1113,16 @@ The usage string is followed by a list of installed backends.
 
 '--backend' (abbreviation: '-b')
      Specify the module that coNCePTuaL should use as the compiler
-     backend.  'ncptl' must be told which backend to use with either
-     '--backend=BACKEND' or by setting the environment variable 'NCPTL_BACKEND'
-     to the desired backend.  Running 'ncptl --help' lists the available
-     backends.  Most coNCePTuaL backends are code generators.  For
-     example, 'c_mpi' causes 'ncptl' to compile coNCePTuaL programs into
-     C using MPI as the communication library.  However, a backend need
-     not generate code directly--or at all.  The 'c_trace' backend
-     (*note The c_trace backend::), for instance, supplements the code
-     generated by another backend by adding tracing output to it.
+     backend. 'ncptl' must be told which backend to use with either
+     '--backend=BACKEND' or by setting the environment variable
+     'NCPTL_BACKEND' to the desired backend.  Running 'ncptl --help'
+     lists the available backends.  Most coNCePTuaL backends are code
+     generators.  For example, 'c_mpi' causes 'ncptl' to compile
+     coNCePTuaL programs into C using MPI as the communication library.
+     However, a backend need not generate code directly--or at all.  The
+     'c_trace' backend (*note The c_trace backend::), for instance,
+     supplements the code generated by another backend by adding tracing
+     output to it.
 
      'ncptl' searches for backends first using 'NCPTL_PATH', an
      environment variable containing a colon-separated list of
@@ -1138,7 +1147,7 @@ The usage string is followed by a list of installed backends.
 
 '--no-compile' (abbreviation: '-E')
      By default, 'ncptl' instructs the backend to compile and link the
-     user's coNCePTuaL program into an executable file.  '--no-compile'
+     user's coNCePTuaL program into an executable file. '--no-compile'
      tells the backend to skip both the compilation and the linking step
      and to produce only a source file in the target language.
 
@@ -1154,7 +1163,7 @@ The usage string is followed by a list of installed backends.
      variant) for two different variables normally generates an 'Option
      OPT is multiply defined' error.  (*Note Command-line arguments::,
      for a description of how to declare command-line options in
-     coNCePTuaL.)  '--lenient' tells the coNCePTuaL compiler to
+     coNCePTuaL.) '--lenient' tells the coNCePTuaL compiler to
      automatically rename duplicate options to avoid conflicts.  Only
      the option strings can be renamed; the programmer must still ensure
      that the option variables are unique.  Second, using a variable
@@ -1216,9 +1225,10 @@ those which 'ncptl' would otherwise process--are passed to the backend
 without interpretation by 'ncptl'.  Furthermore, the '--' (i.e., empty)
 option tells 'ncptl' explicitly to stop processing the command line at
 that point.  For example, in the command 'ncptl --backend=some_backend
---lenient myprogram.ncptl -- --program', 'ncptl' will process the '--backend'
-and '--lenient' options but will pass '--program' to the 'some_backend'
-backend even though 'ncptl' has its own '--program' option.(1)
+--lenient myprogram.ncptl -- --program', 'ncptl' will process the
+'--backend' and '--lenient' options but will pass '--program' to the
+'some_backend' backend even though 'ncptl' has its own '--program'
+option.(1)
 
    ---------- Footnotes ----------
 
@@ -1232,7 +1242,7 @@ File: conceptual.info,  Node: Supplied backends,  Next: Running coNCePTuaL progr
 3.3 Supplied backends
 =====================
 
-The coNCePTuaL 1.5.1 distribution includes the following compiler
+The coNCePTuaL 1.5.1b distribution includes the following compiler
 backends:
 
 'c_seq'
@@ -1247,9 +1257,9 @@ backends:
      local to a single machine) datagram sockets.
 
 'c_trace'
-     Instrument a C-based backend either to include a call to 'fprintf()'
-     before every program event or to utilize the 'curses' library to
-     display graphically the execution of a selected task.
+     Instrument a C-based backend either to include a call to
+     'fprintf()' before every program event or to utilize the 'curses'
+     library to display graphically the execution of a selected task.
 
 'c_profile'
      Instrument a C-based backend either to write event timings and
@@ -1357,11 +1367,11 @@ MPI messaging library.
 
    By default, 'c_mpi' produces an executable program that can be run
 with 'mpirun', 'prun', 'pdsh', or whatever other job-launching program
-is normally used to run MPI programs.  When 'ncptl' is run with the '--no-link'
-option, 'c_mpi' produces an object file that needs to be linked with the
-appropriate MPI library.  When 'ncptl' is run with the '--no-compile'
-option, 'c_mpi' outputs ANSI C code that must be both compiled and
-linked.
+is normally used to run MPI programs.  When 'ncptl' is run with the
+'--no-link' option, 'c_mpi' produces an object file that needs to be
+linked with the appropriate MPI library.  When 'ncptl' is run with the
+'--no-compile' option, 'c_mpi' outputs ANSI C code that must be both
+compiled and linked.
 
    'c_mpi' honors the following environment variables when compiling and
 linking C+MPI programs: 'MPICC', 'MPICPPFLAGS', 'MPICFLAGS',
@@ -1406,8 +1416,8 @@ When 'ncptl' is passed '--backend=c_mpi' as a command-line option,
      'c_mpi'-specific compiler option '--ssend' instructs 'c_mpi' to
      replace all calls to 'MPI_Send()' in the generated code with calls
      to 'MPI_Ssend()', MPI's synchronizing send function.  A program's
-     log files indicate whether the program was built to use 'MPI_Send()'
-     or 'MPI_Ssend()'.
+     log files indicate whether the program was built to use
+     'MPI_Send()' or 'MPI_Ssend()'.
 
 '--reduce=MPI_OP'
      The default reduction operation is 'MPI_SUM' but a different
@@ -1425,15 +1435,15 @@ The 'c_mpi' backend implements the coNCePTuaL 'REDUCE' statement (*note
 Reducing::) as follows.  Many-to-one reductions are implemented with a
 single call to 'MPI_Reduce()'.  Many-to-many reductions in which the
 sources exactly match the targets are implemented with a single call to
-'MPI_Allreduce()'.  All other reductions are implemented by calling 'MPI_Reduce()'
-to reduce the data to the first target task then 'MPI_Bcast()' to
-distribute the reduced data to the remaining targets.
+'MPI_Allreduce()'.  All other reductions are implemented by calling
+'MPI_Reduce()' to reduce the data to the first target task then
+'MPI_Bcast()' to distribute the reduced data to the remaining targets.
 
-   Because MPI requires that the source and target buffers in an 'MPI_Reduce()'
-or 'MPI_Allreduce()' be different, the 'c_mpi' backend utilizes _two_
-buffers when 'UNIQUE' (*note Unique messages::) is specified.  It
-utilizes two _adjacent_ buffers when 'FROM BUFFER' or 'INTO BUFFER'
-(*note Buffer control::) is specified.
+   Because MPI requires that the source and target buffers in an
+'MPI_Reduce()' or 'MPI_Allreduce()' be different, the 'c_mpi' backend
+utilizes _two_ buffers when 'UNIQUE' (*note Unique messages::) is
+specified.  It utilizes two _adjacent_ buffers when 'FROM BUFFER' or
+'INTO BUFFER' (*note Buffer control::) is specified.
 
 
 File: conceptual.info,  Node: Implementation of multicasts,  Prev: Implementation of reductions,  Up: The c_mpi backend
@@ -1444,10 +1454,10 @@ Implementation of multicasts
 The 'MULTICAST' statement (*note Multicasting::) enables any set of
 tasks to transmit data to any other set of tasks.  The 'c_mpi' backend
 implements 'MULTICAST' using the simpler 'MPI_Bcast()' when there is a
-single initiator (determined dynamically at run time) and 'MPI_Alltoallv()'
-otherwise.  In all cases, 'c_mpi' creates an MPI communicator that
-contains exactly the tasks involved in the multicast (as senders and/or
-receivers).
+single initiator (determined dynamically at run time) and
+'MPI_Alltoallv()' otherwise.  In all cases, 'c_mpi' creates an MPI
+communicator that contains exactly the tasks involved in the multicast
+(as senders and/or receivers).
 
    MPI requires that all tasks involved in an 'MPI_Bcast()' belong to
 the same MPI communicator.  Hence, in the coNCePTuaL statement
@@ -1483,19 +1493,20 @@ this maximum to every log file and automatically packetizes larger
 messages.
 
    By default, 'c_udgram' produces an executable program that can be run
-directly from the command line.  When 'ncptl' is run with the '--no-link'
-option, 'c_udgram' produces an object file that needs to be linked with
-the appropriate sockets library (on systems that require a separate
-library for socket calls).  When 'ncptl' is run with the '--no-compile'
-option, 'c_udgram' outputs ANSI C code that must be both compiled and
-linked.  Like all C-based backends, 'c_udgram' honors the 'CC',
-'CPPFLAGS', 'LDFLAGS', and 'LIBS' environment variables when compiling
-and linking.  Values not found in the environment are taken from those
-specified/discovered at configuration time (*note configure::).
+directly from the command line.  When 'ncptl' is run with the
+'--no-link' option, 'c_udgram' produces an object file that needs to be
+linked with the appropriate sockets library (on systems that require a
+separate library for socket calls).  When 'ncptl' is run with the
+'--no-compile' option, 'c_udgram' outputs ANSI C code that must be both
+compiled and linked.  Like all C-based backends, 'c_udgram' honors the
+'CC', 'CPPFLAGS', 'LDFLAGS', and 'LIBS' environment variables when
+compiling and linking.  Values not found in the environment are taken
+from those specified/discovered at configuration time (*note
+configure::).
 
    In addition to supporting the default set of command-line options,
-programs generated using the 'c_udgram' backend further support a '--tasks'
-option that designates the number of tasks to use:
+programs generated using the 'c_udgram' backend further support a
+'--tasks' option that designates the number of tasks to use:
 
        -T, --tasks=<number>        Number of tasks to use [default: 1]
 
@@ -1677,10 +1688,10 @@ commands:
 All other keystrokes cause the program to advance to the next event
 immediately.
 
-   A single breakpoint can be set using the program's '-B' or '--breakpoint'
-command-line option.  Whenever the monitored processor reaches the
-source-code line at which a breakpoint has been set, it enters
-single-stepping mode exactly as if 'S' were pressed.  Setting a
+   A single breakpoint can be set using the program's '-B' or
+'--breakpoint' command-line option.  Whenever the monitored processor
+reaches the source-code line at which a breakpoint has been set, it
+enters single-stepping mode exactly as if 'S' were pressed.  Setting a
 breakpoint at line 0 tells the program to begin single-stepping as soon
 as the program begins.  Note that only lines corresponding to coNCePTuaL
 events can support breakpoints.
@@ -1702,8 +1713,8 @@ coNCePTuaL, can then be used to play back the program's execution by
 reading and displaying the file of redirected trace data.
 
    'ncptl-replaytrace' accepts the following command-line options, which
-correspond closely to those accepted by a program compiled with the '--curses'
-option to 'c_trace' (*note c_trace tracing with curses::):
+correspond closely to those accepted by a program compiled with the
+'--curses' option to 'c_trace' (*note c_trace tracing with curses::):
 
 '--trace'
      Specify a file containing redirected trace data.  FILE defaults to
@@ -1860,9 +1871,9 @@ repetitions, synchronizations, and the specified number of repetitions,
 always using '1' instead.
 
    A multicast operation (*note Multicasting::) is normally treated as
-multiple point-to-point operations with the same send time.  The '--mcastsync'
-option instructs the 'interpret' backend to perform an implicit barrier
-synchronization at the end of the multicast.
+multiple point-to-point operations with the same send time.  The
+'--mcastsync' option instructs the 'interpret' backend to perform an
+implicit barrier synchronization at the end of the multicast.
 
    The '--tasks' option specifies the number of tasks to simulate.
 Because this number can be quite large the 'NCPTL_LOG_ONLY' environment
@@ -1876,11 +1887,11 @@ default, all processors create a log file.
 interpreted.
 
    The '--output' option described in *note Compiling coNCePTuaL
-programs::, has special meaning to the 'interpret' backend.  When '--output'
-is used, 'interpret' dumps a list of events to the specified file after
-a successful run.  For example, the coNCePTuaL program 'ALL TASKS t
-ASYNCHRONOUSLY SEND A 384 BYTE MESSAGE TO TASK t XOR 2 THEN ALL TASKS
-AWAIT COMPLETION' results in the following event dump:
+programs::, has special meaning to the 'interpret' backend.  When
+'--output' is used, 'interpret' dumps a list of events to the specified
+file after a successful run.  For example, the coNCePTuaL program 'ALL
+TASKS t ASYNCHRONOUSLY SEND A 384 BYTE MESSAGE TO TASK t XOR 2 THEN ALL
+TASKS AWAIT COMPLETION' results in the following event dump:
 
      Task 0 posted a NEWSTMT at time 0 and completed it at time 0
      Task 0 posted a RECEIVE at time 0 and completed it at time 0
@@ -1908,8 +1919,8 @@ simulate 100,000 processors communicating in a simple ring pattern:
          --nummsgs=5
 
 The preceding command ran to completion in under 5 minutes on a 1.5GHz
-Xeon uniprocessor workstation--not too bad considering that 488 petabytes
-of data are transmitted on the program's critical path.
+Xeon uniprocessor workstation--not too bad considering that
+488 petabytes of data are transmitted on the program's critical path.
 
    The 'interpret' backend is especially useful for finding
 communication-related program errors:
@@ -1973,10 +1984,10 @@ Task latency hierarchies
 ........................
 
 The 'interpret' backend normally simulates a flat network in which
-communication between any two tasks takes unit latency.  However, the '--hierarchy'
-option lets one specify a hierarchy of latencies: latency l1 within a
-set of t1 tasks, latency l1+l2 within a set of t1*t2 tasks, latency
-l1+l2+l3 within a set of t1*t2*t3 tasks, and so forth.
+communication between any two tasks takes unit latency.  However, the
+'--hierarchy' option lets one specify a hierarchy of latencies: latency
+l1 within a set of t1 tasks, latency l1+l2 within a set of t1*t2 tasks,
+latency l1+l2+l3 within a set of t1*t2*t3 tasks, and so forth.
 
    The argument to '--hierarchy' is a comma-separated list of <TASK
 FACTOR:LATENCY DELTA> pairs.  The LATENCY DELTA component is optional
@@ -2001,14 +2012,15 @@ consisting of 12-port switches.  In this example, let's say that it
 takes unit latency to communicate within a socket, two units of latency
 to communicate with another socket in the same SMP, and an additional
 three units of latency to traverse each switch.  This configuration can
-be specified to the 'interpret' backend as '--hierarchy="4:1, 2:1, 12:3, 12:6, ..."'
-(or simply '--hierarchy=4,2,12:3,12:6, ...').  With this setting,
-task 0, for instance, communicates with tasks 1-3 in 1 time unit, with tasks 4-7
-in 2 time units, with tasks 8-95 in 5 time units (one switch crossing),
+be specified to the 'interpret' backend as
+'--hierarchy="4:1, 2:1, 12:3, 12:6, ..."' (or simply
+'--hierarchy=4,2,12:3,12:6, ...').  With this setting, task 0, for
+instance, communicates with tasks 1-3 in 1 time unit, with tasks 4-7 in
+2 time units, with tasks 8-95 in 5 time units (one switch crossing),
 with tasks 96-1151 in 11 time units (three switch crossings--a level 0
-switch, a level 1 switch, and another level 0 switch), with tasks 1152-13,823
-in 17 time units (five switch crossings--of switch levels 0, 1, 2, 1,
-and 0), and so forth.
+switch, a level 1 switch, and another level 0 switch), with
+tasks 1152-13,823 in 17 time units (five switch crossings--of switch
+levels 0, 1, 2, 1, and 0), and so forth.
 
 
 File: conceptual.info,  Node: The stats backend,  Next: The picl backend,  Prev: The interpret backend,  Up: Supplied backends
@@ -2119,15 +2131,15 @@ command-line options:
                                        exclude from output [default: ""]
 
    The '--expand-lists' option tells the 'stats' backend whether it
-should output sets of numbers as comma-separated ranges (e.g., '1-3, 12-15')
-or as individual numbers (e.g., '1, 2, 3, 12, 13, 14, 15').  The '--format'
-option specifies the output format.  By default, it outputs
-human-readable text, as shown in the above example.  However, '--format=excelcsv'
-outputs the data in comma-separated value format suitable for loading
-directly into Microsoft Excel.  A more general form of
-computer-parseable output is specified with the 'sep' sub-option, which
-takes a separator string as a sub-option.  For example, '--format=sep:"#"'
-produces output like the following:
+should output sets of numbers as comma-separated ranges
+(e.g., '1-3, 12-15') or as individual numbers (e.g., '1, 2, 3, 12, 13,
+14, 15').  The '--format' option specifies the output format.  By
+default, it outputs human-readable text, as shown in the above example.
+However, '--format=excelcsv' outputs the data in comma-separated value
+format suitable for loading directly into Microsoft Excel.  A more
+general form of computer-parseable output is specified with the 'sep'
+sub-option, which takes a separator string as a sub-option.  For
+example, '--format=sep:"#"' produces output like the following:
 
      "Event tallies"#"Total number of LOG events"#10
      #"Total number of NEWSTMT events"#48
@@ -2153,9 +2165,11 @@ fields.
    As can be seen from the sample output, 'stats' outputs a lot of
 information.  The '--exclude' option--which can be specified repeatedly
 on the command line--provides the user with fine-grained control over
-which output to suppress.  For example, '--exclude="Total number of NEWSTMT events"'
-tells 'stats' not to output the line with that key.  Similarly, '--exclude="Processor SEND-event peers"'
-eliminates an entire category of information.
+which output to suppress.  For example,
+'--exclude="Total number of NEWSTMT events"' tells 'stats' not to output
+the line with that key.  Similarly,
+'--exclude="Processor SEND-event peers"' eliminates an entire category
+of information.
 
 
 File: conceptual.info,  Node: The picl backend,  Next: The paraver backend,  Prev: The stats backend,  Up: Supplied backends
@@ -2211,11 +2225,11 @@ coNCePTuaL programmer to explain complex communication patterns to other
 people.
 
    'picl' is derived from 'interpret' (*note The interpret backend::)
-and therefore supports the 'interpret' backend's '--tasks' and '--mcastsync'
-options as well as the standard options described in *note Running
-coNCePTuaL programs::.  However, because 'picl' does not produce log
-files, the '--logfile' option is absent.  'picl' additionally supports
-the following two command-line options:
+and therefore supports the 'interpret' backend's '--tasks' and
+'--mcastsync' options as well as the standard options described in *note
+Running coNCePTuaL programs::.  However, because 'picl' does not produce
+log files, the '--logfile' option is absent.  'picl' additionally
+supports the following two command-line options:
 
        -A, --all-events=<number>     0=include only communication events;
                                      1=include all events  [default: 0]
@@ -2297,11 +2311,11 @@ Analysis Tool: Tracefile Description', for a detailed description of the
 various fields used in the preceding trace file.
 
    'paraver' is derived from 'interpret' (*note The interpret backend::)
-and therefore supports the 'interpret' backend's '--tasks' and '--mcastsync'
-options as well as the standard options described in *note Running
-coNCePTuaL programs::.  However, because 'paraver' does not produce log
-files, the '--logfile' option is absent.  'paraver' additionally
-supports the following two command-line options:
+and therefore supports the 'interpret' backend's '--tasks' and
+'--mcastsync' options as well as the standard options described in *note
+Running coNCePTuaL programs::.  However, because 'paraver' does not
+produce log files, the '--logfile' option is absent.  'paraver'
+additionally supports the following two command-line options:
 
        -D, --dimemas-events=<number> 0=no Dimemas events; 1=extra events for
                                      Dimemas simulator [default: 0]
@@ -2364,16 +2378,16 @@ Paraver trace visualizers (*note The picl backend::, and *note The
 paraver backend::).  'latex_vis' outputs LaTeX code with calls to the
 PSTricks package (available from
 <http://www.tug.org/applications/PSTricks/> but shipped with most LaTeX
-distributions) to draw the figure, then runs 'latex' (or whatever the 'LATEX'
-environment variable is set to) to convert the '.tex' file to DVI format
-and 'dvips' (or whatever the 'DVIPS' environment variable is set to) to
-convert the '.dvi' file into EPS format.  Finally, 'latex_vis' runs the
-graphic through Ghostscript ('gs' or whatever the 'GS' environment
-variable is set to) to tighten the graphic's bounding box.(1)
-'latex_vis' requires that LaTeX and PSTricks be installed in order to
-produce its visualizations.  However, it can still run with '--no-compile'
-(*note Compiling coNCePTuaL programs::) to produce a '.tex' file that
-can later be run manually through 'latex'.
+distributions) to draw the figure, then runs 'latex' (or whatever the
+'LATEX' environment variable is set to) to convert the '.tex' file to
+DVI format and 'dvips' (or whatever the 'DVIPS' environment variable is
+set to) to convert the '.dvi' file into EPS format.  Finally,
+'latex_vis' runs the graphic through Ghostscript ('gs' or whatever the
+'GS' environment variable is set to) to tighten the graphic's bounding
+box.(1)  'latex_vis' requires that LaTeX and PSTricks be installed in
+order to produce its visualizations.  However, it can still run with
+'--no-compile' (*note Compiling coNCePTuaL programs::) to produce a
+'.tex' file that can later be run manually through 'latex'.
 
    As an example, the following is the default 'latex_vis' output from
 the coNCePTuaL program 'TASK 0 SENDS A 1 MEGABYTE MESSAGE TO TASK 1 THEN
@@ -2409,11 +2423,11 @@ expected communication operations.
    'latex_vis' is derived from 'interpret' (*note The interpret
 backend::) and therefore supports the 'interpret' backend's '--tasks'
 and '--mcastsync' options as well as the standard options described in
-*note Running coNCePTuaL programs::.  (The 'interpret' backend's '--kill-reps'
-option can be handy for reducing the picture's size by showing only a
-single iteration of each loop.)  Because 'latex_vis' does not produce
-log files, the '--logfile' option is absent.  'latex_vis' additionally
-supports the following command-line options:
+*note Running coNCePTuaL programs::.  (The 'interpret' backend's
+'--kill-reps' option can be handy for reducing the picture's size by
+showing only a single iteration of each loop.)  Because 'latex_vis' does
+not produce log files, the '--logfile' option is absent.  'latex_vis'
+additionally supports the following command-line options:
 
        -A, --annotate=<string>         Annotation level (0=no annotations;
                                        1=annotate communication events;
@@ -2458,8 +2472,8 @@ were not annotated.
 
    Task numbers are normally shown in base ten.  The '--binary-tasks'
 option causes task numbers to be output in base two and using the same
-number of bits for each task.  For example, a 3-task visualization with '--binary-tasks'
-would number the tasks '00', '01', and '11'.
+number of bits for each task.  For example, a 3-task visualization with
+'--binary-tasks' would number the tasks '00', '01', and '11'.
 
    Because 'latex_vis' is intended primarily for visualizing
 communication patterns, by default only communication operations take
@@ -2484,13 +2498,13 @@ as a debugging aid for coNCePTuaL programs.
 with equally thick line widths.  The '--arrow-width' option lets you
 specify a Python function to map a message size in bytes, m, to a line
 width in PostScript points, with the default being 1 point.  As a simple
-example, '--arrow-width=2' doubles the arrow width for all message (i.e., it
-represents the constant function f: m --> 2).  A more typical example
-would be '--arrow-width="log10(m)"' (representing f: m --> log10(m)),
-which causes a tenfold increase in message size to yield a unit increase
-in line width.  The argument to '--arrow-width' can be any Python
-expression using either built-in functions or functions from the Python 'math'
-module.  See the Python library reference
+example, '--arrow-width=2' doubles the arrow width for all message
+(i.e., it represents the constant function f: m --> 2).  A more typical
+example would be '--arrow-width="log10(m)"' (representing f: m -->
+log10(m)), which causes a tenfold increase in message size to yield a
+unit increase in line width.  The argument to '--arrow-width' can be any
+Python expression using either built-in functions or functions from the
+Python 'math' module.  See the Python library reference
 (http://docs.python.org/lib/lib.html) for details.
 
    Normally, messages are considered to require one time unit to travel
@@ -2582,10 +2596,10 @@ NODESHAPE/\\renewcommand*{\\idle}[1]{[mnode=R]}/"'.
 
    In short, the 'latex_vis' backend produces highly customizable
 illustrations of communication patterns.  Because 'latex_vis' produces
-commented LaTeX code, any customization not provided through the use of '--filter'
-or one of the backend-specific command-line options is easily performed
-by compiling with '--keep-ints' (*note Compiling coNCePTuaL programs::)
-and editing the generated LaTeX code.
+commented LaTeX code, any customization not provided through the use of
+'--filter' or one of the backend-specific command-line options is easily
+performed by compiling with '--keep-ints' (*note Compiling coNCePTuaL
+programs::) and editing the generated LaTeX code.
 
 
 File: conceptual.info,  Node: The dot_ast backend,  Next: The libsea_ast backend,  Prev: The latex_vis backend,  Up: Supplied backends
@@ -2736,11 +2750,11 @@ command line:
 
 '--node-code=CHARACTERS'
      To facilitate associating nodes in the AST with fragments of the
-     coNCePTuaL program being graphed, the 'dot_ast' backend provides a '--node-code'
-     option that labels each node with the fragment of code to which it
-     corresponds.  The argument to '--node-code' is a number of
-     characters at which to truncate the code fragment or '-1' to
-     inhibit truncation.  The purpose of truncation is to prevent
+     coNCePTuaL program being graphed, the 'dot_ast' backend provides a
+     '--node-code' option that labels each node with the fragment of
+     code to which it corresponds.  The argument to '--node-code' is a
+     number of characters at which to truncate the code fragment or '-1'
+     to inhibit truncation.  The purpose of truncation is to prevent
      excessively large nodes from disturbing the graph layout.  The
      <PROGRAM> node (*note Complete programs::), for example, includes
      the complete program source code if not truncated.
@@ -2822,9 +2836,9 @@ command line:
 time (*note configure::), with the default being 'dot'.  By default,
 'dot_ast' produces dot code and runs this through the designated
 Graphviz program to produce a PostScript file (or whatever format is
-named by the '--format' option).  If 'ncptl' is run with either the '--no-link'
-or '--no-compile' options, it produces a dot file that should be run
-manually through 'dot' or another Graphviz tool.
+named by the '--format' option).  If 'ncptl' is run with either the
+'--no-link' or '--no-compile' options, it produces a dot file that
+should be run manually through 'dot' or another Graphviz tool.
 
    ---------- Footnotes ----------
 
@@ -2883,8 +2897,8 @@ selectively view information.  For example, in the preceding image, only
 source code for only certain nodes is displayed; and all node type and
 node attribute information is hidden.
 
-   The 'libsea_ast' backend accepts the following option from the 'ncptl'
-command line:
+   The 'libsea_ast' backend accepts the following option from the
+'ncptl' command line:
 
 '--node-code=CHARACTERS'
      Every node in the generated LibSea graph lists the fragment of
@@ -2893,9 +2907,9 @@ command line:
      Complete programs::), for example, includes the complete program
      source code.  Because the Walrus visualizer does not currently wrap
      long lines, most of a long string is never even presented to the
-     user and therefore serves no practical purpose.  The argument to '--node-code'
-     is a number of characters at which to truncate the code fragment or
-     '-1' to inhibit truncation.
+     user and therefore serves no practical purpose.  The argument to
+     '--node-code' is a number of characters at which to truncate the
+     code fragment or '-1' to inhibit truncation.
 
    ---------- Footnotes ----------
 
@@ -2971,8 +2985,8 @@ In addition to '--help' these include '--comment', '--logfile',
           '--comment="`COMMAND`"' in that the former causes COMMAND to
           be executed individually by each process in the program while
           the latter executes COMMAND only once and only before
-          launching the program.  Also note that '!' must be escaped in 'csh'
-          and derivitive shells (i.e., '--comment='\!COMMAND'').
+          launching the program.  Also note that '!' must be escaped in
+          'csh' and derivitive shells (i.e., '--comment='\!COMMAND'').
 
      As an example, the command line arguments '--comment="This is a
      simple comment." --comment=!lspci --comment=@/proc/version
@@ -3005,13 +3019,13 @@ In addition to '--help' these include '--comment', '--logfile',
 
      Be careful when using shell backquotes with '--comment' (e.g., as
      in '--comment="`who`"').  Different shells have different ways of
-     handling newlines output by a backquoted command.  In some shells (e.g., 'bash'),
-     the coNCePTuaL program sees the entire output with embedded
-     newlines as a single argument; in others (e.g., 'tcsh'), each line
-     of output constitutes a separate command-line argument.  Because
-     coNCePTuaL programs currently ignore arguments that do not begin
-     with '--', the comment written to the log file in the latter case
-     terminates at the first newline.  In virtually all shells, the
+     handling newlines output by a backquoted command.  In some shells
+     (e.g., 'bash'), the coNCePTuaL program sees the entire output with
+     embedded newlines as a single argument; in others (e.g., 'tcsh'),
+     each line of output constitutes a separate command-line argument.
+     Because coNCePTuaL programs currently ignore arguments that do not
+     begin with '--', the comment written to the log file in the latter
+     case terminates at the first newline.  In virtually all shells, the
      double quotes around the backquoted command are needed to prevent
      the shell from splitting arguments at word boundaries.  As a
      consequence, '--comment=`who`' logs only the first word output by
@@ -3033,9 +3047,10 @@ In addition to '--help' these include '--comment', '--logfile',
      case of '--logfile').  The field is padded on the left with spaces
      to the given width.  More practically, if the field width begins
      with the number '0' the field is padded on the left with zeroes to
-     the given width.  For example, specifying '--logfile="mydata-%03p.log"'
-     on the command line produces log files named 'mydata-000.log',
-     'mydata-001.log', 'mydata-002.log', 'mydata-003.log', and so forth.
+     the given width.  For example, specifying
+     '--logfile="mydata-%03p.log"' on the command line produces log
+     files named 'mydata-000.log', 'mydata-001.log', 'mydata-002.log',
+     'mydata-003.log', and so forth.
 
 '--no-trap'
      '--no-trap' specifies a list of signals or ranges of signals that
@@ -3070,10 +3085,10 @@ merge these log files into a single, more manageable, file.  For
 situations in which it is unreasonable for every process to write a log
 file (e.g., if the filesystem is unable to handle large numbers of
 simultaneous file creations, the 'NCPTL_LOG_ONLY' environment variable
-lets the user limit the set of processes that produce log files.  'NCPTL_LOG_ONLY'
-accepts a comma-separated list of dash-separated process ranges such as
-'0-3,12-16,24,25,32-48'.  Only processes included in the list produce
-log files.
+lets the user limit the set of processes that produce log files.
+'NCPTL_LOG_ONLY' accepts a comma-separated list of dash-separated
+process ranges such as '0-3,12-16,24,25,32-48'.  Only processes included
+in the list produce log files.
 
    ---------- Footnotes ----------
 
@@ -3295,8 +3310,8 @@ include the following:
      library reads the hardware cycle counter without going through a
      standard library or system call.  The complete set of timer
      mechanisms and selection criteria is presented in *note
-     Time-related functions::, in the documentation for the 'ncptl_time()'
-     function.
+     Time-related functions::, in the documentation for the
+     'ncptl_time()' function.
 
      The log file then reports "average timer overhead" as the mean time
      between back-to-back invocations of whichever timer routine is
@@ -3382,8 +3397,9 @@ typesetting.
 a synopsis of its core command-line options to the standard output
 device; running 'ncptl-logextract --help' produces basic usage
 information; and, running 'ncptl-logextract --man' outputs a complete
-manual page.  *Note ncptl-logextract manual page::, shows the 'ncptl-logextract'
-documentation as produced by 'ncptl-logextract --man'.
+manual page.  *Note ncptl-logextract manual page::, shows the
+'ncptl-logextract' documentation as produced by
+'ncptl-logextract --man'.
 
 * Menu:
 
@@ -3510,10 +3526,10 @@ of what data is extracted from the log file and what formatting occurs:
 
 '-p'
      When given a "merged" log file, unmerge only the data corresponding
-     to the comma-separated processor ranges in STRING.  For example, '--procs=0,16-20,25'
-     unmerges the data for processors 0, 16, 17, 18, 19, 20, and 25.  By
-     default, 'ncptl-logextract' uses all of the data from a merged log
-     file.
+     to the comma-separated processor ranges in STRING.  For example,
+     '--procs=0,16-20,25' unmerges the data for processors 0, 16, 17,
+     18, 19, 20, and 25.  By default, 'ncptl-logextract' uses all of the
+     data from a merged log file.
 
 '-q'
      Suppress progress output.  Normally, 'ncptl-logextract' outputs
@@ -4402,8 +4418,8 @@ above:
    * If '--wrap' is specified without an argument, the argument defaults
      to '72'.
 
-   * The following are examples of the different arguments to the '--columns'
-     option:
+   * The following are examples of the different arguments to the
+     '--columns' option:
 
      '--columns=1 (default)'
                  coNCePTuaL version: 1.0
@@ -4446,19 +4462,19 @@ above:
      take the minimum value across all files of each element in the
      first and second columns and the arithmetic mean across all files
      of each element in the third column.  If the number of
-     comma-separated values differs from the number of columns and '--force-merge'
-     is specified, 'ncptl-logextract' will cycle over the given values
-     until all columns are accounted for.  The 'concat' merge type
-     applies to all columns and therefore cannot be combined with any
-     other merge type.  The difference between '--merge=all' and '--merge=concat'
-     is that the former merges three files each with columns A and B as
-     {A, A, A, B, B, B} while the latter merges the same files as {A, B,
-     A, B, A, B}.
+     comma-separated values differs from the number of columns and
+     '--force-merge' is specified, 'ncptl-logextract' will cycle over
+     the given values until all columns are accounted for.  The 'concat'
+     merge type applies to all columns and therefore cannot be combined
+     with any other merge type.  The difference between '--merge=all'
+     and '--merge=concat' is that the former merges three files each
+     with columns A and B as {A, A, A, B, B, B} while the latter merges
+     the same files as {A, B, A, B, A, B}.
 
-     Note that '--merge' is applied AFTER '--keep-columns'.  Hence, if '--keep-columns'
-     specifies that only three columns be kept, '--merge' should list
-     exactly three operations (or a single operation that applies to all
-     three columns).
+     Note that '--merge' is applied AFTER '--keep-columns'.  Hence, if
+     '--keep-columns' specifies that only three columns be kept,
+     '--merge' should list exactly three operations (or a single
+     operation that applies to all three columns).
 
    * '--showfnames' prepends to each data table in the input file an
      extra header line indicating the log file the data was extracted
@@ -4692,9 +4708,10 @@ number of files can therefore be generated on large-scale computer
 systems.  For the case in which only a single log file contains
 measurement data, 'ncptl-logmerge' can merge a number of log files into
 a single file.  Only lines that differ across log files are repeated,
-making the result fairly space-efficient.  The primary advantage of 'ncptl-logmerge'
-over an archiving program such as 'tar' or 'zip' is that the output of 'ncptl-logmerge'
-is designed to be human-readable--in fact, easily readable.
+making the result fairly space-efficient.  The primary advantage of
+'ncptl-logmerge' over an archiving program such as 'tar' or 'zip' is
+that the output of 'ncptl-logmerge' is designed to be human-readable--in
+fact, easily readable.
 
    'ncptl-logmerge' can also be used to highlight differences in log
 files.  It is therefore an important diagnostic tool for unearthing
@@ -4808,7 +4825,7 @@ OPTIONS
 '-s'
      Simplify the output by including only lines which differ across
      input files.  No data is output, only prologue and epilogue
-     comments.  '--simplify' can be specified up to four times on the
+     comments. '--simplify' can be specified up to four times on the
      command line:
 
      once
@@ -4874,8 +4891,8 @@ Merge a set of coNCePTuaL log files:
 
          ncptl-logmerge --simplify --simplify mybenchmark-[0-9]*.log
 
-   For convenience, one can abbreviate '--simplify' '--simplify' '--simplify'
-'--simplify' to '-s' '-s' '-s' '-s' or even '-ssss':
+   For convenience, one can abbreviate '--simplify' '--simplify'
+'--simplify' '--simplify' to '-s' '-s' '-s' '-s' or even '-ssss':
 
          ncptl-logmerge -ssss mybenchmark-[0-9]*.log
 
@@ -4932,8 +4949,9 @@ files.
 a synopsis of its core command-line options to the standard output
 device; running 'ncptl-logunmerge --help' produces basic usage
 information; and, running 'ncptl-logunmerge --man' outputs a complete
-manual page.  *Note ncptl-logunmerge manual page::, shows the 'ncptl-logunmerge'
-documentation as produced by 'ncptl-logunmerge --man'.
+manual page.  *Note ncptl-logunmerge manual page::, shows the
+'ncptl-logunmerge' documentation as produced by
+'ncptl-logunmerge --man'.
 
 * Menu:
 
@@ -5220,7 +5238,7 @@ newline characters.
 a tab character, '\r' for a carriage-return character, and '\n' for a
 newline character.  All other escape sequences produce a warning message
 and are discarded.  As examples of valid escape-sequence usage, the
-string '"April 2015"' represents the text "April 2015" and '"I store
+string '"March 2019"' represents the text "March 2019" and '"I store
 \"stuff\" in C:\\MyStuff."' represents the text "I store "stuff" in
 C:\MyStuff."
 
@@ -5249,8 +5267,8 @@ or 'TH' suffix.  These suffixes are ignored by the lexer but can make
 the 'PERCENTILE' aggregate function (*note Aggregate functions::) look
 more English-like (as in, 'THE 95TH PERCENTILE').
 
-   Some examples of valid integers include '2015', '-42', '64K' (= 65,536),
-'8E3' (= 8,000), and '38TH'.
+   Some examples of valid integers include '2016', '-42', '64K'
+(= 65,536), '8E3' (= 8,000), and '38TH'.
 
    ---------- Footnotes ----------
 
@@ -5499,7 +5517,8 @@ syntactic sugar for the more general 'ROOT' function: 'CBRT(X)' =
 
    'FACTOR10' rounds its argument down (more precisely, towards zero) to
 the largest single-digit factor of an integral power of 10.
-'FACTOR10(4975)' is therefore '4000'.  Similarly, 'FACTOR10(-4975)' is '-4000'.
+'FACTOR10(4975)' is therefore '4000'.  Similarly, 'FACTOR10(-4975)'
+is '-4000'.
 
    'LOG10(x)' is the floor of the base-10 logarithm of x.  For instance,
 'LOG10(12345)' is '4' because 10^4 is the largest integral power of 10
@@ -5743,8 +5762,9 @@ mesh (1-D, 2-D, or 3-D).
      in which at least one dimension contains wraparound links and at
      least one dimension does not.
 
- -- Function: MESH_NEIGHBOR ('(' WIDTH '*'? [, HEIGHT '*'? [, DEPTH '*'?]]
-          ')', TASK_ID, '(' X_OFFSET [, Y_OFFSET [, Z_OFFSET]] ')')
+ -- Function: MESH_NEIGHBOR ('(' WIDTH '*'? [, HEIGHT '*'?
+          [, DEPTH '*'?]] ')', TASK_ID, '(' X_OFFSET [, Y_OFFSET
+          [, Z_OFFSET]] ')')
      'MESH_NEIGHBOR' returns a task's neighbor on a 1-D, 2-D, or 3-D
      mesh or torus.  It takes exactly three arguments: a list of the
      mesh/torus's dimensions, a task number, and a list of the
@@ -5757,8 +5777,8 @@ mesh (1-D, 2-D, or 3-D).
      wraparound links, offsets that move off the mesh cause
      'MESH_NEIGHBOR' to return the value '-1'.
 
- -- Function: MESH_COORDINATE ('(' WIDTH '*'? [, HEIGHT '*'? [, DEPTH '*'?]]
-          ')', TASK_ID, COORDINATE)
+ -- Function: MESH_COORDINATE ('(' WIDTH '*'? [, HEIGHT '*'?
+          [, DEPTH '*'?]] ')', TASK_ID, COORDINATE)
      'MESH_COORDINATE' returns a task's X, Y, or Z coordinate on a 1-D,
      2-D, or 3-D mesh/torus.  The first argument to 'MESH_COORDINATE' is
      a list of the mesh/torus's dimensions.  The second argument is a
@@ -5770,8 +5790,8 @@ mesh (1-D, 2-D, or 3-D).
      the result.  (Asterisks are allowed solely for consistency with the
      other mesh functions.)
 
- -- Function: MESH_DISTANCE ('(' WIDTH '*'? [, HEIGHT '*'? [, DEPTH '*'?]]
-          ')', TASK_ID_1, TASK_ID_2)
+ -- Function: MESH_DISTANCE ('(' WIDTH '*'? [, HEIGHT '*'?
+          [, DEPTH '*'?]] ')', TASK_ID_1, TASK_ID_2)
      'MESH_DISTANCE' returns the shortest Manhattan distance between two
      tasks on a 1-D, 2-D, or 3-D mesh or torus.  It takes exactly three
      arguments: a list of the mesh/torus's dimensions and two task
@@ -6204,17 +6224,17 @@ to group subexpressions.
 
    The unary relation 'IS EVEN' is TRUE if a given arithmetic expression
 represents an even number and the unary relation 'IS ODD' is TRUE if a
-given arithmetic expression represents an odd number.  For example, '456 IS EVEN'
-is TRUE and '64 MOD 6 IS ODD' is FALSE.
+given arithmetic expression represents an odd number.  For example,
+'456 IS EVEN' is TRUE and '64 MOD 6 IS ODD' is FALSE.
 
    The coNCePTuaL operators '=', '<', '>', '<=', '>=', and '<>'
 represent, respectively, the mathematical relations =, <, >, <=, >=, and
 <> (i.e., not equal).  These are all binary relations that operate on
-arithmetic expressions (*note Arithmetic expressions::).  For example, '2+2 = 4'
-is TRUE and '2**3 > 2**4' is FALSE.  The 'DIVIDES' relation is TRUE if
-the first expression evenly divides the second, i.e., that e2 = 0 (mod
-e1).  Hence, '2 DIVIDES 1234' (equivalent to '1234 MOD 2 = 0') is TRUE
-while '2 DIVIDES 4321' (equivalent to '4321 MOD 2 = 0') is FALSE.
+arithmetic expressions (*note Arithmetic expressions::).  For example,
+'2+2 = 4' is TRUE and '2**3 > 2**4' is FALSE.  The 'DIVIDES' relation is
+TRUE if the first expression evenly divides the second, i.e., that e2 =
+0 (mod e1).  Hence, '2 DIVIDES 1234' (equivalent to '1234 MOD 2 = 0') is
+TRUE while '2 DIVIDES 4321' (equivalent to '4321 MOD 2 = 0') is FALSE.
 
    The binary relation 'IS IN' has the form
 
@@ -6235,7 +6255,7 @@ IN'.  Hence, '4 IS NOT IN {3, ..., 5}' is FALSE while '6 IS NOT IN
 {3, ..., 5}' is TRUE.
 
    Conjunction (``and'') and disjunction (``or'') combine multiple
-relational expressions.  <REL_EXPR> '/\' <REL_EXPR> is TRUE if and only
+relational expressions. <REL_EXPR> '/\' <REL_EXPR> is TRUE if and only
 if both <REL_EXPR>s are TRUE, and <REL_EXPR> '\/' <REL_EXPR> is TRUE if
 and only if either <REL_EXPR> is TRUE.  For example, '456 IS EVEN \/
 2**3 > 2**4' is TRUE and '456 IS EVEN /\ 2**3 > 2**4' is FALSE.

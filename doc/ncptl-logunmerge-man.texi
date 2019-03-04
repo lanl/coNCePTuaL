@@ -3,15 +3,15 @@
 @end menu
 
 @c 
-@c Copyright (C) 2015, Los Alamos National Security, LLC
+@c Copyright (C) 2003, Triad National Security, LLC
 @c All rights reserved.
 @c 
-@c Copyright (2015).  Los Alamos National Security, LLC.  This software
-@c was produced under U.S. Government contract DE-AC52-06NA25396
-@c for Los Alamos National Laboratory (LANL), which is operated by
-@c Los Alamos National Security, LLC (LANS) for the U.S. Department
+@c Copyright (2003).  Triad National Security, LLC.  This software
+@c was produced under U.S. Government contract 89233218CNA000001 for
+@c Los Alamos National Laboratory (LANL), which is operated by Los
+@c Alamos National Security, LLC (Triad) for the U.S. Department
 @c of Energy. The U.S. Government has rights to use, reproduce,
-@c and distribute this software.  NEITHER THE GOVERNMENT NOR LANS
+@c and distribute this software.  NEITHER THE GOVERNMENT NOR TRIAD
 @c MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY
 @c FOR THE USE OF THIS SOFTWARE. If software is modified to produce
 @c derivative works, such modified software should be clearly marked,
@@ -29,15 +29,15 @@
 @c     in the documentation and/or other materials provided with the
 @c     distribution.
 @c 
-@c   * Neither the name of Los Alamos National Security, LLC, Los Alamos
+@c   * Neither the name of Triad National Security, LLC, Los Alamos
 @c     National Laboratory, the U.S. Government, nor the names of its
 @c     contributors may be used to endorse or promote products derived
 @c     from this software without specific prior written permission.
 @c 
-@c THIS SOFTWARE IS PROVIDED BY LANS AND CONTRIBUTORS "AS IS" AND ANY
+@c THIS SOFTWARE IS PROVIDED BY TRIAD AND CONTRIBUTORS "AS IS" AND ANY
 @c EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 @c IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-@c PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LANS OR CONTRIBUTORS BE
+@c PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL TRIAD OR CONTRIBUTORS BE
 @c LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
 @c OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
 @c OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
